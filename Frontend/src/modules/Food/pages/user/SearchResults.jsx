@@ -1044,13 +1044,13 @@ export default function SearchResults() {
                       {/* Restaurant Name & Rating */}
                       <div className="flex items-start justify-between gap-2 mb-2 lg:mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white line-clamp-1 lg:line-clamp-2">
+                          <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white line-clamp-1 lg:line-clamp-2">
                             {restaurant.name}
                           </h3>
                         </div>
                         {restaurant.rating && (
                           <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded-lg flex items-center gap-1">
-                            <span className="text-sm lg:text-base font-bold">{restaurant.rating}</span>
+                            <span className="text-sm lg:text-base font-semibold">{restaurant.rating}</span>
                             <Star className="h-3 w-3 lg:h-4 lg:w-4 fill-white text-white" />
                           </div>
                         )}

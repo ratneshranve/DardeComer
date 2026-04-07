@@ -146,6 +146,10 @@ export function isModuleAuthenticated(module) {
  * @param {string} module - Module name (admin, restaurant, delivery, user)
  */
 export function clearModuleAuth(module) {
+  if (module === "user") {
+    clearUserSession();
+  }
+
   localStorage.removeItem(`${module}_accessToken`);
   localStorage.removeItem(`${module}_refreshToken`);
   localStorage.removeItem(`${module}_authenticated`);
@@ -157,6 +161,21 @@ export function clearModuleAuth(module) {
   }
   // Also clear any sessionStorage data
   sessionStorage.removeItem(`${module}AuthData`);
+}
+
+/**
+ * Clear user-local cached UI data to prevent cross-account stale state.
+ */
+export function clearUserSession() {
+  localStorage.removeItem("userProfile");
+  localStorage.removeItem("user_user");
+  localStorage.removeItem("user_accessToken");
+  localStorage.removeItem("user_refreshToken");
+  localStorage.removeItem("user_authenticated");
+  // Add any other user-specific profile cache keys here
+  localStorage.removeItem("userAddresses");
+  localStorage.removeItem("userFavorites");
+  localStorage.removeItem("userDishFavorites");
 }
 
 /**
@@ -247,6 +266,11 @@ export function setAuthData(module, token, user, refreshToken = null) {
     // Prevent stale restaurant profile data from previous account after re-login.
     if (module === "restaurant") {
       clearRestaurantSessionCache();
+    }
+
+    // Prevent stale user profile data from previous account after re-login.
+    if (module === "user") {
+      clearUserSession();
     }
 
     localStorage.setItem(tokenKey, token);

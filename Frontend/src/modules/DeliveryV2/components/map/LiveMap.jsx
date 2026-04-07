@@ -10,6 +10,7 @@ import {
 } from '@react-google-maps/api';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 import { zoneAPI } from '@food/api';
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from '@food/utils/googleMapsLoader';
 
 const mapContainerStyle = {
   width: '100%',
@@ -38,16 +39,13 @@ const mapOptions = {
     { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] }
   ]
 };
-const LIBRARIES = ['places', 'geometry'];
 
 export const LiveMap = ({ onMapClick, onMapLoad, onPathReceived, onPolylineReceived, zoom = 12 }) => {
   const { riderLocation, activeOrder, tripStatus } = useDeliveryStore();
-  
-  const { isLoaded, loadError } = useJsApiLoader({
-    // googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    googleMapsApiKey: "",
 
-    libraries: LIBRARIES
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES
   });
 
   const [directions, setDirections] = useState(null);

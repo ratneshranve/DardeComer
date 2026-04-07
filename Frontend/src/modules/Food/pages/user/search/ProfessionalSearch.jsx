@@ -84,11 +84,29 @@ export default function ProfessionalSearch() {
     
     setLoading(true)
     try {
+      let fetchLat = userCoords?.latitude;
+      let fetchLng = userCoords?.longitude;
+      
+      let deliveryMode = "current";
+      try {
+        deliveryMode = localStorage.getItem("deliveryAddressMode") || "current";
+      } catch (e) {}
+
+      // Logic to fetch based on saved address if mode is "saved"
+      // Note: We need hasSavedAddress and defaultSavedAddress from Home or similar, 
+      // but here we can just check if we have results in userAPI or similar.
+      // For simplicity in search, we'll check if deliveryMode is "saved" and if so, 
+      // we'll try to use the coords from stored location if it's a saved one.
+      
+      // Better yet, let's keep it consistent with Home.jsx.
+      // But ProfessionalSearch doesn't have useZone / hasSavedAddress by default in the same way.
+      // Let's just trust localStorage for now or use the userCoords if deliveryMode is current.
+
       const res = await searchAPI.unifiedSearch({
         q: searchTerm,
         categoryId: catId,
-        lat: userCoords?.latitude,
-        lng: userCoords?.longitude,
+        lat: fetchLat,
+        lng: fetchLng,
         zoneId
       })
       

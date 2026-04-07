@@ -22,7 +22,7 @@ export default function QuickSection() {
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-[#ef4f5f] text-white px-8 py-3 rounded-2xl shadow-2xl flex flex-col items-center gap-1 border-4 border-white"
+          className="bg-[#001A94] text-white px-8 py-3 rounded-2xl shadow-2xl flex flex-col items-center gap-1 border-4 border-white"
         >
           <Zap className="h-8 w-8 fill-white" />
           <span className="text-xl font-black uppercase tracking-tighter italic">Coming Soon</span>
@@ -30,14 +30,16 @@ export default function QuickSection() {
         </motion.div>
       </div>
 
+
+
       <div className="px-4 space-y-6 opacity-40 grayscale-[0.5] select-none pointer-events-none">
         {/* Banner */}
-        <div className="bg-yellow-50 rounded-2xl p-4 flex justify-between items-center border border-yellow-100">
+        <div className="bg-[#F0F4FF] rounded-2xl p-4 flex justify-between items-center border border-[#001A94]/10">
           <div className="space-y-1">
-            <h3 className="text-sm font-black text-yellow-900 leading-tight">Munchies <br />at 10 PM?</h3>
-            <p className="text-[10px] font-bold text-yellow-700 uppercase">Get them in 10 mins</p>
+            <h3 className="text-sm font-black text-[#001A94] leading-tight">Munchies <br />at 10 PM?</h3>
+            <p className="text-[10px] font-bold text-blue-700 uppercase">Get them in 10 mins</p>
           </div>
-          <ShoppingBasket className="h-10 w-10 text-yellow-500 opacity-50" />
+          <ShoppingBasket className="h-10 w-10 text-[#001A94] opacity-50" />
         </div>
 
         {/* Categories Grid */}
@@ -66,8 +68,8 @@ export default function QuickSection() {
             <span className="text-[8px] font-bold text-gray-400">FAST DELIVERY</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <div className="h-8 w-8 rounded-full bg-orange-50 flex items-center justify-center">
-              <Star className="h-4 w-4 text-orange-500" />
+            <div className="h-8 w-8 rounded-full bg-[#F0F4FF] flex items-center justify-center">
+              <Star className="h-4 w-4 text-[#001A94]" />
             </div>
             <span className="text-[8px] font-bold text-gray-400">TOP BRANDS</span>
           </div>

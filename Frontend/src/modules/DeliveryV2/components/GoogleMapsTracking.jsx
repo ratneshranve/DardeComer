@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect, useState } from 'react'
 import { GoogleMap, useJsApiLoader, Marker, Polyline } from '@react-google-maps/api'
 import { motion } from 'framer-motion'
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from '@food/utils/googleMapsLoader'
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -65,8 +66,7 @@ export default function GoogleMapsTracking({
   onRouteInfoUpdate,
   lastUpdate
 }) {
-  // const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  const apiKey = ""
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
   const mapRef = useRef(null)
   const directionsServiceRef = useRef(null)
   const directionsRendererRef = useRef(null)
@@ -99,10 +99,8 @@ export default function GoogleMapsTracking({
   }, [routeInfo, onRouteInfoUpdate]);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: apiKey || '',
-    // Do not load `places` — it pulls Geocoding-related code paths; Directions is in core Maps JS.
-    libraries: [],
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
   })
 
   // Combine storeLocation with sellerLocations
@@ -307,12 +305,12 @@ export default function GoogleMapsTracking({
         map: mapRef.current,
         suppressMarkers: true, // We'll use custom markers
         preserveViewport: true, // Preserve viewport - we'll center manually
-                      polylineOptions: {
-                        strokeColor: '#3b82f6', // Bright blue like Zomato/Swiggy
-                        strokeWeight: 6,
-                        strokeOpacity: 1.0, // Fully visible - plain solid line
-                        icons: [], // No icons/dots - plain solid line only
-                      },
+        polylineOptions: {
+          strokeColor: '#3b82f6', // Bright blue like Zomato/Swiggy
+          strokeWeight: 6,
+          strokeOpacity: 1.0, // Fully visible - plain solid line
+          icons: [], // No icons/dots - plain solid line only
+        },
       })
     } else {
       // Ensure preserveViewport is true so route updates don't change viewport
@@ -606,7 +604,7 @@ export default function GoogleMapsTracking({
           fullscreenControl: false,
           disableDefaultUI: true,
           clickableIcons: false,
-          maxZoom: (showRoute || isTracking) ? 16 : 20, // Limit max zoom when polyline is shown or during live tracking
+          maxZoom: (showRoute || isTracking) ? 16 : 20,
           styles: [
             {
               featureType: "poi",
@@ -616,19 +614,17 @@ export default function GoogleMapsTracking({
           ]
         }}
       >
-        {/* Customer Marker - Only show if valid location */}
         {customerLocation && (customerLocation.lat !== 0 || customerLocation.lng !== 0) && (
           <Marker
             position={customerLocation}
             icon={{
-              url: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">??</text></svg>')}`,
+              url: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">📍</text></svg>')}`,
               scaledSize: window.google?.maps?.Size ? new window.google.maps.Size(40, 40) : undefined
             }}
             title="Delivery Address"
           />
         )}
 
-        {/* Seller Markers */}
         {allSellers.map((seller, index) => (
           <Marker
             key={`seller-${index}`}
@@ -641,14 +637,13 @@ export default function GoogleMapsTracking({
               strokeWeight: 3,
               strokeColor: '#ffffff',
             } : {
-              url: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">??</text></svg>')}`,
+              url: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><text x="8" y="32" font-size="32">🏠</text></svg>')}`,
               scaledSize: window.google?.maps?.Size ? new window.google.maps.Size(40, 40) : undefined
             }}
             title={seller.name || "Seller Shop"}
           />
         ))}
 
-        {/* Delivery Partner Marker (Animated) */}
         {animatedDeliveryLocation && (
           <Marker
             position={animatedDeliveryLocation}
@@ -660,11 +655,7 @@ export default function GoogleMapsTracking({
             title="Delivery Partner"
           />
         )}
-
-        {/* Polyline removed - no longer showing route line */}
       </GoogleMap>
     </div>
   )
 }
-
-

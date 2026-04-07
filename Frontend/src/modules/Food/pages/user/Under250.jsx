@@ -896,7 +896,7 @@ export default function Under250() {
           </div>
         )}
         {bannerImages.length === 0 && !loadingBanner && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 z-0 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950 overflow-hidden" />
+          <div className="absolute top-0 left-0 right-0 bottom-0 z-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 overflow-hidden" />
         )}
       </div>
 
@@ -921,7 +921,7 @@ export default function Under250() {
                 whileTap={{ scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
-                <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md transition-all ${!activeCategory ? 'ring-2 ring-[#EB590E] ring-offset-2' : ''}`}>
+                <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md transition-all ${!activeCategory ? 'ring-2 ring-[#001A94] ring-offset-2' : ''}`}>
                   <OptimizedImage
                     src={offerImage}
                     alt="All"
@@ -931,7 +931,7 @@ export default function Under250() {
                     placeholder="blur"
                   />
                 </div>
-                <span className={`text-xs sm:text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 text-center pb-1 ${!activeCategory ? 'text-[#EB590E]' : ''}`}>
+                <span className={`text-xs sm:text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 text-center pb-1 ${!activeCategory ? 'text-[#001A94]' : ''}`}>
                   All
                 </span>
               </motion.div>
@@ -946,7 +946,7 @@ export default function Under250() {
                       whileTap={{ scale: 0.95 }}
                       transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     >
-                      <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md transition-all ${isActive ? 'ring-2 ring-[#EB590E] ring-offset-2' : ''}`}>
+                      <div className={`w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md transition-all ${isActive ? 'ring-2 ring-[#001A94] ring-offset-2' : ''}`}>
                         <OptimizedImage
                           src={category.image}
                           alt={category.name}
@@ -956,7 +956,7 @@ export default function Under250() {
                           placeholder="blur"
                         />
                       </div>
-                      <span className={`text-xs sm:text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 text-center pb-1 ${isActive ? 'text-[#EB590E]' : ''}`}>
+                      <span className={`text-xs sm:text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200 text-center pb-1 ${isActive ? 'text-[#001A94]' : ''}`}>
                         {category.name.length > 7 ? `${category.name.slice(0, 7)}...` : category.name}
                       </span>
                     </motion.div>
@@ -983,7 +983,7 @@ export default function Under250() {
               variant="outline"
               onClick={() => setUnder30MinsFilter(!under30MinsFilter)}
               className={`h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-5 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 font-medium transition-all text-sm md:text-base ${under30MinsFilter
-                ? 'bg-[#EB590E] text-white border border-[#EB590E] hover:bg-[#D94F0C]'
+                ? 'bg-[#001A94] text-white border border-[#001A94] hover:bg-[#001166]'
                 : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'
                 }`}
             >
@@ -1015,7 +1015,7 @@ export default function Under250() {
                 {/* Restaurant Header */}
                 <div className="flex items-start justify-between mb-3 md:mb-4 lg:mb-6">
                   <div className="flex-1">
-                    <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2">
+                    <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-semibold text-gray-900 dark:text-white mb-1 md:mb-2">
                       {restaurant.name}
                     </h3>
                     <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg text-gray-500 dark:text-gray-400">
@@ -1028,7 +1028,7 @@ export default function Under250() {
                       <div className="bg-white text-green-700 px-1 py-1 md:px-1.5 md:py-1.5 lg:px-2 lg:py-2 rounded-full">
                         <Star className="h-3.5 w-3.5 md:h-4 md:w-4 lg:h-5 lg:w-5 fill-green-800 text-green-800" />
                       </div>
-                      <span className="text-xs md:text-sm lg:text-base font-bold">{restaurant.rating}</span>
+                      <span className="text-xs md:text-sm lg:text-base font-semibold">{restaurant.rating}</span>
                     </div>
                     <span className="text-xs md:text-sm lg:text-base text-gray-400 dark:text-gray-500 mt-0.5">
                       {restaurant.totalRatings > 0 ? `By ${restaurant.totalRatings >= 1000 ? `${(restaurant.totalRatings / 1000).toFixed(1)}K+` : `${restaurant.totalRatings}+`}` : ''}
@@ -1106,13 +1106,13 @@ export default function Under250() {
                                     <div className="h-1.5 w-1.5 md:h-2 md:w-2 lg:h-2.5 lg:w-2.5 rounded-full bg-green-600" />
                                   </div>
                                 )}
-                                <span className="text-sm md:text-base lg:text-lg font-semibold text-gray-900 dark:text-white">
+                                <span className="text-sm md:text-base lg:text-lg font-medium text-gray-900 dark:text-white">
                                   1 x {item.name}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
+                                  <p className="text-base md:text-lg lg:text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white">
                                     {RUPEE_SYMBOL}{Math.round(item.price)}
                                   </p>
                                   {item.bestPrice && (
@@ -1124,7 +1124,7 @@ export default function Under250() {
                                     <Button
                                       variant={"outline"}
                                       size="sm"
-                                      className="bg-[#FFF2EB] text-[#EB590E] border-[#EB590E] hover:bg-[#EB590E] hover:text-white h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base"
+                                      className="bg-[#F0F4FF] text-[#001A94] border-[#001A94] hover:bg-[#001A94] hover:text-white h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base"
                                     >
                                       View cart
                                     </Button>
@@ -1136,7 +1136,7 @@ export default function Under250() {
                                     disabled={shouldShowGrayscale}
                                     className={`h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base ${shouldShowGrayscale
                                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-50'
-                                      : 'bg-[#FFF2EB] text-[#EB590E] border-[#EB590E] hover:bg-[#EB590E] hover:text-white'
+                                      : 'bg-[#F0F4FF] text-[#001A94] border-[#001A94] hover:bg-[#001A94] hover:text-white'
                                       }`}
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -1207,7 +1207,7 @@ export default function Under250() {
                 <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Sort By</h2>
                 <button
                   onClick={handleClearAll}
-                  className="text-[#EB590E] dark:text-[#F97316] font-medium text-sm md:text-base"
+                  className="text-[#001A94] dark:text-[#4D73FF] font-medium text-sm md:text-base"
                 >
                   Clear all
                 </button>
@@ -1221,11 +1221,11 @@ export default function Under250() {
                       key={option.id || 'relevance'}
                       onClick={() => setDraftSelectedSort(option.id)}
                       className={`px-4 md:px-5 lg:px-6 py-3 md:py-4 rounded-xl border text-left transition-colors ${draftSelectedSort === option.id
-                        ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-orange-900/20'
-                        : 'border-gray-200 dark:border-gray-800 hover:border-[#EB590E]'
+                        ? 'border-[#001A94] bg-[#F0F4FF] dark:bg-blue-900/20'
+                        : 'border-gray-200 dark:border-gray-800 hover:border-[#001A94]'
                         }`}
                     >
-                      <span className={`text-sm md:text-base lg:text-lg font-medium ${draftSelectedSort === option.id ? 'text-[#EB590E] dark:text-[#F97316]' : 'text-gray-700 dark:text-gray-300'}`}>
+                      <span className={`text-sm md:text-base lg:text-lg font-medium ${draftSelectedSort === option.id ? 'text-[#001A94] dark:text-[#4D73FF]' : 'text-gray-700 dark:text-gray-300'}`}>
                         {option.label}
                       </span>
                     </button>
@@ -1243,7 +1243,7 @@ export default function Under250() {
                 </button>
                 <button
                   onClick={handleApply}
-                  className="flex-1 py-3 md:py-4 font-semibold rounded-xl transition-colors text-sm md:text-base bg-[#EB590E] text-white hover:bg-[#D94F0C]"
+                  className="flex-1 py-3 md:py-4 font-semibold rounded-xl transition-colors text-sm md:text-base bg-[#001A94] text-white hover:bg-[#001166]"
                 >
                   Apply
                 </button>
@@ -1388,7 +1388,7 @@ export default function Under250() {
                 {selectedItem.customisable && (
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex-1 h-0.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#EB590E] rounded-full" style={{ width: '50%' }} />
+                      <div className="h-full bg-[#001A94] rounded-full" style={{ width: '50%' }} />
                     </div>
                     <span className="text-xs text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                       highly reordered
@@ -1524,7 +1524,7 @@ export default function Under250() {
                   <button
                     key={option.id}
                     onClick={() => handleShareOption(option.id)}
-                    className="rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 hover:border-[#EB590E] hover:text-[#EB590E] transition-colors"
+                    className="rounded-2xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 hover:border-[#001A94] hover:text-[#001A94] transition-colors"
                   >
                     {option.label}
                   </button>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ChevronDown, Search, Mic, Bell, CheckCircle2, Tag, Gift, AlertCircle, Clock, BellOff, X } from 'lucide-react';
+import { MapPin, ChevronDown, Search, Mic, Bell, CheckCircle2, Tag, Gift, AlertCircle, Clock, BellOff, X, User } from 'lucide-react';
 import { 
   Popover, 
   PopoverContent, 
@@ -19,10 +19,9 @@ const ICON_MAP = {
 };
 
 export default function HomeHeader({ 
-  activeTab,
-  setActiveTab,
   location, 
   savedAddressText, 
+  defaultAddress,
   handleLocationClick, 
   handleSearchFocus, 
   placeholderIndex, 
@@ -93,159 +92,125 @@ export default function HomeHeader({
   };
 
   return (
-    <div className="relative bg-gradient-to-b from-[#f36371] to-[#ef4f5f] pt-5 pb-5 px-4 space-y-5 shadow-xl overflow-hidden dark:from-[#141414] dark:to-[#0a0a0a] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
-      {/* Abstract Background Design */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
-          <circle cx="10%" cy="10%" r="20" fill="white" />
-          <circle cx="90%" cy="20%" r="15" fill="white" />
-          <circle cx="50%" cy="80%" r="25" fill="white" />
-          <path d="M 0 50 Q 25 30 50 50 T 100 50" stroke="white" strokeWidth="0.5" fill="none" />
-          <path d="M 0 70 Q 25 50 50 70 T 100 70" stroke="white" strokeWidth="0.5" fill="none" />
-        </svg>
-      </div>
-
+    <header className="relative bg-[#001A94] pt-1 pb-2 px-0 space-y-0 shadow-xl overflow-hidden dark:bg-[#05051a] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
       {/* Decorative Glows */}
-      <div className="absolute top-0 left-1/4 w-32 h-32 bg-white/20 blur-[60px] rounded-full pointer-events-none dark:bg-white/10" />
-      <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-yellow-400/10 blur-[80px] rounded-full pointer-events-none dark:bg-orange-500/10" />
+      <div className="absolute top-0 left-1/4 w-32 h-32 bg-white/10 blur-[60px] rounded-full pointer-events-none dark:bg-white/10" />
+      <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-blue-400/10 blur-[80px] rounded-full pointer-events-none dark:bg-[#001A94]/10" />
 
-      {/* Location & Notification Row */}
-      <div className="relative z-10 flex items-center justify-between">
-        <div 
-          className="flex items-center gap-1 cursor-pointer group"
-          onClick={handleLocationClick}
-        >
-          <div className="bg-white/10 p-1.5 rounded-full backdrop-blur-md border border-white/10 group-hover:bg-white/20 transition-colors dark:bg-white/5 dark:border-white/5 dark:group-hover:bg-white/10">
-            <MapPin className="h-4 w-4 text-white fill-white" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-              <span className="text-xs font-bold text-white/80 uppercase tracking-wider">Deliver to</span>
-              <ChevronDown className="h-3 w-3 text-white/80" />
+      <div className="relative px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between gap-4 mb-5">
+          <div className="group/loc flex flex-col min-w-0" onClick={handleLocationClick}>
+            <div className="flex items-center gap-1 text-white/70 mb-0.5">
+              <MapPin className="h-3 w-3 text-white/50" />
+              <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Your Location</span>
+              <ChevronDown className="h-3 w-3 text-white/40 group-hover/loc:text-white transition-colors" />
             </div>
-            <span className="text-sm font-bold text-white truncate max-w-[200px] drop-shadow-sm">
-              {location?.area || location?.city || savedAddressText || "Select Location"}
-            </span>
+            <h1 className="text-sm font-bold text-white truncate leading-tight group-hover/loc:text-blue-100 transition-colors">
+              {(() => {
+                const mode = localStorage.getItem("deliveryAddressMode") || "current";
+                if (mode === "saved" && defaultAddress) {
+                  return defaultAddress.city || defaultAddress.area || defaultAddress.address || 'Set your location';
+                }
+                return location?.city || location?.area || location?.address || 'Set your location';
+              })()}
+            </h1>
           </div>
-        </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <div className="h-11 w-11 relative flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-lg cursor-pointer active:scale-95 transition-all dark:bg-white/5 dark:border-white/10">
-              <Bell className="h-6 w-6 text-white" />
-              {unreadCount > 0 && (
-                <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-yellow-400 rounded-full border-2 border-[#ef4f5f] animate-pulse dark:border-[#111111]" />
-              )}
-            </div>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0 overflow-hidden border-none shadow-2xl rounded-2xl mt-2" align="end">
-            <div className="bg-white dark:bg-gray-900">
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
-                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  Notifications
+          
+          <div className="flex items-center gap-3">
+             <Popover>
+              <PopoverTrigger asChild>
+                <div className="h-10 w-10 relative flex items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg cursor-pointer active:scale-95 transition-all">
+                  <Bell className="h-5 w-5 text-white" />
                   {unreadCount > 0 && (
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-600 border-none text-[10px] h-4">
-                      {unreadCount} New
-                    </Badge>
+                    <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-blue-300 rounded-full border-2 border-[#001A94] animate-pulse" />
                   )}
-                </h3>
-                <Link to="/food/user/notifications" className="text-xs font-bold text-orange-600 hover:text-orange-700">
-                  {mergedNotifications.length > 0 ? "View All" : ""}
-                </Link>
-              </div>
-              <div className="max-h-96 overflow-y-auto">
-                {mergedNotifications.length > 0 ? (
-                  mergedNotifications.slice(0, 5).map((notif) => {
-                    const Icon = ICON_MAP[notif.icon] || Bell;
-                    return (
-                      <div 
-                        key={notif.id}
-                        className={`p-4 flex items-start gap-3 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${!notif.read ? 'bg-orange-50/20' : ''}`}
-                      >
-                        <div className={`mt-1 p-2 rounded-full ${notif.type === "order" ? "bg-green-100/50 text-green-600" : "bg-orange-100/50 text-orange-600"}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{notif.title}</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-gray-400 whitespace-nowrap">{notif.time}</span>
-                              <button
-                                type="button"
-                                aria-label="Delete notification"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleDeleteNotification(notif.id, notif.source);
-                                }}
-                                className="rounded-full p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0 overflow-hidden border-none shadow-2xl rounded-2xl mt-2" align="end">
+                <div className="bg-white dark:bg-gray-900 text-left">
+                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
+                    <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      Notifications
+                      {unreadCount > 0 && (
+                        <Badge variant="secondary" className="bg-[#001A94] text-white border-none text-[10px] h-4">
+                          {unreadCount} New
+                        </Badge>
+                      )}
+                    </h3>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto font-sans">
+                    {mergedNotifications.length > 0 ? (
+                      mergedNotifications.slice(0, 5).map((notif) => {
+                        const Icon = ICON_MAP[notif.icon] || Bell;
+                        return (
+                          <div 
+                            key={notif.id}
+                            className={`p-4 flex items-start gap-3 border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer ${!notif.read ? 'bg-blue-50/20' : ''}`}
+                          >
+                            <div className={`mt-1 p-2 rounded-full ${notif.type === "order" ? "bg-green-100/50 text-green-600" : "bg-blue-100/50 text-[#001A94]"}`}>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{notif.title}</span>
+                                <div className="flex items-center gap-1 text-right">
+                                  <span className="text-[10px] text-gray-400 whitespace-nowrap">{notif.time}</span>
+                                  <button
+                                    type="button"
+                                    aria-label="Delete notification"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeleteNotification(notif.id, notif.source);
+                                    }}
+                                    className="rounded-full p-1 text-gray-400 hover:text-[#001A94] hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                                {notif.message}
+                              </p>
                             </div>
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
-                            {notif.message}
-                          </p>
-                        </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-8 text-center flex flex-col items-center gap-2">
+                        <BellOff className="h-10 w-10 text-gray-200" />
+                        <p className="text-xs text-gray-400 font-medium">All caught up!</p>
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-8 text-center flex flex-col items-center gap-2">
-                    <BellOff className="h-10 w-10 text-gray-200" />
-                    <p className="text-xs text-gray-400 font-medium">All caught up!</p>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="p-3 bg-gray-50/50 dark:bg-gray-800/50 text-center">
-                <Link to="/food/user/notifications" className="text-xs font-bold text-gray-400 hover:text-gray-600">
-                  {mergedNotifications.length > 0 ? "Manage Settings" : "Check Notifications Page"}
-                </Link>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+                </div>
+              </PopoverContent>
+            </Popover>
 
-      {/* Main Category Grid - Removed as per user request */}
-
-      {/* Search Bar */}
-      <div 
-        className="relative z-10 bg-white rounded-xl flex items-center px-4 py-3 shadow-md border border-white/20 cursor-pointer active:scale-[0.99] transition-all duration-200 mx-1 dark:bg-[#1a1a1a] dark:border-gray-800 dark:shadow-[0_12px_30px_rgba(0,0,0,0.3)]"
-        onClick={handleSearchFocus}
-        onTouchStart={handleSearchFocus}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleSearchFocus();
-          }
-        }}
-      >
-        <Search className="h-4 w-4 text-gray-500 mr-3 dark:text-gray-400" strokeWidth={2.5} />
-        <div className="flex-1 overflow-hidden relative h-5">
-          <input
-            type="text"
-            readOnly
-            aria-label="Search"
-            onFocus={handleSearchFocus}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={placeholderIndex}
-              initial={{ y: 15, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -15, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="absolute inset-0 text-[13px] font-medium text-gray-400 dark:text-gray-500"
-            >
-              {placeholders?.[placeholderIndex] || 'Search "pizza"'}
-            </motion.span>
-          </AnimatePresence>
+            <Link to="/user/profile" className="relative group/user">
+              <div className="h-10 w-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all group-hover/user:bg-white/20">
+                <User className="h-5 w-5 text-white" />
+              </div>
+            </Link>
+          </div>
         </div>
+
+        <div className="relative mb-2" onClick={handleSearchFocus}>
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-[#001A94]" />
+          </div>
+          <div className="w-full h-12 bg-white rounded-2xl flex items-center pl-11 pr-4 shadow-xl shadow-[#001A94]/20 overflow-hidden">
+            <span className="text-[#001A94]/60 font-bold text-sm truncate">
+              {placeholders?.[placeholderIndex] || 'Search "pizza"'}
+            </span>
+          </div>
+          <div className="absolute inset-y-0 right-4 flex items-center pr-1 border-l border-gray-100 ml-3">
+             <Mic className="h-4 w-4 text-[#001A94] ml-3" />
+          </div>
+        </div>
+
+
       </div>
-    </div>
+    </header>
   );
 }

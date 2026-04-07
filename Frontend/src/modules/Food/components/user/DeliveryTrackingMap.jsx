@@ -14,8 +14,7 @@ import bikeLogo from '@food/assets/bikelogo.png';
 import { subscribeOrderTracking } from '@food/realtimeTracking';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Navigation, Info, Circle } from 'lucide-react';
-
-const LIBRARIES = ['geometry', 'places'];
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from '@food/utils/googleMapsLoader';
 
 const RIDER_BIKE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">
   <circle cx="30" cy="30" r="28" fill="white" stroke="#ff8100" stroke-width="4" />
@@ -56,8 +55,8 @@ const DeliveryTrackingMap = ({
   const interpStateRef = useRef({ lastPos: null, nextPos: null, startTime: 0 });
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    libraries: LIBRARIES,
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
   const trackingIds = useMemo(() => {
@@ -279,184 +278,70 @@ const DeliveryTrackingMap = ({
         mapContainerStyle={{ width: '100%', height: '100%' }}
         center={center}
         zoom={zoom}
-        onLoad={setMap}
+        onLoad={m => setMap(m)}
         options={{
-          disableDefaultUI: false,
-          zoomControl: true,
-          mapTypeControl: false,
-          scaleControl: true,
-          streetViewControl: false,
-          rotateControl: false,
-          fullscreenControl: false,
-          gestureHandling: 'greedy',
+          disableDefaultUI: true,
+          zoomControl: false,
+          gestureHandling: "greedy",
           styles: [
-            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', stylers: [{ visibility: 'off' }] }
+            { featureType: "poi", stylers: [{ visibility: "off" }] },
+            { featureType: "transit", stylers: [{ visibility: "off" }] }
           ]
         }}
       >
-        {/* 1. PERSISTENT BASELINE (Full journey: Restaurant -> Customer) */}
-        {!baselineDirections && baselineDirectionsServiceOptions && (
-           <DirectionsService
-             options={baselineDirectionsServiceOptions}
-             callback={(r, s) => { 
-                debugLog('?? Baseline Directions Status:', s);
-
-                if (s === 'OK' && r) {
-                    const points = r.routes[0]?.overview_path?.length || 0;
-                    debugLog(`? Baseline directions SET with ${points} points`);
-                    setBaselineDirections(r); 
-                } else if (s !== 'OK') {
-                  console.error('[DeliveryTrackingMap] DirectionsService failed:', s);
-                }
-             }}
-           />
-        )}
-
-        {/* 1. PERSISTENT BASELINE (Full journey: Restaurant -> Customer) */}
-        {baselineDirections && (
-          <Polyline
-            path={baselineDirections.routes[0].overview_path}
-            options={{
-              strokeColor: '#94a3b8', 
-              strokeOpacity: 0, // Dotted
-              strokeWeight: 4,
-              zIndex: 5,
-              icons: [{
-                icon: { 
-                  path: 'M 0,-1 0,1', 
-                  strokeOpacity: 0.5, 
-                  scale: 3, 
-                  strokeWeight: 4,
-                  strokeColor: '#64748b'
-                },
-                offset: '0',
-                repeat: '15px'
-              }]
-            }}
-          />
-        )}
-
-        {/* 2. LIVE RIDER LEG (From Rider's App: Current Rider Pos -> Target) */}
-        {cloudPolyline && window.google?.maps?.geometry?.encoding && (
-          <Polyline
-            path={(() => {
-              const decoded = window.google.maps.geometry.encoding.decodePath(
-                typeof cloudPolyline === 'string' ? cloudPolyline : (cloudPolyline.points || '')
-              );
-              debugLog(`?? Decoded Cloud Polyline with ${decoded?.length || 0} points`);
-              return decoded;
-            })()}
-            options={{
-              strokeColor: isOrderPickedUp ? '#3b82f6' : '#22c55e',
-              strokeWeight: 6,
-              strokeOpacity: 1,
-              zIndex: 10
-            }}
-          />
-        )}
-
-        {/* 2. LIVE RIDER LEG (Rider -> Target) */}
-        {!cloudPolyline && directionsServiceOptions && (
+        {directionsServiceOptions && shouldUpdateRoute && (
           <DirectionsService
             options={directionsServiceOptions}
-            callback={shouldUpdateRoute ? directionsCallback : undefined}
+            callback={directionsCallback}
           />
         )}
 
-        {directions && !cloudPolyline && (
+        {directions && (
           <DirectionsRenderer
             directions={directions}
             options={{
               suppressMarkers: true,
-              preserveViewport: true,
               polylineOptions: {
-                strokeColor: isOrderPickedUp ? '#3b82f6' : '#22c55e',
-                strokeWeight: 6,
-                strokeOpacity: 0.8,
-                zIndex: 10
+                strokeColor: '#001A94',
+                strokeWeight: 5,
+                strokeOpacity: 0.8
               }
             }}
           />
         )}
 
-        {/* RESTAURANT PIN (OVERLAY VIEW FOR CUSTOM STLYE) */}
-        <OverlayView
-          position={restaurantCoords}
-          mapPaneName={OverlayView.MARKER_LAYER}
-        >
-          <div className="relative -translate-x-1/2 -translate-y-full mb-1 group">
-             {/* Pulsing ring if this is the active destination */}
-             {!isOrderPickedUp && (
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                 <motion.div 
-                   animate={{ scale: [1, 2], opacity: [0.5, 0] }}
-                   transition={{ duration: 2, repeat: Infinity }}
-                   className="w-16 h-16 rounded-full border-4 border-orange-500/50"
-                 />
-               </div>
-             )}
-             <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-orange-500 overflow-hidden group-hover:scale-110 transition-transform">
-                <img 
-                  src={order?.restaurantLogo || order?.restaurantId?.logo || order?.restaurantId?.profileImage || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`}
-                  alt="Restaurant"
-                  className="w-full h-full object-contain rounded-full bg-gray-50"
-                  onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`; }}
-                />
-             </div>
-             {/* Pin Tip */}
-             <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 clip-triangle rotate-180 -mt-1 shadow-sm" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }} />
-          </div>
-        </OverlayView>
+        {restaurantCoords && (
+          <Marker
+            position={restaurantCoords}
+            icon={{
+              url: `data:image/svg+xml,${encodeURIComponent(RESTAURANT_PIN_SVG)}`,
+              anchor: (window.google && window.google.maps) ? new window.google.maps.Point(24, 24) : undefined
+            }}
+          />
+        )}
 
-        {/* CUSTOMER PIN (OVERLAY VIEW FOR CUSTOM STYLE) */}
-        <OverlayView
-          position={customerCoords}
-          mapPaneName={OverlayView.MARKER_LAYER}
-        >
-          <div className="relative -translate-x-1/2 -translate-y-full mb-1 group">
-             {/* Pulsing ring if this is the active destination */}
-             {isOrderPickedUp && (
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                 <motion.div 
-                   animate={{ scale: [1, 2], opacity: [0.5, 0] }}
-                   transition={{ duration: 2, repeat: Infinity }}
-                   className="w-16 h-16 rounded-full border-4 border-green-500/50"
-                 />
-               </div>
-             )}
-             <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-green-500 overflow-hidden group-hover:scale-110 transition-transform">
-                <img 
-                  src={order?.customerImage || order?.userId?.profileImage || order?.userId?.avatar || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`}
-                  alt="Me"
-                  className="w-full h-full object-contain rounded-full bg-gray-50"
-                  onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`; }}
-                />
-             </div>
-             {/* Pin Tip */}
-             <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-3 h-3 bg-green-500 clip-triangle rotate-180 -mt-1 shadow-sm" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }} />
-          </div>
-        </OverlayView>
+        {customerCoords && (
+          <Marker
+            position={customerCoords}
+            icon={{
+              url: `data:image/svg+xml,${encodeURIComponent(CUSTOMER_PIN_SVG)}`,
+              anchor: (window.google && window.google.maps) ? new window.google.maps.Point(24, 24) : undefined
+            }}
+          />
+        )}
 
-        {/* PRO RIDER (OVERLAY VIEW FOR SMOOTH ROTATION / GLIDE) */}
-        {displayRiderLocation && (
+        {riderLocation && (
           <OverlayView
-            position={displayRiderLocation}
+            position={riderLocation}
             mapPaneName={OverlayView.MARKER_LAYER}
           >
-            <div 
-              style={{
-                transform: `translate(-50%, -50%) rotate(${displayRiderLocation.heading || 0}deg)`,
-                transition: 'all 0.1s linear', // Micro-damping for heading
-              }}
-              className="relative w-16 h-16"
-            >
-              <img 
-                src="/MapRider.png" 
-                alt="Rider" 
-                className="w-full h-full object-contain drop-shadow-2xl"
-                onError={(e) => {
-                  e.target.src = bikeLogo;
+            <div className="relative -translate-x-1/2 -translate-y-1/2">
+              <div 
+                dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG }} 
+                className="w-12 h-12"
+                style={{ 
+                  transform: `rotate(${riderLocation.heading || 0}deg)`,
+                  transition: 'transform 0.5s linear' 
                 }}
               />
             </div>

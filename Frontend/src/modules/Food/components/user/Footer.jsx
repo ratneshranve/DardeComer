@@ -92,7 +92,7 @@ export default function Footer() {
                     }
                   }}
                 />
-                <span className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                   {companyName}
                 </span>
               </div>
@@ -148,7 +148,7 @@ export default function Footer() {
           {/* Company Links */}
           <div
           >
-            <h3 className="font-bold text-lg mb-4 text-yellow-400">Company</h3>
+            <h3 className="font-bold text-lg mb-4 text-blue-400">Company</h3>
             <ul className="space-y-2">
               {footerLinks.company.map((link, index) => (
                 <li key={index}>
@@ -165,7 +165,7 @@ export default function Footer() {
           {/* Support Links */}
           <div
           >
-            <h3 className="font-bold text-lg mb-4 text-yellow-400">Support</h3>
+            <h3 className="font-bold text-lg mb-4 text-blue-400">Support</h3>
             <ul className="space-y-2">
               {footerLinks.support.map((link, index) => (
                 <li key={index}>
@@ -182,7 +182,7 @@ export default function Footer() {
           {/* User Links */}
           <div
           >
-            <h3 className="font-bold text-lg mb-4 text-yellow-400">For You</h3>
+            <h3 className="font-bold text-lg mb-4 text-blue-400">For You</h3>
             <ul className="space-y-2">
               {footerLinks.user.map((link, index) => (
                 <li key={index}>

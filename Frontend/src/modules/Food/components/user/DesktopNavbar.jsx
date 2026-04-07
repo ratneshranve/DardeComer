@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { ChevronDown, ShoppingCart, Wallet, Search, Mic } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
@@ -24,7 +24,7 @@ export default function DesktopNavbar({ showLogo = true }) {
     const { getCartCount } = useCart()
     const { openLocationSelector } = useLocationSelector()
     const { setSearchValue } = useSearchOverlay()
-    const { vegMode, setVegMode } = useProfile()
+    const { vegMode, setVegMode, addresses, getDefaultAddress } = useProfile()
     const [heroSearch, setHeroSearch] = useState("")
     const [logoUrl, setLogoUrl] = useState(null)
     const [companyName, setCompanyName] = useState(null)
@@ -32,14 +32,42 @@ export default function DesktopNavbar({ showLogo = true }) {
     const navRef = useRef(null)
     const cartCount = getCartCount()
 
+    // Determine target location data based on mode
+    const activeLocationData = useMemo(() => {
+        let mode = "current";
+        try {
+            mode = localStorage.getItem("deliveryAddressMode") || "current";
+        } catch (e) {}
+
+        if (mode === "saved") {
+            const defAddr = getDefaultAddress?.();
+            if (defAddr) {
+                return {
+                    area: defAddr.area || defAddr.street || "",
+                    city: defAddr.city || "",
+                    state: defAddr.state || "",
+                    address: defAddr.address || ""
+                };
+            }
+        }
+        
+        // Fallback to GPS/Session location
+        return {
+            area: userLocation?.area || "",
+            city: userLocation?.city || "",
+            state: userLocation?.state || "",
+            address: userLocation?.address || ""
+        };
+    }, [userLocation, addresses, getDefaultAddress]);
+
 
     // Show area if available, otherwise show city
     // Priority: area > city > "Select"
-    const areaName = userLocation?.area && userLocation?.area.trim() ? userLocation.area.trim() : null
-    const cityName = userLocation?.city || null
-    const stateName = userLocation?.state || null
+    const areaName = activeLocationData.area && activeLocationData.area.trim() ? activeLocationData.area.trim() : null
+    const cityName = activeLocationData.city || null
+    const stateName = activeLocationData.state || null
     // Main location name: Show area if available, otherwise show city, otherwise "Select"
-    const mainLocationName = areaName || cityName || "Select"
+    const mainLocationName = areaName || cityName || activeLocationData.address || "Select"
     // Secondary location: Show only city when area is available (as per design image)
     const secondaryLocation = areaName
         ? (cityName || "")  // Show only city when area is available
@@ -176,74 +204,81 @@ export default function DesktopNavbar({ showLogo = true }) {
                             )}
 
                             {/* Location Selector */}
-                            <Button
-                                variant="ghost"
-                                onClick={handleLocationClick}
-                                disabled={locationLoading}
-                                className="h-auto px-0 py-0 hover:bg-transparent transition-colors flex-shrink-0"
-                            >
-                                {locationLoading ? (
-                                    <span className="text-sm font-bold text-black dark:text-white">
-                                        Loading...
-                                    </span>
-                                ) : (
-                                    <div className="flex flex-col items-start min-w-0">
-                                        <div className="flex items-center gap-1.5 lg:gap-2">
-                                            <FaLocationDot
-                                                className="h-5 w-5 lg:h-6 lg:w-6 text-black dark:text-white flex-shrink-0"
-                                                fill="currentColor"
-                                                strokeWidth={2}
-                                            />
-                                            <span className="text-sm lg:text-base font-bold text-black dark:text-white whitespace-nowrap">
-                                                {mainLocationName}
-                                            </span>
-                                            <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 text-black dark:text-white flex-shrink-0" strokeWidth={2.5} />
-                                        </div>
-                                        {secondaryLocation && (
-                                            <span className="text-xs lg:text-sm font-bold text-gray-600 dark:text-gray-400 mt-0.5 whitespace-nowrap">
-                                                {secondaryLocation}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-                            </Button>
+                            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} className="flex">
+    <Button
+        variant="ghost"
+        onClick={handleLocationClick}
+        disabled={locationLoading}
+        className="h-auto px-1 py-1 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex-shrink-0"
+    >
+        {locationLoading ? (
+            <span className="text-sm font-bold text-[#001A94] dark:text-gray-300">
+                Finding location...
+            </span>
+        ) : (
+            <div className="flex flex-col items-start min-w-0">
+                <div className="flex items-center gap-1.5 lg:gap-2">
+                    <FaLocationDot
+                        className="h-5 w-5 lg:h-[22px] lg:w-[22px] text-[#001A94] dark:text-blue-400 flex-shrink-0 drop-shadow-sm"
+                        fill="currentColor"
+                        strokeWidth={2}
+                    />
+                    <span className="text-sm border-b-[1.5px] border-dashed border-[#001A94]/40 pb-[1px] lg:text-[15px] font-black text-gray-900 dark:text-white whitespace-nowrap tracking-tight transition-colors hover:border-[#001A94]">
+                        {mainLocationName}
+                    </span>
+                    <ChevronDown className="h-4 w-4 lg:h-5 lg:w-5 text-[#001A94] dark:text-blue-400 flex-shrink-0" strokeWidth={3} />
+                </div>
+                {secondaryLocation && (
+                    <span className="text-[11px] lg:text-xs font-bold text-gray-500 dark:text-gray-400 mt-[3px] whitespace-nowrap pl-7">
+                        {secondaryLocation}
+                    </span>
+                )}
+            </div>
+        )}
+    </Button>
+</motion.div>
                         </div>
 
                         {/* Center: Search Bar & Veg Mode */}
                         <div className="flex-1 max-w-3xl mx-4 flex items-center gap-4">
                             {/* Search Bar */}
                             <div className="relative flex-1">
-                                <div className="relative bg-gray-100 dark:bg-[#2a2a2a] rounded-lg transition-all duration-300 focus-within:ring-2 focus-within:ring-[#EB590E] focus-within:bg-white dark:focus-within:bg-[#1a1a1a] border border-transparent focus-within:border-[#EB590E]/20">
-                                    <div className="flex items-center px-3 py-2">
-                                        <Search className="h-4 w-4 text-gray-500 flex-shrink-0 mr-3" />
-                                        <Input
-                                            value={heroSearch}
-                                            onChange={(e) => {
-                                                const nextValue = e.target.value
-                                                setHeroSearch(nextValue)
-                                                setSearchValue(nextValue)
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter" && heroSearch.trim()) {
-                                                    navigate(`/food/search?q=${encodeURIComponent(heroSearch.trim())}`)
-                                                }
-                                            }}
-                                            className="h-6 p-0 border-0 bg-transparent text-sm font-medium placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                            placeholder="Search for restaurants, food..."
-                                        />
-                                        {heroSearch && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-5 w-5 p-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full ml-1"
-                                                onClick={() => setHeroSearch("")}
-                                            >
-                                                <span className="sr-only">Clear</span>
-                                                <span aria-hidden="true">�</span>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
+                                <motion.div 
+    whileTap={{ scale: 0.98 }}
+    className="relative bg-gray-50 dark:bg-[#222] rounded-[18px] transition-all duration-400 focus-within:ring-[3px] focus-within:ring-[#001A94]/20 focus-within:bg-white dark:focus-within:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 focus-within:border-[#001A94]/50 shadow-inner focus-within:shadow-[0_8px_20px_rgba(0,26,148,0.08)] overflow-hidden"
+>
+    <div className="flex items-center px-4 py-2.5">
+        <Search className="h-[18px] w-[18px] text-[#001A94]/70 dark:text-blue-400/80 flex-shrink-0 mr-3" strokeWidth={2.5} />
+        <Input
+            value={heroSearch}
+            onChange={(e) => {
+                const nextValue = e.target.value
+                setHeroSearch(nextValue)
+                setSearchValue(nextValue)
+            }}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" && heroSearch.trim()) {
+                    navigate(`/food/search?q=${encodeURIComponent(heroSearch.trim())}`)
+                }
+            }}
+            className="h-7 p-0 border-0 bg-transparent text-[15px] font-semibold text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:font-medium tracking-tight"
+            placeholder="Search for your favorite food or restaurants..."
+        />
+        {heroSearch && (
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-full ml-1"
+                    onClick={() => setHeroSearch("")}
+                >
+                    <span className="sr-only">Clear</span>
+                    <span aria-hidden="true" className="text-gray-600 dark:text-gray-300 text-xs font-bold leading-none">&times;</span>
+                </Button>
+            </motion.div>
+        )}
+    </div>
+</motion.div>
                             </div>
 
                             {/* VEG MODE Toggle - Moved here */}
@@ -263,31 +298,42 @@ export default function DesktopNavbar({ showLogo = true }) {
                         {/* Right: Wallet and Cart Icons */}
                         <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
                             {/* Wallet Icon */}
-                            <Link to="/food/user/wallet">
-                                <Button
-                                    variant="ghost"
-                                    className="h-12 w-12 lg:h-14 lg:w-14 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                    title="Wallet"
-                                >
-                                    <Wallet className="!h-5 !w-5 lg:!h-6 lg:!w-6 text-gray-700 dark:text-gray-300" strokeWidth={2} />
-                                </Button>
-                            </Link>
+<Link to="/food/user/wallet">
+    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+        <Button
+            variant="ghost"
+            className="h-12 w-12 lg:h-13 lg:w-13 rounded-full xl:ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shadow-sm bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800"
+            title="Wallet"
+        >
+            <Wallet className="!h-5 !w-5 lg:!h-[22px] lg:!w-[22px] text-[#001A94] dark:text-blue-400 drop-shadow-sm" strokeWidth={2.5} />
+        </Button>
+    </motion.div>
+</Link>
 
                             {/* Cart Icon */}
-                            <Link to="/food/user/cart">
-                                <Button
-                                    variant="ghost"
-                                    className="relative h-12 w-12 lg:h-14 lg:w-14 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                                    title="Cart"
-                                >
-                                    <ShoppingCart className="!h-5 !w-5 lg:!h-6 lg:!w-6 text-gray-700 dark:text-gray-300" strokeWidth={2} />
-                                    {cartCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                                            <span className="text-xs font-bold text-white">{cartCount > 99 ? "99+" : cartCount}</span>
-                                        </span>
-                                    )}
-                                </Button>
-                            </Link>
+<Link to="/food/user/cart">
+    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+        <Button
+            variant="ghost"
+            className="relative h-12 w-12 lg:h-13 lg:w-13 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shadow-sm bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800"
+            title="Cart"
+        >
+            <ShoppingCart className="!h-5 !w-5 lg:!h-[22px] lg:!w-[22px] text-[#001A94] dark:text-blue-400 drop-shadow-sm" strokeWidth={2.5} />
+            <AnimatePresence>
+                {cartCount > 0 && (
+                    <motion.span 
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        className="absolute -top-1 -right-1 w-[26px] h-[26px] bg-gradient-to-tr from-red-600 to-red-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800 shadow-md shadow-red-500/30"
+                    >
+                        <span className="text-[11px] font-black tracking-tighter text-white">{cartCount > 99 ? "99+" : cartCount}</span>
+                    </motion.span>
+                )}
+            </AnimatePresence>
+        </Button>
+    </motion.div>
+</Link>
                         </div>
                     </div>
                 </div>
@@ -303,15 +349,15 @@ export default function DesktopNavbar({ showLogo = true }) {
                             <Link
                                 to="/food/user"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isDelivery
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-primary dark:text-primary"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
                                     }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Delivery</span>
                                 {isDelivery && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-primary dark:bg-primary"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
@@ -323,15 +369,15 @@ export default function DesktopNavbar({ showLogo = true }) {
                             <Link
                                 to="/food/user/under-250"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isUnder250
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-primary dark:text-primary"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
                                     }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Under 250</span>
                                 {isUnder250 && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-primary dark:bg-primary"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
@@ -343,15 +389,15 @@ export default function DesktopNavbar({ showLogo = true }) {
                             <Link
                                 to="/food/user/dining"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isDining
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-primary dark:text-primary"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
                                     }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Dining</span>
                                 {isDining && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-primary dark:bg-primary"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
@@ -363,15 +409,15 @@ export default function DesktopNavbar({ showLogo = true }) {
                             <Link
                                 to="/food/user/profile"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isProfile
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-primary dark:text-primary"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
                                     }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Profile</span>
                                 {isProfile && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-primary dark:bg-primary"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
@@ -385,5 +431,6 @@ export default function DesktopNavbar({ showLogo = true }) {
         </nav>
     )
 }
+
 
 

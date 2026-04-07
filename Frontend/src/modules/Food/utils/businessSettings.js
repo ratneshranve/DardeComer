@@ -155,3 +155,20 @@ export const getCompanyNameAsync = async () => {
     return "DardeComer";
   }
 };
+
+/**
+ * Get Restaurant Logo with fallback
+ */
+export const getRestaurantLogo = () => {
+  const settings = getCachedSettings();
+  return settings?.restaurantLogo?.url || settings?.logo?.url || null;
+};
+
+/**
+ * Get Delivery Logo with fallback
+ */
+export const getDeliveryLogo = () => {
+  const settings = getCachedSettings();
+  return settings?.deliveryLogo?.url || settings?.logo?.url || null;
+};
+

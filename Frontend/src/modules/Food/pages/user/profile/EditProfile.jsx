@@ -26,6 +26,7 @@ import { toast } from "sonner"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { isFlutterBridgeAvailable } from "@food/utils/imageUploadUtils"
+import { getUserIdFromToken, getModuleToken } from "@food/utils/auth"
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
@@ -44,27 +45,47 @@ const genderOptions = [
   { value: "prefer-not-to-say", label: "Prefer not to say" },
 ]
 
-// Load profile data from localStorage (legacy + current keys)
+// Get the current logged-in user's ID from the JWT token
+const getCurrentUserId = () => {
+  try {
+    const token = getModuleToken("user");
+    return getUserIdFromToken(token);
+  } catch {
+    return null;
+  }
+};
+
+// Load profile data from localStorage ONLY if it belongs to the current user
 const loadProfileFromStorage = () => {
   try {
-    const candidates = ["user_user", "userProfile", "appzeto_user_profile"]
+    const currentUserId = getCurrentUserId();
+    const candidates = ["user_user", "userProfile", "appzeto_user_profile"];
     for (const key of candidates) {
-      const stored = localStorage.getItem(key)
-      if (stored) return JSON.parse(stored)
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate: only use stored profile if it matches the current logged-in user
+        const storedId = parsed?._id || parsed?.id || parsed?.userId;
+        if (currentUserId && storedId && String(storedId) !== String(currentUserId)) {
+          // Belongs to a different user — skip it
+          continue;
+        }
+        return parsed;
+      }
     }
   } catch (error) {
-    debugError('Error loading profile from localStorage:', error)
+    debugError('Error loading profile from localStorage:', error);
   }
-  return null
-}
+  return null;
+};
 
 // Save profile data to localStorage (keep keys used by ProfileContext)
 const saveProfileToStorage = (data) => {
   try {
-    localStorage.setItem('user_user', JSON.stringify(data))
-    localStorage.setItem('userProfile', JSON.stringify(data))
+    localStorage.setItem('user_user', JSON.stringify(data));
+    localStorage.setItem('userProfile', JSON.stringify(data));
   } catch (error) {
-    debugError('Error saving profile to localStorage:', error)
+    debugError('Error saving profile to localStorage:', error);
   }
 }
 
@@ -90,19 +111,29 @@ const buildFormDataFromProfile = (profile = {}) => ({
 
 const loadEditProfileDraft = () => {
   try {
-    const saved = localStorage.getItem(EDIT_PROFILE_DRAFT_KEY)
-    return saved ? JSON.parse(saved) : null
+    const currentUserId = getCurrentUserId();
+    const saved = localStorage.getItem(EDIT_PROFILE_DRAFT_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    // Validate draft belongs to current user
+    if (currentUserId && parsed?.userId && String(parsed.userId) !== String(currentUserId)) {
+      // Stale draft from another user — discard it
+      localStorage.removeItem(EDIT_PROFILE_DRAFT_KEY);
+      return null;
+    }
+    return parsed;
   } catch (error) {
-    debugError('Error loading edit profile draft from localStorage:', error)
-    return null
+    debugError('Error loading edit profile draft from localStorage:', error);
+    return null;
   }
 }
 
 const saveEditProfileDraft = (data) => {
   try {
-    localStorage.setItem(EDIT_PROFILE_DRAFT_KEY, JSON.stringify(data))
+    const currentUserId = getCurrentUserId();
+    localStorage.setItem(EDIT_PROFILE_DRAFT_KEY, JSON.stringify({ ...data, userId: currentUserId }));
   } catch (error) {
-    debugError('Error saving edit profile draft to localStorage:', error)
+    debugError('Error saving edit profile draft to localStorage:', error);
   }
 }
 
@@ -119,12 +150,13 @@ export default function EditProfile() {
   const goBack = useAppBackNavigation()
   const { userProfile, updateUserProfile } = useProfile()
 
-  // Load from localStorage or use context
-  const storedProfile = loadProfileFromStorage()
-  const draftProfile = loadEditProfileDraft()
-  const initialProfile = draftProfile || storedProfile || userProfile || {}
+  // Priority: userProfile from context (fresh from API on login) > validated draft > validated localStorage
+  const draftProfile = loadEditProfileDraft();
+  const storedProfile = loadProfileFromStorage();
+  // userProfile from context is always the most trusted source (fetched via /auth/me on login)
+  const initialProfile = draftProfile || userProfile || storedProfile || {};
 
-  const initialFormData = buildFormDataFromProfile(initialProfile)
+  const initialFormData = buildFormDataFromProfile(initialProfile);
 
   const [formData, setFormData] = useState(initialFormData)
   const [initialData] = useState(initialFormData)
@@ -142,12 +174,13 @@ export default function EditProfile() {
   const fileInputRef = useRef(null)
   const hydratedFromDraftRef = useRef(Boolean(draftProfile))
 
-  // Update form data when profile changes
+  // Update form data when profile changes (e.g., after API fetch completes)
   useEffect(() => {
     if (hydratedFromDraftRef.current) return
 
+    // Always prefer fresh data from context (fetched from API on login) over localStorage
     const storedProfile = loadProfileFromStorage()
-    const profile = storedProfile || userProfile || {}
+    const profile = userProfile || storedProfile || {}
     const newFormData = buildFormDataFromProfile(profile)
     setFormData(newFormData)
 

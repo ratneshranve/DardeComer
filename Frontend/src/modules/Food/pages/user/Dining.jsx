@@ -99,7 +99,7 @@ function DiningRestaurantSkeleton({ index }) {
         <div className={`relative h-48 overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(235,89,14,0.24),transparent_28%),linear-gradient(135deg,#fff4e8_0%,#ffe9d5_100%)] sm:h-56 md:h-60 lg:h-64 xl:h-72 ${shimmerClassName}`}>
           <div className="absolute left-4 top-4 h-8 w-28 rounded-lg bg-black/10" />
           <div className="absolute right-4 top-4 h-9 w-9 rounded-lg bg-white/60" />
-          <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-r from-[#EB590E] to-transparent/20">
+          <div className="absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-r from-[#001A94] to-transparent/20">
             <div className="flex h-full flex-col justify-end pl-4 pb-4 sm:pl-5 sm:pb-5">
               <div className="h-2.5 w-24 rounded-full bg-white/35" />
               <div className="mt-2 h-px w-24 bg-white/25" />
@@ -484,7 +484,7 @@ export default function Dining() {
               <div className="w-full relative">
                 <div className="relative bg-white dark:bg-[#1a1a1a] rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-1 sm:p-1.5 transition-all duration-300 hover:shadow-xl">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <Search className="h-4 w-4 sm:h-4 sm:w-4 text-[#EB590E] flex-shrink-0 ml-2 sm:ml-3" strokeWidth={2.5} />
+                    <Search className="h-4 w-4 sm:h-4 sm:w-4 text-[#001A94] flex-shrink-0 ml-2 sm:ml-3" strokeWidth={2.5} />
                     <div className="flex-1 relative">
                       <Input
                         value={heroSearch}
@@ -733,7 +733,7 @@ export default function Dining() {
                       variant="outline"
                       onClick={() => toggleFilter(filter.id)}
                       className={`h-7 sm:h-8 px-2 sm:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-all font-medium ${isActive
-                        ? 'bg-[#EB590E] text-white border border-[#EB590E] hover:bg-[#D94F0C]'
+                        ? 'bg-[#001A94] text-white border border-[#001A94] hover:bg-[#001166]'
                         : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'
                         }`}
                     >
@@ -912,7 +912,7 @@ export default function Dining() {
                           </motion.div>
 
                           {/* Blue Section - Bottom 40% */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-[#EB590E] to-transparent" style={{ height: '40%' }}>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-[#001A94] to-transparent" style={{ height: '40%' }}>
                             <div className="h-full flex flex-col justify-end">
                               <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
                                 <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
@@ -943,7 +943,7 @@ export default function Dining() {
                                   className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white line-clamp-1"
                                   variants={{
                                     rest: {},
-                                    hover: { color: "#EB590E" }
+                                    hover: { color: "#001A94" }
                                   }}
                                   transition={{ duration: 0.3 }}
                                 >
@@ -974,7 +974,7 @@ export default function Dining() {
                             {/* Offer Badge */}
                             {restaurant.offer && (
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FFF1E8] px-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#EB590E]">
+                                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#F0F4FF] px-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#001A94]">
                                   Off
                                 </span>
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">{restaurant.offer}</span>
@@ -1125,7 +1125,7 @@ export default function Dining() {
                           </Button>
 
                           {/* Blue Section - Bottom 40% */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-[#EB590E] to-transparent" style={{ height: '40%' }}>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-[#001A94] to-transparent" style={{ height: '40%' }}>
                             <div className="h-full flex flex-col justify-end">
                               <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
                                 <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
@@ -1166,7 +1166,7 @@ export default function Dining() {
                           {/* Offer Badge */}
                           {restaurant.offer && (
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FFF1E8] px-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#EB590E]">
+                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#F0F4FF] px-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#001A94]">
                                 Off
                               </span>
                               <span className="text-gray-700 dark:text-gray-300 font-medium">{restaurant.offer}</span>
@@ -1204,7 +1204,7 @@ export default function Dining() {
                   setSortBy(null)
                   setSelectedCuisine(null)
                 }}
-                className="text-[#EB590E] font-medium text-sm md:text-base"
+                className="text-[#001A94] font-medium text-sm md:text-base"
               >
                 Clear all
               </button>
@@ -1228,11 +1228,11 @@ export default function Dining() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveFilterTab(tab.id)}
-                      className={`flex flex-col items-center gap-1 py-4 px-2 text-center relative transition-colors ${isActive ? 'bg-white dark:bg-[#1a1a1a] text-[#EB590E]' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      className={`flex flex-col items-center gap-1 py-4 px-2 text-center relative transition-colors ${isActive ? 'bg-white dark:bg-[#1a1a1a] text-[#001A94]' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                         }`}
                     >
                       {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#EB590E] rounded-r" />
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#001A94] rounded-r" />
                       )}
                       <Icon className="h-5 w-5 md:h-6 md:w-6" strokeWidth={1.5} />
                       <span className="text-xs md:text-sm font-medium leading-tight">{tab.label}</span>
@@ -1257,11 +1257,11 @@ export default function Dining() {
                           key={option.id || 'relevance'}
                           onClick={() => setSortBy(option.id)}
                           className={`px-4 md:px-5 py-3 md:py-4 rounded-xl border text-left transition-colors ${sortBy === option.id
-                            ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                            ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                             }`}
                         >
-                          <span className={`text-sm md:text-base font-medium ${sortBy === option.id ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>
+                          <span className={`text-sm md:text-base font-medium ${sortBy === option.id ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>
                             {option.label}
                           </span>
                         </button>
@@ -1278,22 +1278,22 @@ export default function Dining() {
                       <button
                         onClick={() => toggleFilter('delivery-under-30')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('delivery-under-30')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <Timer className={`h-6 w-6 ${activeFilters.has('delivery-under-30') ? 'text-[#EB590E]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
-                        <span className={`text-sm font-medium ${activeFilters.has('delivery-under-30') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Under 30 mins</span>
+                        <Timer className={`h-6 w-6 ${activeFilters.has('delivery-under-30') ? 'text-[#001A94]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
+                        <span className={`text-sm font-medium ${activeFilters.has('delivery-under-30') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Under 30 mins</span>
                       </button>
                       <button
                         onClick={() => toggleFilter('delivery-under-45')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('delivery-under-45')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <Timer className={`h-6 w-6 ${activeFilters.has('delivery-under-45') ? 'text-[#EB590E]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
-                        <span className={`text-sm font-medium ${activeFilters.has('delivery-under-45') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Under 45 mins</span>
+                        <Timer className={`h-6 w-6 ${activeFilters.has('delivery-under-45') ? 'text-[#001A94]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
+                        <span className={`text-sm font-medium ${activeFilters.has('delivery-under-45') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Under 45 mins</span>
                       </button>
                     </div>
                   </div>
@@ -1307,32 +1307,32 @@ export default function Dining() {
                       <button
                         onClick={() => toggleFilter('rating-35-plus')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-35-plus')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <Star className={`h-6 w-6 ${activeFilters.has('rating-35-plus') ? 'text-[#EB590E] fill-[#EB590E]' : 'text-gray-400 dark:text-gray-500'}`} />
-                        <span className={`text-sm font-medium ${activeFilters.has('rating-35-plus') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Rated 3.5+</span>
+                        <Star className={`h-6 w-6 ${activeFilters.has('rating-35-plus') ? 'text-[#001A94] fill-[#001A94]' : 'text-gray-400 dark:text-gray-500'}`} />
+                        <span className={`text-sm font-medium ${activeFilters.has('rating-35-plus') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Rated 3.5+</span>
                       </button>
                       <button
                         onClick={() => toggleFilter('rating-4-plus')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-4-plus')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <Star className={`h-6 w-6 ${activeFilters.has('rating-4-plus') ? 'text-[#EB590E] fill-[#EB590E]' : 'text-gray-400 dark:text-gray-500'}`} />
-                        <span className={`text-sm font-medium ${activeFilters.has('rating-4-plus') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Rated 4.0+</span>
+                        <Star className={`h-6 w-6 ${activeFilters.has('rating-4-plus') ? 'text-[#001A94] fill-[#001A94]' : 'text-gray-400 dark:text-gray-500'}`} />
+                        <span className={`text-sm font-medium ${activeFilters.has('rating-4-plus') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Rated 4.0+</span>
                       </button>
                       <button
                         onClick={() => toggleFilter('rating-45-plus')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-45-plus')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <Star className={`h-6 w-6 ${activeFilters.has('rating-45-plus') ? 'text-[#EB590E] fill-[#EB590E]' : 'text-gray-400 dark:text-gray-500'}`} />
-                        <span className={`text-sm font-medium ${activeFilters.has('rating-45-plus') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Rated 4.5+</span>
+                        <Star className={`h-6 w-6 ${activeFilters.has('rating-45-plus') ? 'text-[#001A94] fill-[#001A94]' : 'text-gray-400 dark:text-gray-500'}`} />
+                        <span className={`text-sm font-medium ${activeFilters.has('rating-45-plus') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Rated 4.5+</span>
                       </button>
                     </div>
                   </div>
@@ -1346,22 +1346,22 @@ export default function Dining() {
                       <button
                         onClick={() => toggleFilter('distance-under-1km')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('distance-under-1km')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <MapPin className={`h-6 w-6 ${activeFilters.has('distance-under-1km') ? 'text-[#EB590E]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
-                        <span className={`text-sm font-medium ${activeFilters.has('distance-under-1km') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Under 1 km</span>
+                        <MapPin className={`h-6 w-6 ${activeFilters.has('distance-under-1km') ? 'text-[#001A94]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
+                        <span className={`text-sm font-medium ${activeFilters.has('distance-under-1km') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Under 1 km</span>
                       </button>
                       <button
                         onClick={() => toggleFilter('distance-under-2km')}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('distance-under-2km')
-                          ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                          ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                           }`}
                       >
-                        <MapPin className={`h-6 w-6 ${activeFilters.has('distance-under-2km') ? 'text-[#EB590E]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
-                        <span className={`text-sm font-medium ${activeFilters.has('distance-under-2km') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Under 2 km</span>
+                        <MapPin className={`h-6 w-6 ${activeFilters.has('distance-under-2km') ? 'text-[#001A94]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
+                        <span className={`text-sm font-medium ${activeFilters.has('distance-under-2km') ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>Under 2 km</span>
                       </button>
                     </div>
                   </div>
@@ -1404,11 +1404,11 @@ export default function Dining() {
                           key={cuisine}
                           onClick={() => setSelectedCuisine(selectedCuisine === cuisine ? null : cuisine)}
                           className={`px-4 py-3 rounded-xl border text-center transition-colors ${selectedCuisine === cuisine
-                            ? 'border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-[#EB590E]'
+                            ? 'border-[#001A94] bg-[#FFF2EB] dark:bg-[#001A94]/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-[#001A94]'
                             }`}
                         >
-                          <span className={`text-sm font-medium ${selectedCuisine === cuisine ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>
+                          <span className={`text-sm font-medium ${selectedCuisine === cuisine ? 'text-[#001A94]' : 'text-gray-700 dark:text-gray-300'}`}>
                             {cuisine}
                           </span>
                         </button>
@@ -1430,7 +1430,7 @@ export default function Dining() {
               <button
                 onClick={() => setIsFilterOpen(false)}
                 className={`flex-1 py-3 md:py-4 font-semibold rounded-xl transition-colors text-sm md:text-base ${activeFilters.size > 0 || sortBy || selectedCuisine
-                  ? 'bg-[#EB590E] text-white hover:bg-[#D94F0C]'
+                  ? 'bg-[#001A94] text-white hover:bg-[#001166]'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                   }`}
               >

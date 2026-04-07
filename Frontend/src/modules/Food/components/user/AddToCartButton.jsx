@@ -40,7 +40,7 @@ export default function AddToCartButton({ item, className = "" }) {
   if (inCart) {
     return (
       <div className={`flex items-center gap-2 ${className}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-        <div className="flex items-center gap-1 border border-primary-orange rounded-md">
+        <div className="flex items-center gap-1 border border-[#001A94] rounded-md">
           <Button
             variant="ghost"
             size="icon"
@@ -69,7 +69,7 @@ export default function AddToCartButton({ item, className = "" }) {
     <Button
       size="sm"
       onClick={handleAddToCart}
-      className="bg-primary-orange hover:opacity-90 text-white"
+      className="bg-[#001A94] hover:bg-[#00147A] text-white"
     >
       Add to Cart
     </Button>
