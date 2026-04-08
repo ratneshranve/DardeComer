@@ -316,7 +316,7 @@ export default function DeliverySettings() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-[100]"
+              className="fixed inset-0 bg-primary/50 z-[100]"
               onClick={handleCancelStatusChange}
             />
             
@@ -390,7 +390,7 @@ export default function DeliverySettings() {
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 w-full max-w-md"
           >
-            <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3">
+            <div className="bg-primary text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3">
               <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
               <p className="text-sm font-medium flex-1">{toastMessage}</p>
             </div>

@@ -112,7 +112,7 @@ export default function ShowIdCardV2() {
   };
 
   return (
-    <div className="min-h-screen bg-black relative">
+    <div className="min-h-screen bg-primary relative">
       <div className="max-w-md mx-auto min-h-screen bg-gray-100 relative shadow-2xl">
         {/* Close Button - Top Right */}
         <button

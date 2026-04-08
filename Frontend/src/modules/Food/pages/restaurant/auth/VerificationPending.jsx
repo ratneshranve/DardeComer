@@ -105,7 +105,7 @@ export default function VerificationPending() {
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
               <div className="text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">What happens next</p>
+                <p className="font-semibold text-primary">What happens next</p>
                 <p className="mt-1">We will notify you once the verification is approved.</p>
                 {pendingPhone ? (
                   <p className="mt-2 text-slate-500">

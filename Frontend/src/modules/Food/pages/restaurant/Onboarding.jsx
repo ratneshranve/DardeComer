@@ -1568,14 +1568,14 @@ export default function RestaurantOnboarding() {
   const renderStep1 = () => (
     <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md">
-        <h2 className="text-lg font-semibold text-black mb-4">Restaurant information</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Restaurant information</h2>
         <div className="space-y-3">
           <div>
             <Label className="text-xs text-gray-700">Restaurant name*</Label>
             <Input
               value={step1.restaurantName || ""}
               onChange={(e) => setStep1({ ...step1, restaurantName: e.target.value })}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
               placeholder="Customers will see this name"
               disabled={!isEditing}
             />
@@ -1599,7 +1599,7 @@ export default function RestaurantOnboarding() {
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: false })}
                 className={`px-3 py-1.5 text-xs rounded-full border ${
                   step1.pureVegRestaurant === false
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "bg-primary text-white border-gray-900"
                     : "bg-white text-gray-700 border-gray-200"
                 } ${!isEditing ? "opacity-70 cursor-not-allowed" : ""}`}
               >
@@ -1614,7 +1614,7 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md">
-        <h2 className="text-lg font-semibold text-black mb-4">Owner details</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Owner details</h2>
         <p className="text-sm text-gray-600 mb-4">
           These details will be used for all business communications and updates.
         </p>
@@ -1629,7 +1629,7 @@ export default function RestaurantOnboarding() {
                   ownerName: e.target.value.replace(/[^A-Za-z ]/g, ""),
                 })
               }
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
               placeholder="Owner full name"
               disabled={!isEditing}
             />
@@ -1640,7 +1640,7 @@ export default function RestaurantOnboarding() {
               type="email"
               value={step1.ownerEmail || ""}
               onChange={(e) => setStep1({ ...step1, ownerEmail: e.target.value })}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
               placeholder="owner@example.com"
               disabled={!isEditing}
             />
@@ -1651,7 +1651,7 @@ export default function RestaurantOnboarding() {
               value={step1.ownerPhone || ""}
               onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
               readOnly={Boolean(verifiedPhoneNumber)}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
               placeholder="+91 98XXXXXX"
               disabled={!isEditing}
             />
@@ -1660,7 +1660,7 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">Restaurant contact & location</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Restaurant contact & location</h2>
         <div>
           <Label className="text-xs text-gray-700">Primary contact number*</Label>
           <Input
@@ -1680,7 +1680,7 @@ export default function RestaurantOnboarding() {
               setStep1({ ...step1, primaryContactNumber: pasted })
             }}
             inputMode="numeric"
-            className="mt-1 bg-white text-sm text-black placeholder-black"
+            className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
             placeholder="Restaurant's primary contact number"
             disabled={!isEditing}
           />
@@ -1723,7 +1723,7 @@ export default function RestaurantOnboarding() {
                 ref={locationSearchInputRef}
                 value={locationSearchValue}
                 onChange={(e) => setLocationSearchValue(e.target.value)}
-                className="mt-1 bg-white text-sm text-black! dark:text-white! placeholder:text-gray-500 dark:placeholder:text-gray-400 caret-black dark:caret-white"
+                className="mt-1 bg-white text-sm text-gray-900! dark:text-white! placeholder:text-gray-500 dark:placeholder:text-gray-400 caret-black dark:caret-white"
                 style={{ color: "#000", WebkitTextFillColor: "#000" }}
                 placeholder="Start typing your restaurant address..."
               />
@@ -2098,7 +2098,7 @@ export default function RestaurantOnboarding() {
     <div className="space-y-6">
       {/* Images section */}
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
-        <h2 className="text-lg font-semibold text-black">Menu & photos</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Menu & photos</h2>
         <p className="text-xs text-gray-500">
           Add clear photos of your printed menu and a primary profile image. This helps customers
           understand what you serve.
@@ -2202,7 +2202,7 @@ export default function RestaurantOnboarding() {
                         Preview unavailable
                       </div>
                     )}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-2 py-1">
+                    <div className="absolute bottom-0 inset-x-0 bg-primary/60 px-2 py-1">
                       <p className="text-[10px] text-white truncate">
                         {imageName}
                       </p>
@@ -2375,7 +2375,7 @@ export default function RestaurantOnboarding() {
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-primary text-white" : "bg-gray-100 text-gray-800"
                     }`}
                 >
                   {day.charAt(0)}
@@ -2391,7 +2391,7 @@ export default function RestaurantOnboarding() {
   const renderStep3 = () => (
     <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">PAN details</h2>
+        <h2 className="text-lg font-semibold text-gray-900">PAN details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-xs text-gray-700">PAN number</Label>
@@ -2404,7 +2404,7 @@ export default function RestaurantOnboarding() {
                   .slice(0, 10)
                 setStep3({ ...step3, panNumber: normalized })
               }}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
               placeholder="ABCDE1234F"
             />
           </div>
@@ -2418,7 +2418,7 @@ export default function RestaurantOnboarding() {
                   nameOnPan: e.target.value.replace(/[^A-Za-z ]/g, ""),
                 })
               }
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder-black"
             />
           </div>
         </div>
@@ -2480,13 +2480,13 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">GST details</h2>
+        <h2 className="text-lg font-semibold text-gray-900">GST details</h2>
         <div className="flex gap-4 items-center text-sm">
           <span className="text-gray-700">GST registered?</span>
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: true })}
-            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-primary text-white" : "bg-gray-100 text-gray-800"
               }`}
           >
             Yes
@@ -2494,7 +2494,7 @@ export default function RestaurantOnboarding() {
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: false })}
-            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-primary text-white" : "bg-gray-100 text-gray-800"
               }`}
           >
             No
@@ -2587,7 +2587,7 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
+        <h2 className="text-lg font-semibold text-gray-900">FSSAI details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             value={step3.fssaiNumber || ""}
@@ -2696,7 +2696,7 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">Bank account details</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Bank account details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             value={step3.accountNumber || ""}
@@ -2776,7 +2776,7 @@ export default function RestaurantOnboarding() {
             >
               <X className="w-5 h-5 text-gray-600" />
             </button>
-            <div className="text-sm font-semibold text-black">Restaurant onboarding</div>
+            <div className="text-sm font-semibold text-gray-900">Restaurant onboarding</div>
           </div>
           <div className="flex items-center gap-3">
             {!loading && !isEditing && (
@@ -2859,7 +2859,7 @@ export default function RestaurantOnboarding() {
             <Button
               onClick={handleNext}
               disabled={saving || (step === 3 && !isEditing)}
-              className={`text-sm bg-black text-white px-6 ${(step === 3 && !isEditing) ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`text-sm bg-primary text-white px-6 ${(step === 3 && !isEditing) ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {step === 3 ? (saving ? "Saving..." : "Finish") : saving ? "Saving..." : "Continue"}
             </Button>

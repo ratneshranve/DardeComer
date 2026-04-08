@@ -336,7 +336,7 @@ export default function AllFoodPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               onClick={() => setShowFilterModal(false)}
-              className="fixed inset-0 bg-black/40 z-[60]"
+              className="fixed inset-0 bg-primary/40 z-[60]"
             />
 
             {/* Bottom Sheet */}

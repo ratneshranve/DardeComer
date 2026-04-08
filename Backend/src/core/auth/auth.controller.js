@@ -13,6 +13,7 @@ import {
   changeAdminPassword,
   requestAdminForgotPasswordOtp,
   resetAdminPasswordWithOtp,
+  deleteMyAccount,
 } from "./auth.service.js";
 import { validateUserOtpRequestDto } from "../../dtos/auth/userOtpRequest.dto.js";
 import { validateUserOtpVerifyDto } from "../../dtos/auth/userOtpVerify.dto.js";
@@ -137,6 +138,25 @@ export const logoutController = async (req, res, next) => {
       result.invalidated ? "Logged out successfully" : "Token already invalid",
       result,
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMyAccountController = async (req, res, next) => {
+  try {
+    const { userId, role } = req.user;
+    const refreshToken = req.body?.refreshToken || null;
+    const fcmToken = req.body?.fcmToken || null;
+    const platform = req.body?.platform || "web";
+    const result = await deleteMyAccount(
+      userId,
+      role,
+      refreshToken,
+      fcmToken,
+      platform,
+    );
+    return sendResponse(res, 200, "Account deleted successfully", result);
   } catch (error) {
     next(error);
   }

@@ -33,7 +33,7 @@ export default function AvailableCashLimit({ onClose, walletData = {} }) {
       </div>
 
       <div onClick={onClose} className="mt-6">
-        <button className="w-full bg-black text-white py-3 rounded-lg text-sm font-medium">
+        <button className="w-full bg-primary text-white py-3 rounded-lg text-sm font-medium">
           Okay
         </button>
       </div>

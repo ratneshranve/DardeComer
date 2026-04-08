@@ -125,7 +125,7 @@ export default function FssaiUpdate() {
           form="fssai-form"
           className={`w-full py-3 rounded-full text-sm font-medium transition-colors ${
             uploadedFile 
-              ? "bg-black text-white hover:bg-gray-900" 
+              ? "bg-primary text-white hover:bg-primary/90" 
               : "bg-gray-200 text-gray-500 cursor-not-allowed"
           }`}
           disabled={!uploadedFile}

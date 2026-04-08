@@ -370,7 +370,7 @@ export default function DiningReservations() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                     >
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <h1 className="text-2xl font-black text-primary tracking-tight flex items-center gap-2">
                             Table Reservations
                             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         </h1>
@@ -393,13 +393,13 @@ export default function DiningReservations() {
                         <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-2xl border border-slate-200/50">
                             <button
                                 onClick={() => setActiveSection("reservations")}
-                                className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSection === "reservations" ? "bg-white text-slate-900 shadow-md shadow-slate-200/50 scale-[1.02]" : "text-slate-400 hover:text-slate-600"}`}
+                                className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSection === "reservations" ? "bg-white text-primary shadow-md shadow-slate-200/50 scale-[1.02]" : "text-slate-400 hover:text-slate-600"}`}
                             >
                                 Queue
                             </button>
                             <button
                                 onClick={() => setActiveSection("media")}
-                                className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSection === "media" ? "bg-white text-slate-900 shadow-md shadow-slate-200/50 scale-[1.02]" : "text-slate-400 hover:text-slate-600"}`}
+                                className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSection === "media" ? "bg-white text-primary shadow-md shadow-slate-200/50 scale-[1.02]" : "text-slate-400 hover:text-slate-600"}`}
                             >
                                 Media
                             </button>
@@ -424,7 +424,7 @@ export default function DiningReservations() {
                             </div>
                             <div>
                                 <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Total Bookings</p>
-                                <p className="text-3xl font-black text-slate-900 leading-none mt-1">{bookings.length}</p>
+                                <p className="text-3xl font-black text-primary leading-none mt-1">{bookings.length}</p>
                             </div>
                         </div>
                     </motion.div>
@@ -442,7 +442,7 @@ export default function DiningReservations() {
                             </div>
                             <div>
                                 <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Active</p>
-                                <p className="text-3xl font-black text-slate-900 leading-none mt-1">
+                                <p className="text-3xl font-black text-primary leading-none mt-1">
                                     {bookings.filter(b => ['confirmed', 'accepted', 'checked-in'].includes(String(b.status || '').toLowerCase())).length}
                                 </p>
                             </div>
@@ -462,7 +462,7 @@ export default function DiningReservations() {
                             </div>
                             <div>
                                 <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Today's Bookings</p>
-                                <p className="text-3xl font-black text-slate-900 leading-none mt-1">
+                                <p className="text-3xl font-black text-primary leading-none mt-1">
                                     {bookings.filter(b => new Date(b.date).toDateString() === new Date().toDateString()).length}
                                 </p>
                             </div>
@@ -474,13 +474,13 @@ export default function DiningReservations() {
                     <div className="flex items-center gap-2 rounded-xl bg-white border border-slate-200 p-1">
                         <button
                             onClick={() => setActiveSection("reservations")}
-                            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${activeSection === "reservations" ? "bg-slate-900 text-white" : "text-slate-600"}`}
+                            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${activeSection === "reservations" ? "bg-primary text-white" : "text-slate-600"}`}
                         >
                             Reservations
                         </button>
                         <button
                             onClick={() => setActiveSection("media")}
-                            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${activeSection === "media" ? "bg-slate-900 text-white" : "text-slate-600"}`}
+                            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${activeSection === "media" ? "bg-primary text-white" : "text-slate-600"}`}
                         >
                             Photos & Menu
                         </button>
@@ -494,7 +494,7 @@ export default function DiningReservations() {
                         className="w-full bg-white rounded-2xl border border-slate-200 px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
                     >
                         <div>
-                            <h2 className="text-left text-base font-bold text-slate-900">Photos & Menu Manager</h2>
+                            <h2 className="text-left text-base font-bold text-primary">Photos & Menu Manager</h2>
                             <p className="text-left text-sm text-slate-500">Upload restaurant and menu images only when needed.</p>
                         </div>
                         {showMediaPanel ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
@@ -507,10 +507,10 @@ export default function DiningReservations() {
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">Restaurant Photos</h2>
+                                <h2 className="text-lg font-bold text-primary">Restaurant Photos</h2>
                                 <p className="text-sm text-slate-500 mt-1">Add multiple restaurant photos. The first one will be used as the main preview.</p>
                             </div>
-                            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold cursor-pointer hover:bg-slate-800 transition-colors">
+                            <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary text-white text-sm font-semibold cursor-pointer hover:bg-primary/90 transition-colors">
                                 <UploadCloud className="w-4 h-4" />
                                 {uploadingRestaurantPhoto ? "Uploading..." : "Add Photos"}
                                 <input
@@ -546,14 +546,14 @@ export default function DiningReservations() {
                                         key={`${photo.url}-${index}`}
                                         type="button"
                                         onClick={() => setRestaurantPhoto(photo.url)}
-                                        className={`relative h-20 rounded-lg overflow-hidden border bg-slate-50 transition-all ${restaurantPhoto === photo.url ? "border-slate-900 ring-2 ring-slate-200" : "border-slate-200"}`}
+                                        className={`relative h-20 rounded-lg overflow-hidden border bg-slate-50 transition-all ${restaurantPhoto === photo.url ? "border-primary ring-2 ring-slate-200" : "border-slate-200"}`}
                                     >
                                         <img
                                             src={photo.url}
                                             alt={`Restaurant photo ${index + 1}`}
                                             className="w-full h-full object-cover"
                                         />
-                                        <span className="absolute inset-x-0 bottom-0 bg-black/45 px-1 py-0.5 text-[10px] font-semibold text-white">
+                                        <span className="absolute inset-x-0 bottom-0 bg-primary/45 px-1 py-0.5 text-[10px] font-semibold text-white">
                                             {restaurantPhoto === photo.url ? "Main" : `Photo ${index + 1}`}
                                         </span>
                                         <span
@@ -583,7 +583,7 @@ export default function DiningReservations() {
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">Menu Photos</h2>
+                                <h2 className="text-lg font-bold text-primary">Menu Photos</h2>
                                 <p className="text-sm text-slate-500 mt-1">Add menu photos and view previously uploaded photos.</p>
                             </div>
                             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold cursor-pointer hover:bg-blue-700 transition-colors">
@@ -631,7 +631,7 @@ export default function DiningReservations() {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                             <div className="max-w-xl">
                                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">Dining Controls</p>
-                                <h2 className="mt-1 text-lg font-black text-slate-900">Manage dining availability and booking limit</h2>
+                                <h2 className="mt-1 text-lg font-black text-primary">Manage dining availability and booking limit</h2>
                                 <p className="mt-1 text-sm text-slate-500">
                                     These settings update the same dining profile the guest booking flow reads, so restaurant changes are reflected on the user side too.
                                 </p>
@@ -665,7 +665,7 @@ export default function DiningReservations() {
                                         max="20"
                                         value={maxGuestsLimit}
                                         onChange={(e) => setMaxGuestsLimit(e.target.value)}
-                                        className="w-20 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-sm font-semibold text-slate-900 outline-none focus:border-blue-500"
+                                        className="w-20 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-sm font-semibold text-primary outline-none focus:border-blue-500"
                                     />
                                 </div>
 
@@ -673,7 +673,7 @@ export default function DiningReservations() {
                                     type="button"
                                     onClick={handleSaveDiningSettings}
                                     disabled={savingDiningSettings}
-                                    className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {savingDiningSettings ? "Saving..." : "Save settings"}
                                 </button>
@@ -708,19 +708,19 @@ export default function DiningReservations() {
                         <div className="flex items-center gap-2 rounded-xl bg-white border border-slate-200 p-1">
                             <button
                                 onClick={() => setActiveView("priority")}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeView === "priority" ? "bg-slate-900 text-white" : "text-slate-500"}`}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeView === "priority" ? "bg-primary text-white" : "text-slate-500"}`}
                             >
                                 Priority
                             </button>
                             <button
                                 onClick={() => setActiveView("new")}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeView === "new" ? "bg-slate-900 text-white" : "text-slate-500"}`}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeView === "new" ? "bg-primary text-white" : "text-slate-500"}`}
                             >
                                 New ({newRequestsCount})
                             </button>
                             <button
                                 onClick={() => setActiveView("today")}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeView === "today" ? "bg-slate-900 text-white" : "text-slate-500"}`}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeView === "today" ? "bg-primary text-white" : "text-slate-500"}`}
                             >
                                 Today
                             </button>
@@ -767,7 +767,7 @@ export default function DiningReservations() {
                                                                 {getBookerName(booking).charAt(0) || '?'}
                                                             </div>
                                                             <div>
-                                                                <p className="font-bold text-slate-900 leading-tight">{getBookerName(booking)}</p>
+                                                                <p className="font-bold text-primary leading-tight">{getBookerName(booking)}</p>
                                                                 <div className="flex items-center gap-1.5 mt-0.5">
                                                                     <Phone className="w-3 h-3 text-slate-400" />
                                                                     <p className="text-xs text-slate-500">{getBookerPhone(booking) || 'No phone'}</p>
@@ -871,11 +871,11 @@ export default function DiningReservations() {
                                         >
                                             <div className="flex items-start justify-between mb-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-sm uppercase">
+                                                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black text-sm uppercase">
                                                         {getBookerName(booking).charAt(0) || '?'}
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-black text-slate-900 leading-none">{getBookerName(booking)}</h3>
+                                                        <h3 className="font-black text-primary leading-none">{getBookerName(booking)}</h3>
                                                         <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#{booking.bookingId}</p>
                                                     </div>
                                                 </div>

@@ -541,6 +541,65 @@ export const logout = async (refreshToken, fcmToken, platform) => {
   return { invalidated: deleted.deletedCount > 0 };
 };
 
+export const deleteMyAccount = async (
+  userId,
+  role,
+  refreshToken,
+  fcmToken,
+  platform = "web",
+) => {
+  if (!userId || !role) {
+    throw new AuthError("Invalid token payload");
+  }
+
+  // Best-effort cleanup: remove specific refresh token if provided.
+  if (refreshToken) {
+    await FoodRefreshToken.deleteOne({ token: refreshToken });
+  }
+
+  // Revoke all refresh tokens for this account.
+  await FoodRefreshToken.deleteMany({ userId });
+
+  // Best-effort cleanup: remove provided FCM token from known role collections.
+  if (fcmToken) {
+    const field = platform === "mobile" ? "fcmTokenMobile" : "fcmTokens";
+    await Promise.all([
+      FoodUser.updateMany({ [field]: fcmToken }, { $pull: { [field]: fcmToken } }),
+      FoodRestaurant.updateMany(
+        { [field]: fcmToken },
+        { $pull: { [field]: fcmToken } },
+      ),
+      FoodDeliveryPartner.updateMany(
+        { [field]: fcmToken },
+        { $pull: { [field]: fcmToken } },
+      ),
+      FoodAdmin.updateMany({ [field]: fcmToken }, { $pull: { [field]: fcmToken } }),
+    ]);
+  }
+
+  let deleted = { deletedCount: 0 };
+
+  switch (role) {
+    case ROLES.USER:
+      deleted = await FoodUser.deleteOne({ _id: userId });
+      break;
+    case ROLES.RESTAURANT:
+      deleted = await FoodRestaurant.deleteOne({ _id: userId });
+      break;
+    case ROLES.DELIVERY_PARTNER:
+      deleted = await FoodDeliveryPartner.deleteOne({ _id: userId });
+      break;
+    default:
+      throw new AuthError("Delete account is not supported for this role");
+  }
+
+  if (!deleted?.deletedCount) {
+    throw new AuthError("Account not found");
+  }
+
+  return { deleted: true };
+};
+
 export const getProfile = async (userId, role) => {
   if (!userId || !role) {
     throw new AuthError("Invalid token payload");

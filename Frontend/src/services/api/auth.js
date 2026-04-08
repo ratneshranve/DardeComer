@@ -15,6 +15,7 @@ const AUTH = {
   DELIVERY_VERIFY_OTP: "/food/auth/delivery/verify-otp",
   REFRESH_TOKEN: "/food/auth/refresh-token",
   LOGOUT: "/food/auth/logout",
+  DELETE_ACCOUNT: "/food/auth/delete-account",
   ME: "/food/auth/me",
 };
 
@@ -154,6 +155,27 @@ export function logout(refreshToken, fcmToken = null, platform = "web") {
   }
 
   return apiClient.post(AUTH.LOGOUT, payload);
+}
+
+/**
+ * Delete currently authenticated account (USER / RESTAURANT / DELIVERY_PARTNER).
+ */
+export function deleteAccount(
+  module,
+  refreshToken = null,
+  fcmToken = null,
+  platform = "web",
+) {
+  const payload = {};
+  if (refreshToken) payload.refreshToken = refreshToken;
+  if (fcmToken) {
+    payload.fcmToken = fcmToken;
+    payload.platform = platform;
+  }
+  return apiClient.delete(AUTH.DELETE_ACCOUNT, {
+    data: payload,
+    contextModule: module,
+  });
 }
 
 /**

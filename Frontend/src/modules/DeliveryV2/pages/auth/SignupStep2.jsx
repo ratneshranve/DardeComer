@@ -347,7 +347,7 @@ export default function SignupStep2() {
                 <button
                   type="button"
                   onClick={() => handleTakeCameraPhoto(docType, label)}
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-gray-900 text-white text-xs font-bold cursor-pointer hover:bg-black transition-all active:scale-95"
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-primary text-white text-xs font-bold cursor-pointer hover:bg-primary transition-all active:scale-95"
                 >
                   <Camera className="w-4 h-4" />
                   <span>Take Photo</span>

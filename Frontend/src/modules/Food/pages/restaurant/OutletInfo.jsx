@@ -364,7 +364,7 @@ export default function OutletInfo() {
           <button
             onClick={() => handleImageClick('cover', menuImageInputRef, "Add Cover Image", true)}
             disabled={uploadingImage}
-            className="absolute bottom-4 right-4 bg-black/90 hover:bg-black px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium text-white transition-colors shadow-lg z-20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute bottom-4 right-4 bg-primary/90 hover:bg-primary px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium text-white transition-colors shadow-lg z-20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
             <span>{uploadingImage && imageType === 'menu' ? `Uploading ${uploadingCount}...` : 'Add image'}</span>
@@ -405,7 +405,7 @@ export default function OutletInfo() {
                 </div>
               ))}
               {coverImages.length > 4 && (
-                <div className="w-14 h-14 rounded-xl border-2 border-white bg-black/70 flex items-center justify-center shadow-md">
+                <div className="w-14 h-14 rounded-xl border-2 border-white bg-primary/70 flex items-center justify-center shadow-md">
                   <span className="text-white text-sm font-bold">+{coverImages.length - 4}</span>
                 </div>
               )}

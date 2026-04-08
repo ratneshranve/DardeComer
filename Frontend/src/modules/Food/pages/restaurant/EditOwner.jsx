@@ -440,7 +440,7 @@ export default function EditOwner() {
             disabled={!hasChanges || loading || saving}
             className={`w-full py-3 ${
               hasChanges && !loading && !saving
-                ? "bg-black hover:bg-gray-900 text-white" 
+                ? "bg-primary hover:bg-primary/90 text-white" 
                 : "bg-gray-200 text-gray-500 cursor-not-allowed"
             } transition-colors`}
           >

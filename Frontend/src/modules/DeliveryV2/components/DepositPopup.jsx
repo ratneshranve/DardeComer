@@ -126,7 +126,7 @@ export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
         type="button"
         onClick={handleDeposit}
         disabled={loading || processing || !amount || parseFloat(amount) < 1}
-        className="w-full py-2.5 rounded-lg bg-black text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-2.5 rounded-lg bg-primary text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading || processing ? (
           <Loader2 className="w-4 h-4 animate-spin" />

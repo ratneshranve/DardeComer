@@ -125,7 +125,7 @@ export const PocketDetailsV2 = () => {
         </div>
 
         {/* ─── SUMMARY CARD ─── */}
-        <div className="bg-black rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
+        <div className="bg-primary rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/10 transition-colors" />
            <div className="relative z-10">
               <div className="flex justify-between items-center mb-6">

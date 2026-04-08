@@ -29,6 +29,7 @@ import {
   Calendar,
   MapPin,
   LogOut,
+  Trash2,
 } from "lucide-react"
 import { Card, CardContent } from "@food/components/ui/card"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
@@ -188,7 +189,7 @@ function TimePickerWheel({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-primary/50 z-[9999] flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -477,6 +478,7 @@ export default function ExploreMore() {
   const restaurantDisplayAddress = restaurantData?.location ? formatAddress(restaurantData.location) : ""
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -607,6 +609,30 @@ export default function ExploreMore() {
       navigate("/restaurant/welcome", { replace: true })
     } finally {
       setIsLoggingOut(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount || isLoggingOut) return
+
+    const confirmed = window.confirm("Are you sure you want to delete your account? This action cannot be undone.")
+    if (!confirmed) return
+
+    setIsDeletingAccount(true)
+    setProfileOpen(false)
+
+    try {
+      await restaurantAPI.deleteAccount()
+      clearModuleAuth("restaurant")
+      localStorage.removeItem("restaurant_onboarding")
+      sessionStorage.removeItem("restaurantAuthData")
+      window.dispatchEvent(new Event("restaurantAuthChanged"))
+      navigate("/food/restaurant/login", { replace: true })
+    } catch (error) {
+      debugError("Error deleting account:", error)
+      alert(error?.response?.data?.message || "Failed to delete account")
+    } finally {
+      setIsDeletingAccount(false)
     }
   }
 
@@ -1003,6 +1029,26 @@ export default function ExploreMore() {
           </div>
           <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
         </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.25 }}
+          onClick={handleDeleteAccount}
+          disabled={isDeletingAccount || isLoggingOut}
+          className="mt-3 w-full flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-left disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-red-700">Delete account</p>
+              <p className="text-sm text-red-500">Permanently remove this account</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
+        </motion.button>
       </div>
 
       {/* Search Popup */}
@@ -1014,7 +1060,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-[60]"
+              className="fixed inset-0 bg-primary/50 z-[60]"
               onClick={() => {
                 if (!isLoggingOut) setLogoutConfirmOpen(false)
               }}
@@ -1069,7 +1115,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => {
                 setSearchOpen(false)
                 setSearchQuery("")
@@ -1196,7 +1242,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setProfileOpen(false)}
             />
 
@@ -1277,16 +1323,26 @@ export default function ExploreMore() {
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
-                  disabled={isLoggingOut}
+                  disabled={isLoggingOut || isDeletingAccount}
                   className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
                 >
                   {isLoggingOut ? "Logging out..." : "Logout"}
                 </button>
 
+                {/* Delete Account Button */}
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeletingAccount || isLoggingOut}
+                  className="w-full bg-red-700 hover:bg-red-800 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isDeletingAccount ? "Deleting account..." : "Delete account"}
+                </button>
+
                 {/* Logout from all devices Button */}
                 <button
                   onClick={handleLogoutAllDevices}
-                  disabled={isLoggingOut}
+                  disabled={isLoggingOut || isDeletingAccount}
                   className="w-full bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors"
                 >
                   {isLoggingOut ? "Logging out..." : "Logout from all devices"}
@@ -1348,7 +1404,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setScheduleOffOpen(false)}
             />
 
@@ -1404,7 +1460,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setDateTimePickerOpen(false)}
             />
 
@@ -1512,7 +1568,7 @@ export default function ExploreMore() {
 
       {/* Calendar Popup */}
       {showCalendar && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowCalendar(false)}>
+        <div className="fixed inset-0 bg-primary/50 z-[60] flex items-center justify-center p-4" onClick={() => setShowCalendar(false)}>
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg shadow-lg">
             <DateRangeCalendar
               startDate={startDate}
@@ -1554,7 +1610,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSuccessPopupOpen(false)}
-              className="fixed inset-0 bg-black/50 z-[10000]"
+              className="fixed inset-0 bg-primary/50 z-[10000]"
             />
 
             {/* Success Modal */}
@@ -1606,7 +1662,7 @@ export default function ExploreMore() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setExistingScheduleOpen(false)}
             />
 

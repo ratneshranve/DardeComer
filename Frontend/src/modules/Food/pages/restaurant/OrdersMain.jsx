@@ -184,7 +184,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
     return (
       <div className="pt-4 pb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">
+          <h2 className="text-base font-semibold text-gray-900">
             Completed orders
           </h2>
           <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
@@ -197,7 +197,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
   return (
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">Completed orders</h2>
+        <h2 className="text-base font-semibold text-gray-900">Completed orders</h2>
         <span className="text-xs text-gray-500">{orders.length} total</span>
       </div>
       {orders.length === 0 ? (
@@ -255,7 +255,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                   <div className="flex-1 flex flex-col justify-between min-h-[80px]">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold text-black leading-tight">
+                        <p className="text-sm font-semibold text-gray-900 leading-tight">
                           Order #{order.orderId}
                         </p>
                         <p className="text-[11px] text-gray-500 mt-1">
@@ -290,7 +290,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                         <span className="text-[11px] text-gray-500">
                           Amount
                         </span>
-                        <span className="text-xs font-medium text-black">
+                        <span className="text-xs font-medium text-gray-900">
                           ₹{order.amount.toFixed(2)}
                         </span>
                       </div>
@@ -393,7 +393,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
     return (
       <div className="pt-4 pb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">
+          <h2 className="text-base font-semibold text-gray-900">
             Cancelled orders
           </h2>
           <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
@@ -406,7 +406,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
   return (
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">Cancelled orders</h2>
+        <h2 className="text-base font-semibold text-gray-900">Cancelled orders</h2>
         <span className="text-xs text-gray-500">{orders.length} total</span>
       </div>
       {orders.length === 0 ? (
@@ -471,7 +471,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
                   <div className="flex-1 flex flex-col justify-between min-h-[80px]">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold text-black leading-tight">
+                        <p className="text-sm font-semibold text-gray-900 leading-tight">
                           Order #{order.orderId}
                         </p>
                         <p className="text-[11px] text-gray-500 mt-1">
@@ -522,7 +522,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
                         <span className="text-[11px] text-gray-500">
                           Amount
                         </span>
-                        <span className="text-xs font-medium text-black">
+                        <span className="text-xs font-medium text-gray-900">
                           ₹{order.amount.toFixed(2)}
                         </span>
                       </div>
@@ -582,7 +582,7 @@ function TableBookings() {
   return (
     <div className="pt-4 pb-6 px-1">
       <div className="flex items-baseline justify-between mb-4 px-1">
-        <h2 className="text-base font-semibold text-black">Table Bookings</h2>
+        <h2 className="text-base font-semibold text-gray-900">Table Bookings</h2>
         <span className="text-xs text-gray-500">{bookings.length} total</span>
       </div>
 
@@ -757,7 +757,7 @@ function AllOrders({ onSelectOrder, onCancel }) {
     return (
       <div className="pt-4 pb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">All orders</h2>
+          <h2 className="text-base font-semibold text-gray-900">All orders</h2>
           <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
         </div>
         <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
@@ -768,7 +768,7 @@ function AllOrders({ onSelectOrder, onCancel }) {
   return (
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">All orders</h2>
+        <h2 className="text-base font-semibold text-gray-900">All orders</h2>
         <span className="text-xs text-gray-500">{orders.length} total</span>
       </div>
       {orders.length === 0 ? (
@@ -1879,7 +1879,7 @@ export default function OrdersMain() {
                   }
                 }}
                 className={`shrink-0 px-6 py-3.5 rounded-full font-medium text-sm whitespace-nowrap relative overflow-hidden ${
-                  isActive ? "text-white" : "bg-white text-black"
+                  isActive ? "text-white" : "bg-white text-gray-900"
                 }`}
                 animate={{
                   scale: isActive ? 1.05 : 1,
@@ -1893,7 +1893,7 @@ export default function OrdersMain() {
                 {isActive && (
                   <motion.div
                     layoutId="activeFilterBackground"
-                    className="absolute inset-0 bg-black rounded-full -z-10"
+                    className="absolute inset-0 bg-primary rounded-full -z-10"
                     initial={false}
                     transition={{
                       type: "spring",
@@ -2092,7 +2092,7 @@ export default function OrdersMain() {
         {showNewOrderPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[60] bg-primary/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
@@ -2359,7 +2359,7 @@ export default function OrdersMain() {
                   <div className="space-y-3">
                     <div
                       ref={acceptSliderRef}
-                      className="relative h-14 rounded-2xl bg-gray-900 overflow-hidden select-none touch-pan-y">
+                      className="relative h-14 rounded-2xl bg-primary overflow-hidden select-none touch-pan-y">
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-blue-600"
                         initial={{ width: "100%" }}
@@ -2426,7 +2426,7 @@ export default function OrdersMain() {
         {showRejectPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[70] bg-primary/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2457,20 +2457,20 @@ export default function OrdersMain() {
                         onClick={() => setRejectReason(reason)}
                         className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
                           rejectReason === reason
-                            ? "border-black bg-black/5"
+                            ? "border-black bg-primary/5"
                             : "border-gray-200 bg-white hover:border-gray-300"
                         }`}>
                         <div className="flex items-center justify-between">
                           <span
                             className={`text-sm font-medium ${
                               rejectReason === reason
-                                ? "text-black"
+                                ? "text-gray-900"
                                 : "text-gray-900"
                             }`}>
                             {reason}
                           </span>
                           {rejectReason === reason && (
-                            <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                               <svg
                                 className="w-3 h-3 text-white"
                                 fill="none"
@@ -2503,7 +2503,7 @@ export default function OrdersMain() {
                     disabled={!rejectReason}
                     className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
                       rejectReason
-                        ? "!bg-black !text-white"
+                        ? "!bg-primary !text-white"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     }`}>
                     Confirm Rejection
@@ -2520,7 +2520,7 @@ export default function OrdersMain() {
         {showCancelPopup && orderToCancel && (
           <>
             <motion.div
-              className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[70] bg-primary/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2619,7 +2619,7 @@ export default function OrdersMain() {
       <AnimatePresence>
         {isSheetOpen && selectedOrder && (
           <motion.div
-            className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
+            className="fixed inset-0 z-50 bg-primary/40 flex items-end justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2638,7 +2638,7 @@ export default function OrdersMain() {
 
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div>
-                  <p className="text-sm font-semibold text-black">
+                  <p className="text-sm font-semibold text-gray-900">
                     Order #{selectedOrder.orderId}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -2699,7 +2699,7 @@ export default function OrdersMain() {
                 {selectedOrder.status !== "ready" && selectedOrder.eta && (
                   <span>
                     ETA:{" "}
-                    <span className="font-medium text-black">
+                    <span className="font-medium text-gray-900">
                       {selectedOrder.eta}
                     </span>
                   </span>
@@ -2713,7 +2713,7 @@ export default function OrdersMain() {
                     <span>
                       Payment:{" "}
                       <span
-                        className={`font-medium ${isCod ? "text-amber-700" : "text-black"}`}>
+                        className={`font-medium ${isCod ? "text-amber-700" : "text-gray-900"}`}>
                         {isCod ? "Cash on Delivery" : "Paid online"}
                       </span>
                     </span>
@@ -2722,7 +2722,7 @@ export default function OrdersMain() {
               </div>
 
               <button
-                className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
+                className="w-full bg-primary text-white py-2.5 rounded-xl text-sm font-medium"
                 onClick={() => setIsSheetOpen(false)}>
                 Close
               </button>
@@ -2818,7 +2818,7 @@ function OrderCard({
           {/* Top row */}
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold text-black leading-tight">
+              <p className="text-sm font-semibold text-gray-900 leading-tight">
                 Order #{orderId}
               </p>
               <p className="text-[11px] text-gray-500 mt-1">{customerName}</p>
@@ -2899,7 +2899,7 @@ function OrderCard({
               {!isReady && eta && (
                 <div className="flex items-baseline gap-1">
                   <span className="text-[11px] text-gray-500">ETA</span>
-                  <span className="text-xs font-medium text-black">{eta}</span>
+                  <span className="text-xs font-medium text-gray-900">{eta}</span>
                 </div>
               )}
             </div>
@@ -3154,7 +3154,7 @@ function PreparingOrders({
     return (
       <div className="pt-4 pb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">
+          <h2 className="text-base font-semibold text-gray-900">
             Preparing orders
           </h2>
           <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
@@ -3167,7 +3167,7 @@ function PreparingOrders({
   return (
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">Preparing orders</h2>
+        <h2 className="text-base font-semibold text-gray-900">Preparing orders</h2>
         <span className="text-xs text-gray-500">{orders.length} active</span>
       </div>
       {orders.length === 0 ? (
@@ -3316,7 +3316,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
     return (
       <div className="pt-4 pb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">
+          <h2 className="text-base font-semibold text-gray-900">
             Ready for pickup
           </h2>
           <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
@@ -3329,7 +3329,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
   return (
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">Ready for pickup</h2>
+        <h2 className="text-base font-semibold text-gray-900">Ready for pickup</h2>
         <span className="text-xs text-gray-500">{orders.length} active</span>
       </div>
       {orders.length === 0 ? (
@@ -3434,7 +3434,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
     return (
       <div className="pt-4 pb-6">
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">
+          <h2 className="text-base font-semibold text-gray-900">
             Out for delivery
           </h2>
           <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
@@ -3447,7 +3447,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
   return (
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">Out for delivery</h2>
+        <h2 className="text-base font-semibold text-gray-900">Out for delivery</h2>
         <span className="text-xs text-gray-500">{orders.length} active</span>
       </div>
       {orders.length === 0 ? (
@@ -3555,7 +3555,7 @@ function EmptyState({ message = "Temporarily closed" }) {
       </h2>
 
       {/* View Status Button */}
-      <button className="bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors">
+      <button className="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
         View status
       </button>
     </div>

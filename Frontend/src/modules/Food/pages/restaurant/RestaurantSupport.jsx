@@ -115,10 +115,10 @@ export default function RestaurantSupport() {
             className="p-1 hover:bg-slate-100 rounded-full transition-colors"
             aria-label="Go back"
           >
-            <ChevronLeft className="w-6 h-6 text-slate-900" />
+            <ChevronLeft className="w-6 h-6 text-primary" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-slate-900">Support</h1>
+            <h1 className="text-lg font-bold text-primary">Support</h1>
             <p className="text-xs text-slate-500">Raise issue and track admin response</p>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function RestaurantSupport() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-xs text-slate-500">Total</p>
-            <p className="text-lg font-bold text-slate-900">{stats.total}</p>
+            <p className="text-lg font-bold text-primary">{stats.total}</p>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
             <p className="text-xs text-amber-700">Open</p>
@@ -145,7 +145,7 @@ export default function RestaurantSupport() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
-          <h2 className="text-sm font-bold text-slate-900">Raise support ticket</h2>
+          <h2 className="text-sm font-bold text-primary">Raise support ticket</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select
               value={form.category}
@@ -201,7 +201,7 @@ export default function RestaurantSupport() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-black text-white py-2.5 text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full rounded-lg bg-primary text-white py-2.5 text-sm font-semibold disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Submit Ticket
@@ -210,7 +210,7 @@ export default function RestaurantSupport() {
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold text-slate-900">My tickets</h2>
+            <h2 className="text-sm font-bold text-primary">My tickets</h2>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -245,7 +245,7 @@ export default function RestaurantSupport() {
                       {ticket.status}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                  <p className="mt-2 text-sm font-semibold text-primary">
                     {ticket.issueType}
                   </p>
                   {ticket.subject ? (

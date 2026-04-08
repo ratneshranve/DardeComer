@@ -116,26 +116,26 @@ export default function RestaurantLogin() {
       style={{ paddingBottom: keyboardInset ? `${keyboardInset + 24}px` : undefined }}
     >
       {/* Curved Header Background */}
-      <div className="relative h-[300px] w-full bg-[#ef4f5f] overflow-hidden">
+      <div className="relative h-[250px] sm:h-[300px] w-full bg-primary overflow-hidden">
         {/* Abstract Circles like in the image */}
-        <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-white/10" />
-        <div className="absolute top-20 -right-10 w-64 h-64 rounded-full bg-white/10" />
-        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-white/5" />
+        <div className="absolute -top-10 -left-10 w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-white/10" />
+        <div className="absolute top-20 -right-10 w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-white/10" />
+        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-72 h-72 sm:w-80 sm:h-80 rounded-full bg-white/5" />
 
-        <div className="absolute bottom-0 w-full h-[100px] bg-white rounded-t-[100px] shadow-[0_-20px_40px_rgba(0,0,0,0.05)]" />
+        <div className="absolute bottom-0 w-full h-[86px] sm:h-[100px] bg-white rounded-t-[86px] sm:rounded-t-[100px] shadow-[0_-20px_40px_rgba(0,0,0,0.05)]" />
       </div>
 
-      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-12 sm:-mt-16 z-10 overflow-hidden">
-        <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-4 sm:mb-6">
+      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-10 sm:-mt-16 z-10">
+        <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-3 sm:mb-6">
           <div className="text-center">
-            <div className="w-16 h-16 bg-[#ef4f5f] rounded-2xl mx-auto flex items-center justify-center transform rotate-12 shadow-lg mb-1">
-              <ShieldCheck className="w-8 h-8 text-white -rotate-12" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary rounded-2xl mx-auto flex items-center justify-center transform rotate-12 shadow-lg mb-1">
+              <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-white -rotate-12" />
             </div>
           </div>
         </div>
 
-        <div className="text-center space-y-1.5 sm:space-y-2 mb-6 sm:mb-10">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight lowercase">
+        <div className="text-center space-y-1 sm:space-y-2 mb-4 sm:mb-10">
+          <h1 className="text-2xl sm:text-3xl font-black text-primary tracking-tight">
             {companyName}
           </h1>
           <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">
@@ -143,14 +143,14 @@ export default function RestaurantLogin() {
           </p>
         </div>
 
-        <div className="w-full max-w-[400px] flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="space-y-6">
-            <div className="space-y-3">
+        <div className="w-full max-w-[400px] flex flex-col gap-4 sm:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-2.5 sm:space-y-3">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Registered Mobile Number</label>
               
-              <div className="flex items-center gap-2 h-16 bg-slate-50 border border-slate-100 rounded-[32px] px-6 focus-within:border-[#ef4f5f]/30 focus-within:ring-4 focus-within:ring-[#ef4f5f]/5 transition-all overflow-hidden">
+              <div className="flex items-center gap-2 h-16 bg-slate-50 border border-slate-100 rounded-[32px] px-6 focus-within:border-primary/30 focus-within:ring-4 focus-within:ring-primary/10 transition-all overflow-hidden">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-slate-900 text-lg">{formData.countryCode}</span>
+                  <span className="font-bold text-primary text-lg">{formData.countryCode}</span>
                 </div>
                 
                 <div className="w-[1px] h-6 bg-slate-200 ml-2" />
@@ -166,7 +166,7 @@ export default function RestaurantLogin() {
                   value={formData.phone}
                   onChange={handlePhoneChange}
                   onFocus={ensurePhoneFieldVisible}
-                  className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#ef4f5f] px-2"
+                  className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-primary placeholder-slate-300 caret-primary px-2"
                   style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
                 />
               </div>
@@ -183,7 +183,7 @@ export default function RestaurantLogin() {
               disabled={!isValidPhone || isSending}
               className={`w-full h-14 sm:h-16 rounded-[32px] font-black text-base sm:text-lg tracking-widest uppercase transition-all duration-300 ${
                 isValidPhone && !isSending
-                  ? "bg-[#ef4f5f] hover:bg-[#d63a4a] text-white shadow-lg shadow-[#ef4f5f]/20 transform active:scale-[0.98]"
+                  ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 transform active:scale-[0.98]"
                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
               }`}
             >
@@ -191,13 +191,13 @@ export default function RestaurantLogin() {
             </Button>
           </div>
 
-          <div className={`text-center pt-4 pb-2 ${keyboardInset ? "hidden" : ""}`}>
+          <div className={`text-center pt-2 sm:pt-4 pb-1 sm:pb-2 ${keyboardInset ? "hidden" : ""}`}>
             <p className="text-slate-400 text-xs font-medium">
               By logging in, you agree to our <br />
               <button
                 type="button"
                 onClick={() => navigate("/food/restaurant/terms")}
-                className="bg-transparent border-0 p-0 text-[#ef4f5f] font-bold hover:underline cursor-pointer"
+                className="bg-transparent border-0 p-0 text-primary font-bold hover:underline cursor-pointer"
               >
                 Terms
               </button>{" "}
@@ -205,7 +205,7 @@ export default function RestaurantLogin() {
               <button
                 type="button"
                 onClick={() => navigate("/food/restaurant/privacy")}
-                className="bg-transparent border-0 p-0 text-[#ef4f5f] font-bold hover:underline cursor-pointer"
+                className="bg-transparent border-0 p-0 text-primary font-bold hover:underline cursor-pointer"
               >
                 Privacy Policy
               </button>
@@ -214,7 +214,7 @@ export default function RestaurantLogin() {
         </div>
       </div>
 
-      <div className={`pb-8 text-center ${keyboardInset ? "hidden" : ""}`}>
+      <div className={`pb-4 sm:pb-8 text-center ${keyboardInset ? "hidden" : ""}`}>
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
             &copy; {new Date().getFullYear()} {companyName.toUpperCase()} PARTNER
           </p>

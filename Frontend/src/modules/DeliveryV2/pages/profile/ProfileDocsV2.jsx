@@ -101,7 +101,7 @@ export const ProfileDocsV2 = () => {
                          )}
                          <button 
                             onClick={() => handleTakeCameraPhoto(doc.field)}
-                            className="p-3 bg-gray-900 rounded-xl text-white hover:bg-black active:scale-95 transition-all cursor-pointer relative"
+                            className="p-3 bg-primary rounded-xl text-white hover:bg-primary active:scale-95 transition-all cursor-pointer relative"
                          >
                             <Camera className="w-5 h-5" />
                          </button>

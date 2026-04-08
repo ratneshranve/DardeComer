@@ -246,12 +246,12 @@ export default function EditRestaurantAddress() {
         {/* Custom Marker Tooltip Overlay */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
           {/* Tooltip */}
-          <div className="bg-black text-white px-3 py-2 rounded-lg mb-2 whitespace-nowrap shadow-lg">
+          <div className="bg-primary text-white px-3 py-2 rounded-lg mb-2 whitespace-nowrap shadow-lg">
             <p className="text-xs font-semibold">Your outlet location</p>
             <p className="text-[10px] text-gray-300">Orders will be picked up from here</p>
           </div>
           {/* Marker Pin */}
-          <div className="w-6 h-6 bg-black rounded-full border-2 border-white shadow-lg mx-auto"></div>
+          <div className="w-6 h-6 bg-primary rounded-full border-2 border-white shadow-lg mx-auto"></div>
         </div>
 
         {/* Address Details Section - Overlays map at bottom */}
@@ -274,7 +274,7 @@ export default function EditRestaurantAddress() {
           <div className="pb-4">
             <button
               onClick={handleUpdateClick}
-              className="w-full bg-black text-white font-semibold py-4 text-base rounded-lg"
+              className="w-full bg-primary text-white font-semibold py-4 text-base rounded-lg"
             >
               Update
             </button>
@@ -305,7 +305,7 @@ export default function EditRestaurantAddress() {
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                   selectedOption === "update_address"
-                    ? "border-black bg-black"
+                    ? "border-black bg-primary"
                     : "border-gray-300"
                 }`}
               >
@@ -333,7 +333,7 @@ export default function EditRestaurantAddress() {
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                   selectedOption === "minor_correction"
-                    ? "border-black bg-black"
+                    ? "border-black bg-primary"
                     : "border-gray-300"
                 }`}
               >
@@ -347,7 +347,7 @@ export default function EditRestaurantAddress() {
           {/* Proceed Button */}
           <button
             onClick={handleProceedUpdate}
-            className="w-full bg-black text-white font-semibold py-4 rounded-lg mt-6"
+            className="w-full bg-primary text-white font-semibold py-4 rounded-lg mt-6"
           >
             Proceed to update
           </button>

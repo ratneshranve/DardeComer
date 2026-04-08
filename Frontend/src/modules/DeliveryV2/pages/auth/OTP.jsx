@@ -583,7 +583,7 @@ export default function DeliveryOTP() {
                     disabled={isLoading}
                     autoComplete="off"
                     autoFocus={false}
-                    className="w-12 h-12 text-center text-lg font-semibold p-0 border border-black rounded-md focus-visible:ring-0 focus-visible:border-black bg-white"
+                    className="w-12 h-12 text-center text-lg font-semibold p-0 border border-primary rounded-md focus-visible:ring-0 focus-visible:border-primary bg-white"
                   />
                 ))}
               </div>

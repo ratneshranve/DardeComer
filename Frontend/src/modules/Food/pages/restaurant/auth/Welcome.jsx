@@ -180,7 +180,7 @@ export default function RestaurantWelcome() {
   }, [carouselData.length])
 
   return (
-    <div className="h-screen w-full flex flex-col bg-black overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-primary overflow-hidden">
       {/* Carousel Section - 70% height */}
       <div
         ref={carouselRef}
@@ -283,7 +283,7 @@ export default function RestaurantWelcome() {
 
       {/* Bottom Section - 30% height */}
       <div
-        className="bg-black px-6 py-6 md:py-8 flex flex-col justify-center gap-4"
+        className="bg-primary px-6 py-6 md:py-8 flex flex-col justify-center gap-4"
         style={{ height: "30vh", minHeight: "240px" }}
       >
         {/* Login Button */}

@@ -760,7 +760,7 @@ export default function HubFinance() {
             onClick={() => setActiveTab("payouts")}
             className={`flex-1 py-3 px-4 rounded-full font-medium text-sm transition-colors ${
               activeTab === "payouts"
-                ? "bg-black text-white"
+                ? "bg-primary text-white"
                 : "bg-white text-gray-600 border border-gray-300"
             }`}
           >
@@ -770,7 +770,7 @@ export default function HubFinance() {
             onClick={() => setActiveTab("invoices")}
             className={`flex-1 py-3 px-4 rounded-full font-medium text-sm transition-colors ${
               activeTab === "invoices"
-                ? "bg-black text-white"
+                ? "bg-primary text-white"
                 : "bg-white text-gray-600 border border-gray-300"
             }`}
           >
@@ -802,7 +802,7 @@ export default function HubFinance() {
                       disabled={!(financeData?.currentCycle?.estimatedPayout > 0)}
                       className={`w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 mt-4 transition-colors ${
                         financeData?.currentCycle?.estimatedPayout > 0
-                          ? "bg-black text-white hover:bg-gray-800"
+                          ? "bg-primary text-white hover:bg-primary/90"
                           : "bg-gray-200 text-gray-500 cursor-not-allowed"
                       }`}
                     >
@@ -856,7 +856,7 @@ export default function HubFinance() {
                       <button
                         type="button"
                         onClick={() => navigate("/restaurant/withdrawal-history")}
-                        className="w-full text-sm font-medium text-black hover:underline pt-1"
+                        className="w-full text-sm font-medium text-gray-900 hover:underline pt-1"
                       >
                         View all requests
                       </button>
@@ -1025,7 +1025,7 @@ export default function HubFinance() {
                   <div className="relative" ref={downloadMenuRef}>
                     <button 
                       onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                      className="bg-black text-white rounded-lg px-4 py-3 flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+                      className="bg-primary text-white rounded-lg px-4 py-3 flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
                     >
                       <Download className="w-4 h-4" />
                       <span className="text-sm font-medium">Get report</span>
@@ -1201,7 +1201,7 @@ export default function HubFinance() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setShowWithdrawalModal(false)}
             />
             <motion.div
@@ -1300,7 +1300,7 @@ export default function HubFinance() {
                       }
                     }}
                     disabled={submittingWithdrawal || !withdrawalAmount || parseFloat(withdrawalAmount) <= 0 || parseFloat(withdrawalAmount) > (financeData?.currentCycle?.estimatedPayout || 0)}
-                    className="flex-1 px-4 py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
                     {submittingWithdrawal ? 'Submitting...' : 'Submit Request'}
                   </button>

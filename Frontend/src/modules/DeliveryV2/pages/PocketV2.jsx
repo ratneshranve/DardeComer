@@ -202,7 +202,7 @@ export const PocketV2 = () => {
        {/* 1. BANK DETAILS BANNER */}
        {!walletState.bankDetailsFilled && (
          <div className="bg-yellow-400 px-4 py-3 flex items-center gap-3 border-b border-yellow-500/20">
-            <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg">
                <FileText className="w-7 h-7" />
             </div>
             <div className="flex-1">
@@ -234,7 +234,7 @@ export const PocketV2 = () => {
           {/* 3. EARNINGS GUARANTEE - API DRIVEN (NO STATIC VALUES) */}
           {hasActiveOffer && (
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 mb-6">
-             <div className="bg-black p-4 flex items-center justify-between">
+             <div className="bg-primary p-4 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-black text-white leading-none mb-1">Earnings Guarantee</h3>
                   <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export const PocketV2 = () => {
              <div className="p-5">
                 <button 
                    onClick={() => setShowDepositPopup(true)}
-                   className="w-full py-4 bg-[#ff8100] hover:bg-orange-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+                   className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-all"
                 >
                    Deposit Cash
                 </button>
@@ -390,7 +390,7 @@ export const PocketV2 = () => {
                    <div className="w-16 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
                    
                    <div className="text-center mb-8">
-                      <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-orange-100 text-[#ff8100]">
+                      <div className="w-20 h-20 bg-primary/10 rounded-3xl-primary/20 text-primary">
                          <IndianRupee className="w-10 h-10" />
                       </div>
                       <h3 className="text-2xl font-black text-black mb-1">Deposit Cash</h3>
@@ -417,7 +417,7 @@ export const PocketV2 = () => {
                       <button 
                          onClick={handleDeposit}
                          disabled={depositing}
-                         className="w-full py-5 bg-[#ff8100] text-white rounded-2xl font-black text-sm shadow-xl shadow-orange-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-300 disabled:shadow-none"
+                         className="w-full py-5 bg-[#ff8100] text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-300 disabled:shadow-none"
                       >
                          {depositing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
                          {depositing ? 'Securely Processing...' : 'Proceed to Pay'}

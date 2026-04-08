@@ -23,6 +23,7 @@ import {
   ShoppingCart,
   MapPin,
   Share2,
+  Trash2,
 } from "lucide-react";
 
 import AnimatedPage from "@food/components/user/AnimatedPage";
@@ -79,6 +80,8 @@ export default function Profile() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [referralReward, setReferralReward] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
 
@@ -405,6 +408,37 @@ export default function Profile() {
   const handleLogoutClick = () => {
     if (isLoggingOut) return;
     setLogoutConfirmOpen(true);
+  };
+
+  const handleDeleteAccountClick = () => {
+    if (isDeletingAccount) return;
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) return;
+    setIsDeletingAccount(true);
+    try {
+      await userAPI.deleteAccount();
+
+      clearModuleAuth("user");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user_authenticated");
+      localStorage.removeItem("user_user");
+      localStorage.removeItem("user");
+      localStorage.removeItem("cart");
+      USER_SESSION_PREFERENCE_KEYS.forEach((key) => localStorage.removeItem(key));
+      window.dispatchEvent(new Event("userAuthChanged"));
+
+      toast.success("Account deleted successfully");
+      navigate("/user/auth/login", { replace: true });
+    } catch (err) {
+      debugError("Error deleting account:", err);
+      toast.error(err?.response?.data?.message || "Failed to delete account");
+    } finally {
+      setIsDeletingAccount(false);
+      setDeleteConfirmOpen(false);
+    }
   };
 
   return (
@@ -945,6 +979,35 @@ export default function Profile() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            <motion.div
+              whileHover={{ x: 4, scale: 1.01 }}
+              transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
+              <Card
+                className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleDeleteAccountClick}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      className="bg-red-50 dark:bg-red-900/20 rounded-full p-2"
+                      whileHover={{ rotate: 15, scale: 1.1 }}
+                      transition={{ duration: 0.3 }}>
+                      <Trash2
+                        className={`h-5 w-5 text-red-600 dark:text-red-400 ${isDeletingAccount ? "animate-pulse" : ""}`}
+                      />
+                    </motion.div>
+                    <span className="text-base font-medium text-red-600 dark:text-red-400">
+                      {isDeletingAccount ? "Deleting Account..." : "Delete Account"}
+                    </span>
+                  </div>
+                  <motion.div
+                    whileHover={{ x: 4 }}
+                    transition={{ duration: 0.2 }}>
+                    <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </div>
@@ -1048,6 +1111,39 @@ export default function Profile() {
                 disabled={isLoggingOut}
               >
                 Yes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Popup */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#1a1a1a] p-5 shadow-2xl border border-gray-200 dark:border-gray-800">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Delete Account?
+            </h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete your account? This action cannot be undone.
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setDeleteConfirmOpen(false)}
+                disabled={isDeletingAccount}
+              >
+                No
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount}
+              >
+                {isDeletingAccount ? "Deleting..." : "Yes, Delete"}
               </Button>
             </div>
           </div>

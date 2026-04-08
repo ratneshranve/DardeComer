@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Share2,
   LogOut,
+  Trash2,
   X,
   Loader2,
   Briefcase
@@ -28,6 +29,8 @@ export const ProfileV2 = () => {
   const [referralReward, setReferralReward] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [logoutSubmitting, setLogoutSubmitting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
 
   // Fetch profile data
   useEffect(() => {
@@ -83,6 +86,23 @@ export const ProfileV2 = () => {
     toast.success("Logged out successfully")
     navigate("/food/delivery/login", { replace: true })
     setLogoutSubmitting(false)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteSubmitting) return
+    setShowDeleteConfirm(false)
+    try {
+      setDeleteSubmitting(true)
+      await deliveryAPI.deleteAccount()
+      clearModuleAuth("delivery")
+      localStorage.removeItem("app:isOnline")
+      toast.success("Account deleted successfully")
+      navigate("/food/delivery/login", { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to delete account")
+    } finally {
+      setDeleteSubmitting(false)
+    }
   }
 
   if (loading) {
@@ -152,7 +172,7 @@ export const ProfileV2 = () => {
             </div>
             <button
               onClick={handleShareReferral}
-              className="shrink-0 bg-black text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest shadow-md"
+              className="shrink-0 bg-primary text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest shadow-md"
             >
               Share
             </button>
@@ -175,7 +195,7 @@ export const ProfileV2 = () => {
 
           {/* Partner options Section */}
           {/* Logout Section */}
-          <div className="pt-4">
+          <div className="pt-4 flex flex-col gap-3">
             <div 
               onClick={() => setShowLogoutConfirm(true)}
               className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer border border-red-50 hover:bg-red-50/30 active:bg-red-50 transition-colors"
@@ -183,6 +203,18 @@ export const ProfileV2 = () => {
               <div className="flex items-center gap-3">
                 <LogOut className="w-5 h-5 text-red-600" />
                 <span className="text-sm font-bold text-red-600">Log out</span>
+              </div>
+              <ArrowRight className="w-5 h-5 text-red-100" />
+            </div>
+
+            {/* Delete Account Section */}
+            <div 
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer border border-red-50 hover:bg-red-50/30 active:bg-red-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Trash2 className="w-5 h-5 text-red-600" />
+                <span className="text-sm font-bold text-red-600">Delete account</span>
               </div>
               <ArrowRight className="w-5 h-5 text-red-100" />
             </div>
@@ -215,6 +247,48 @@ export const ProfileV2 = () => {
                 className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60"
               >
                 {logoutSubmitting ? "Logging out..." : "Yes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirm Popup */}
+      {showDeleteConfirm && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center px-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div 
+            className="w-full max-w-sm bg-white rounded-2xl p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center mb-4">
+              <div className="bg-red-50 p-3 rounded-full">
+                <Trash2 className="w-8 h-8 text-red-600" />
+              </div>
+            </div>
+            
+            <h3 className="text-xl font-black text-center text-slate-800 mb-2">
+              Delete account?
+            </h3>
+            <p className="text-slate-500 text-center text-sm font-medium mb-6">
+              Are you sure you want to delete your account? This action cannot be undone.
+            </p>
+
+            <div className="flex flex-row-reverse gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-11 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
+              >
+                No
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteSubmitting}
+                className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60"
+              >
+                {deleteSubmitting ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

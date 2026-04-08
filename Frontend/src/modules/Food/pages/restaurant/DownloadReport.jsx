@@ -98,7 +98,7 @@ export default function DownloadReport() {
               <button
                 key={type}
                 onClick={() => setViewType(type)}
-                className={`py-2 ${viewType === type ? "bg-black text-white" : "bg-white text-gray-800"}`}
+                className={`py-2 ${viewType === type ? "bg-primary text-white" : "bg-white text-gray-800"}`}
               >
                 {type}
               </button>
@@ -129,7 +129,7 @@ export default function DownloadReport() {
       <div className="px-4 pb-6">
         <button
           onClick={handleSend}
-          className="w-full bg-black text-white py-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+          className="w-full bg-primary text-white py-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Mail className="w-5 h-5" />
           Send an email

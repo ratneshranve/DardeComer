@@ -18,8 +18,12 @@ import {
   CheckSquare,
   LogOut,
   LogIn,
+  Trash2,
   UserPlus
 } from "lucide-react"
+import { restaurantAPI } from "@food/api"
+import { clearModuleAuth } from "@food/utils/auth"
+import { toast } from "sonner"
 
 export default function MenuOverlay({ showMenu, setShowMenu }) {
   const navigate = useNavigate()
@@ -70,6 +74,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
       return [
         ...baseOptions,
         { id: 20, name: "Logout", icon: LogOut, route: "/logout", isLogout: true },
+        { id: 21, name: "Delete Account", icon: Trash2, route: "/delete-account", isDeleteAccount: true },
       ]
     } else {
       // If not authenticated, show only login at the top
@@ -82,6 +87,30 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
 
   const menuOptions = getMenuOptions()
 
+  const handleRestaurantLogout = async () => {
+    try {
+      await restaurantAPI.logout()
+    } catch (_) {}
+    clearModuleAuth("restaurant")
+    setIsAuthenticated(false)
+    window.dispatchEvent(new Event("restaurantAuthChanged"))
+    toast.success("Logged out successfully")
+    navigate("/restaurant/login", { replace: true })
+  }
+
+  const handleRestaurantDeleteAccount = async () => {
+    try {
+      await restaurantAPI.deleteAccount()
+      clearModuleAuth("restaurant")
+      setIsAuthenticated(false)
+      window.dispatchEvent(new Event("restaurantAuthChanged"))
+      toast.success("Account deleted successfully")
+      navigate("/restaurant/login", { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to delete account")
+    }
+  }
+
   return (
     <AnimatePresence mode="wait">
       {showMenu && (
@@ -93,7 +122,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={() => setShowMenu(false)}
-            className="fixed inset-0 bg-black/40 z-[100] backdrop-blur-sm"
+            className="fixed inset-0 bg-primary/40 z-[100] backdrop-blur-sm"
           />
           
           {/* Menu Sheet - Full bottom slide */}
@@ -149,21 +178,19 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
                         if (option.isLogout) {
                           // Handle logout
                           if (window.confirm("Are you sure you want to logout?")) {
-                            // Clear authentication state
-                            localStorage.removeItem("restaurant_authenticated")
-                            localStorage.removeItem("restaurant_user")
-                            setIsAuthenticated(false)
-                            // Dispatch custom event for same-tab updates
-                            window.dispatchEvent(new Event('restaurantAuthChanged'))
-                            // Redirect to login
-                            navigate("/restaurant/login")
+                            handleRestaurantLogout()
+                          }
+                        } else if (option.isDeleteAccount) {
+                          // Handle delete account
+                          if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+                            handleRestaurantDeleteAccount()
                           }
                         } else {
                           navigate(option.route)
                         }
                       }}
                       className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all shadow-md hover:shadow-lg ${
-                        option.isLogout
+                        option.isLogout || option.isDeleteAccount
                           ? "bg-red-500 hover:bg-red-600 text-white"
                           : "bg-gradient-to-br from-[#ff8100] to-[#ff9500] hover:from-[#e67300] hover:to-[#e68500] text-white"
                       }`}

@@ -120,6 +120,18 @@ export const authAPI = {
         : null);
     return authService.logout(token, fcmToken, platform);
   },
+  deleteAccount: (refreshToken) => {
+    const token =
+      refreshToken ||
+      (typeof localStorage !== "undefined"
+        ? localStorage.getItem("user_refreshToken")
+        : null);
+    const fcmToken =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("fcm_web_registered_token_user")
+        : null;
+    return authService.deleteAccount("user", token, fcmToken, "web");
+  },
 };
 
 export const supportAPI = {
@@ -1295,6 +1307,18 @@ export const restaurantAPI = {
     const fcmToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_restaurant") : null;
     return authService.logout(token, fcmToken, "web");
   },
+  deleteAccount: (refreshToken) => {
+    const token =
+      refreshToken ||
+      (typeof localStorage !== "undefined"
+        ? localStorage.getItem("restaurant_refreshToken")
+        : null);
+    const fcmToken =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("fcm_web_registered_token_restaurant")
+        : null;
+    return authService.deleteAccount("restaurant", token, fcmToken, "web");
+  },
   /** Backend has no email/password login; use phone OTP only. */
   login: (_email, _password) =>
     Promise.reject(new Error("Please use phone number and OTP to sign in.")),
@@ -1587,6 +1611,18 @@ export const deliveryAPI = {
         : null);
     const fcmToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_delivery") : null;
     return authService.logout(token, fcmToken, "web");
+  },
+  deleteAccount: (refreshToken) => {
+    const token =
+      refreshToken ||
+      (typeof localStorage !== "undefined"
+        ? localStorage.getItem("delivery_refreshToken")
+        : null);
+    const fcmToken =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("fcm_web_registered_token_delivery")
+        : null;
+    return authService.deleteAccount("delivery", token, fcmToken, "web");
   },
   /** POST /food/delivery/register - multipart FormData (new partner, no token). */
   register: (formData) => {
@@ -1983,6 +2019,18 @@ export const userAPI = {
     apiClient.patch("/food/user/profile", body ?? {}, {
       contextModule: "user",
     }),
+  deleteAccount: (refreshToken) => {
+    const token =
+      refreshToken ||
+      (typeof localStorage !== "undefined"
+        ? localStorage.getItem("user_refreshToken")
+        : null);
+    const fcmToken =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("fcm_web_registered_token_user")
+        : null;
+    return authService.deleteAccount("user", token, fcmToken, "web");
+  },
   /** Upload and set user profile image (multipart). Field name: file */
   uploadProfileImage: (file) => {
     if (!file) return Promise.reject(new Error("File is required"));

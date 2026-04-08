@@ -880,7 +880,7 @@ export default function OrderDetails() {
                     {/* Icon */}
                     <div className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center ${
                       event.status === "completed" 
-                        ? "bg-gray-900" 
+                        ? "bg-primary" 
                         : event.status === "rejected"
                         ? "bg-red-600"
                         : "bg-gray-400"
@@ -913,7 +913,7 @@ export default function OrderDetails() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
             transition={{ duration: 0.3 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-primary text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm"
           >
             {isGeneratingPDF ? (
               <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

@@ -467,7 +467,7 @@ export const ProfileDetailsV2 = () => {
            <div className="flex items-center justify-center absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 gap-2">
               <button 
                 onClick={() => handleTakeCameraPhoto('profilePhoto')}
-                className="bg-black text-white p-3 rounded-2xl shadow-xl hover:bg-gray-900 transition-all active:scale-95 border-4 border-white flex items-center justify-center"
+                className="bg-primary text-white p-3 rounded-2xl shadow-xl hover:bg-primary transition-all active:scale-95 border-4 border-white flex items-center justify-center"
                 title="Take Photo"
               >
                 <Camera className="w-5 h-5" />
@@ -619,7 +619,7 @@ export const ProfileDetailsV2 = () => {
                  {bankDetails.upiQrCode && (
                     <button 
                       onClick={() => { setSelectedDocument({ name: "UPI Scanner", url: bankDetails.upiQrCode }); setShowDocumentModal(true); }}
-                      className="w-14 h-14 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400 hover:text-black hover:border-black/20 transition-all"
+                      className="w-14 h-14 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400 hover:text-black hover:border-primary/20 transition-all"
                     >
                        <QrCode className="w-6 h-6" />
                     </button>
@@ -815,7 +815,7 @@ export const ProfileDetailsV2 = () => {
                      await refreshProfile()
                    } catch (e) { toast.error("Cloud storage sync failed") }
                }}
-               className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-gray-900 transition-all active:scale-95"
+               className="w-full bg-primary text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-primary transition-all active:scale-95"
             >
                Save Changes
             </button>
@@ -902,7 +902,7 @@ export const ProfileDetailsV2 = () => {
           <button 
             onClick={submitBankDetails} 
             disabled={isUpdatingBankDetails} 
-            className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-gray-900 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+            className="w-full bg-primary text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-primary transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
           >
             {isUpdatingBankDetails ? <><Loader2 className="w-5 h-5 animate-spin" /> saving...</> : "Update Systems"}
           </button>

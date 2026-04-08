@@ -53,7 +53,7 @@ export default function BottomNavOrders() {
     <div className="fixed bottom-0 left-0 right-0 z-[60] px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto flex w-full max-w-md items-end gap-2">
         <div className="flex-1 min-w-0">
-          <div className="relative overflow-visible rounded-[30px] bg-black py-2 pl-3 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
+          <div className="relative overflow-visible rounded-[30px] bg-primary py-2 pl-3 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
             <div className="relative flex items-end justify-around gap-1">
               {tabs.map((tab) => {
                 const Icon = tab.icon

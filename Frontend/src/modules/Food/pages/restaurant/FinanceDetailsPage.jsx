@@ -172,7 +172,7 @@ export default function FinanceDetailsPage() {
                   }
                 }}
                 className={`shrink-0 px-6 py-3.5 rounded-full font-medium text-sm whitespace-nowrap relative overflow-hidden ${
-                  isActive ? 'text-white' : 'bg-white text-black'
+                  isActive ? 'text-white' : 'bg-white text-gray-900'
                 }`}
                 animate={{
                   scale: isActive ? 1.05 : 1,
@@ -187,7 +187,7 @@ export default function FinanceDetailsPage() {
                 {isActive && (
                   <motion.div
                     layoutId="financeTopTabActive"
-                    className="absolute inset-0 bg-black rounded-full -z-10"
+                    className="absolute inset-0 bg-primary rounded-full -z-10"
                     initial={false}
                     transition={{
                       type: "spring",
@@ -559,7 +559,7 @@ export default function FinanceDetailsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowDownloadPopup(false)}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
             />
             <motion.div
               initial={{ y: "100%" }}
@@ -582,7 +582,7 @@ export default function FinanceDetailsPage() {
               </p>
               <button
                 onClick={() => setShowDownloadPopup(false)}
-                className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
               >
                 Close
               </button>
@@ -600,7 +600,7 @@ export default function FinanceDetailsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowEmailPopup(false)}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
             />
             <motion.div
               initial={{ y: "100%" }}
@@ -623,7 +623,7 @@ export default function FinanceDetailsPage() {
               </p>
               <button
                 onClick={() => setShowEmailPopup(false)}
-                className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
               >
                 Close
               </button>

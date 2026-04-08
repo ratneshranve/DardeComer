@@ -13,6 +13,7 @@ import {
   Sun,
   Info,
   LogOut,
+  Trash2,
   Lock,
   Mail,
   Phone,
@@ -24,6 +25,9 @@ import {
 import { Card, CardContent } from "@food/components/ui/card"
 import BottomNavbar from "@food/components/restaurant/BottomNavbar"
 import MenuOverlay from "@food/components/restaurant/MenuOverlay"
+import { restaurantAPI } from "@food/api"
+import { clearModuleAuth } from "@food/utils/auth"
+import { toast } from "sonner"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -35,6 +39,7 @@ export default function SettingsPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [darkMode, setDarkMode] = useState(false)
+  const [actionSubmitting, setActionSubmitting] = useState(false)
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -55,6 +60,40 @@ export default function SettingsPage() {
       lenis.destroy()
     }
   }, [])
+
+  const handleRestaurantLogout = async () => {
+    if (actionSubmitting) return
+    setActionSubmitting(true)
+    try {
+      await restaurantAPI.logout()
+    } catch (_) {}
+    clearModuleAuth("restaurant")
+    window.dispatchEvent(new Event("restaurantAuthChanged"))
+    toast.success("Logged out successfully")
+    navigate("/restaurant/login", { replace: true })
+    setActionSubmitting(false)
+  }
+
+  const handleRestaurantDeleteAccount = async () => {
+    if (actionSubmitting) return
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your account? This cannot be undone.",
+    )
+    if (!confirmed) return
+
+    setActionSubmitting(true)
+    try {
+      await restaurantAPI.deleteAccount()
+      clearModuleAuth("restaurant")
+      window.dispatchEvent(new Event("restaurantAuthChanged"))
+      toast.success("Account deleted successfully")
+      navigate("/restaurant/login", { replace: true })
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to delete account")
+    } finally {
+      setActionSubmitting(false)
+    }
+  }
 
   // Settings sections
   const settingsSections = [
@@ -89,8 +128,10 @@ export default function SettingsPage() {
       title: "Actions",
       items: [
         { id: "logout", label: "Logout", icon: LogOut, isDestructive: true, action: () => {
-          debugLog("Logout clicked")
-          // Add logout logic here
+          handleRestaurantLogout()
+        } },
+        { id: "delete_account", label: "Delete Account", icon: Trash2, isDestructive: true, action: () => {
+          handleRestaurantDeleteAccount()
         } },
       ]
     }

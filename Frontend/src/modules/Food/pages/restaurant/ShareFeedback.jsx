@@ -96,7 +96,7 @@ export default function ShareFeedback() {
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
                   className={`py-2 text-xs font-medium border-l border-gray-200 first:border-l-0 focus:outline-none ${
                     isActive
-                      ? "bg-black text-white"
+                      ? "bg-primary text-white"
                       : "bg-white text-gray-900 hover:bg-gray-50"
                   }`}
                 >
@@ -148,7 +148,7 @@ export default function ShareFeedback() {
           className={`w-full py-3 rounded-full text-sm font-medium transition-colors ${
             rating === null
               ? "bg-gray-200 text-gray-500"
-              : "bg-black text-white hover:bg-gray-900"
+              : "bg-primary text-white hover:bg-primary/90"
           }`}
           whileTap={rating !== null ? { scale: 0.98 } : undefined}
         >
@@ -160,7 +160,7 @@ export default function ShareFeedback() {
       <AnimatePresence>
         {showThanks && (
           <motion.div
-            className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-6"
+            className="fixed inset-0 z-50 bg-primary/40 flex items-center justify-center px-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -189,7 +189,7 @@ export default function ShareFeedback() {
                 </p>
                 <button
                   type="button"
-                  className="w-full py-2.5 rounded-full bg-black text-white text-sm font-medium"
+                  className="w-full py-2.5 rounded-full bg-primary text-white text-sm font-medium"
                   onClick={() => {
                     setShowThanks(false)
                     goBack()

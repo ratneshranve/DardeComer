@@ -67,7 +67,7 @@ export default function FestBanner() {
         >
           <div className="flex items-center gap-2">
             <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]">
-              DardeComer
+              DarDeComer
             </h2>
           </div>
           

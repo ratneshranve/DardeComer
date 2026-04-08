@@ -233,7 +233,7 @@ export default function MenuCategoriesPage() {
             <ArrowLeft className="h-5 w-5 text-slate-700" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Menu Categories</h1>
+            <h1 className="text-xl font-bold text-primary">Menu Categories</h1>
             <p className="text-xs text-slate-500">Create categories, track approvals, and resubmit edits safely.</p>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function MenuCategoriesPage() {
 
       <div className="p-4 space-y-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="text-sm font-semibold text-slate-900">How this works</p>
+          <p className="text-sm font-semibold text-primary">How this works</p>
           <p className="mt-2 text-sm text-slate-600">
             New categories stay pending until admin approval. Editing an approved category sends it back for review.
             Only approved categories can be used for food uploads.
@@ -250,7 +250,7 @@ export default function MenuCategoriesPage() {
 
         <button
           onClick={openCreateModal}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-semibold text-white"
         >
           <Plus className="h-5 w-5" />
           Add Category
@@ -262,7 +262,7 @@ export default function MenuCategoriesPage() {
           </div>
         ) : ownCategories.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-            <p className="text-lg font-semibold text-slate-900">No restaurant categories yet</p>
+            <p className="text-lg font-semibold text-primary">No restaurant categories yet</p>
             <p className="mt-2 text-sm text-slate-500">
               Start with a category and choose whether it should accept veg, non-veg, or both kinds of dishes.
             </p>
@@ -293,7 +293,7 @@ export default function MenuCategoriesPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold text-slate-900">{category.name}</h3>
+                        <h3 className="text-base font-semibold text-primary">{category.name}</h3>
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${approvalBadgeClass(status)}`}>
                           {status === "approved" ? <BadgeCheck className="mr-1 h-3.5 w-3.5" /> : <Clock3 className="mr-1 h-3.5 w-3.5" />}
                           {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -364,7 +364,7 @@ export default function MenuCategoriesPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={resetModal}
-              className="fixed inset-0 z-50 bg-black/50"
+              className="fixed inset-0 z-50 bg-primary/50"
             />
             <motion.div
               initial={{ y: "100%" }}
@@ -374,7 +374,7 @@ export default function MenuCategoriesPage() {
             >
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-lg font-bold text-primary">
                     {editingCategory ? "Edit Category" : "Create Category"}
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -396,7 +396,7 @@ export default function MenuCategoriesPage() {
                     value={formData.name}
                     onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                     placeholder="Enter category name"
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-primary"
                   />
                 </div>
 
@@ -405,7 +405,7 @@ export default function MenuCategoriesPage() {
                   <select
                     value={formData.foodTypeScope}
                     onChange={(e) => setFormData((prev) => ({ ...prev, foodTypeScope: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-primary"
                   >
                     <option value="Veg">Veg</option>
                     <option value="Non-Veg">Non-Veg</option>
@@ -420,7 +420,7 @@ export default function MenuCategoriesPage() {
                     value={formData.type}
                     onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
                     placeholder="Examples: Starters, Desserts, Drinks"
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-primary"
                   />
                 </div>
 
@@ -466,7 +466,7 @@ export default function MenuCategoriesPage() {
                 <button
                   onClick={handleSaveCategory}
                   disabled={uploadingImage}
-                  className="flex-1 rounded-xl bg-slate-900 py-3 font-medium text-white disabled:opacity-60"
+                  className="flex-1 rounded-xl bg-primary py-3 font-medium text-white disabled:opacity-60"
                 >
                   {uploadingImage ? "Uploading..." : editingCategory ? "Save & Resubmit" : "Create"}
                 </button>

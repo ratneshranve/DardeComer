@@ -9,6 +9,7 @@ import {
     requestDeliveryOtpController,
     verifyDeliveryOtpController,
     logoutController,
+    deleteMyAccountController,
     getMeController,
     updateAdminProfileController,
     changeAdminPasswordController,
@@ -46,6 +47,9 @@ router.post('/refresh-token', refreshTokenController);
 
 // Logout (invalidates refresh token)
 router.post('/logout', logoutController);
+
+// Delete own account (USER / RESTAURANT / DELIVERY_PARTNER)
+router.delete('/delete-account', authMiddleware, deleteMyAccountController);
 
 // Authenticated user profile (requires Bearer token)
 router.get('/me', authMiddleware, getMeController);

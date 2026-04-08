@@ -371,7 +371,7 @@ function TimePickerWheel({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-primary/50 z-[9999] flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -651,7 +651,7 @@ function SimpleCalendar({ selectedDate, onDateSelect, isOpen, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 z-[9998] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-primary/50 z-[9998] flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -714,9 +714,9 @@ function SimpleCalendar({ selectedDate, onDateSelect, isOpen, onClose }) {
                     className={`h-10 text-sm rounded transition-colors ${!isCurrent
                         ? 'text-gray-300'
                         : isSelectedDate
-                          ? 'bg-black text-white'
+                          ? 'bg-primary text-white'
                           : isTodayDate
-                            ? 'bg-gray-100 text-black font-semibold'
+                            ? 'bg-gray-100 text-gray-900 font-semibold'
                             : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
@@ -1784,7 +1784,7 @@ export default function Inventory() {
             onClick={() => setActiveTab("all-items")}
             className={`relative overflow-hidden rounded-[24px] border px-5 py-4 text-sm font-semibold whitespace-nowrap ${
               activeTab === "all-items"
-                ? "border-slate-950 text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.8)]"
+                ? "border-primary text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.8)]"
                 : "border-white/80 bg-white/80 text-slate-700 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.4)]"
             }`}
             animate={{
@@ -1795,7 +1795,7 @@ export default function Inventory() {
             {activeTab === "all-items" && (
               <motion.div
                 layoutId="activeTabBackground"
-                className="absolute inset-0 rounded-[24px] bg-slate-950 -z-10"
+                className="absolute inset-0 rounded-[24px] bg-primary -z-10"
                 initial={false}
                 transition={{
                   type: "spring",
@@ -1807,7 +1807,7 @@ export default function Inventory() {
             <span className="relative z-10 flex items-center justify-center gap-2">
               <span>All items</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                activeTab === "all-items" ? "bg-white text-slate-950" : "bg-slate-100 text-slate-600"
+                activeTab === "all-items" ? "bg-white text-primary" : "bg-slate-100 text-slate-600"
               }`}>
                 {totalItems}
               </span>
@@ -1818,7 +1818,7 @@ export default function Inventory() {
             onClick={() => setActiveTab("add-ons")}
             className={`relative overflow-hidden rounded-[24px] border px-5 py-4 text-sm font-semibold whitespace-nowrap ${
               activeTab === "add-ons"
-                ? "border-slate-950 text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.8)]"
+                ? "border-primary text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.8)]"
                 : "border-white/80 bg-white/80 text-slate-700 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.4)]"
             }`}
             animate={{
@@ -1829,7 +1829,7 @@ export default function Inventory() {
             {activeTab === "add-ons" && (
               <motion.div
                 layoutId="activeTabBackground"
-                className="absolute inset-0 rounded-[24px] bg-slate-950 -z-10"
+                className="absolute inset-0 rounded-[24px] bg-primary -z-10"
                 initial={false}
                 transition={{
                   type: "spring",
@@ -1841,7 +1841,7 @@ export default function Inventory() {
             <span className="relative z-10 flex items-center justify-center gap-2">
               <span>Add ons</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                activeTab === "add-ons" ? "bg-white text-slate-950" : "bg-slate-100 text-slate-600"
+                activeTab === "add-ons" ? "bg-white text-primary" : "bg-slate-100 text-slate-600"
               }`}>
                 {addons.length}
               </span>
@@ -1920,7 +1920,7 @@ export default function Inventory() {
           <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/90 p-4 shadow-[0_20px_48px_-34px_rgba(15,23,42,0.45)] backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-950">
+                <p className="text-sm font-semibold text-primary">
                   {activeTab === "add-ons" ? "Search and review add-ons" : "Search and manage menu inventory"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
@@ -1951,7 +1951,7 @@ export default function Inventory() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={activeTab === "add-ons" ? "Search add-ons by name or status" : "Search categories or menu items"}
-                  className="h-12 w-full rounded-[20px] border border-slate-200 bg-slate-50 pl-11 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none"
+                  className="h-12 w-full rounded-[20px] border border-slate-200 bg-slate-50 pl-11 pr-10 text-sm text-primary placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none"
                 />
                 {searchQuery ? (
                   <button
@@ -1972,14 +1972,14 @@ export default function Inventory() {
                 <SlidersHorizontal className="w-4 h-4 text-slate-700" />
                 <span>Filters</span>
                 {selectedFilter !== "all" && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-slate-950" />
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
                 )}
               </button>
 
               {activeTab === "add-ons" && (
                 <button
                   onClick={() => setIsAddAddonOpen((v) => !v)}
-                  className="h-12 rounded-[20px] bg-slate-950 px-4 text-sm font-semibold text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.85)] transition-colors hover:bg-slate-800"
+                  className="h-12 rounded-[20px] bg-primary px-4 text-sm font-semibold text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.85)] transition-colors hover:bg-primary/90"
                   style={{ minWidth: "128px" }}
                 >
                   {isAddAddonOpen ? "Close" : "Add Add-on"}
@@ -2001,7 +2001,7 @@ export default function Inventory() {
                     onClick={() => setSelectedFilter(option.value)}
                     className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
                       isActive
-                        ? "border-slate-950 bg-slate-950 text-white shadow-[0_14px_28px_-24px_rgba(15,23,42,0.9)]"
+                        ? "border-primary bg-primary text-white shadow-[0_14px_28px_-24px_rgba(15,23,42,0.9)]"
                         : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
                     }`}
                   >
@@ -2106,7 +2106,7 @@ export default function Inventory() {
                         type="button"
                         onClick={handleSaveAddon}
                         disabled={savingAddon}
-                        className="px-4 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {savingAddon && <Loader2 className="h-4 w-4 animate-spin" />}
                         <span>{savingAddon ? "Saving..." : "Submit for approval"}</span>
@@ -2140,7 +2140,7 @@ export default function Inventory() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="mb-2 flex items-center gap-2 flex-wrap">
-                            <h3 className="text-base font-semibold text-slate-950">{addon.name}</h3>
+                            <h3 className="text-base font-semibold text-primary">{addon.name}</h3>
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                               addon.isAvailable !== false
                                 ? "bg-emerald-50 text-emerald-700"
@@ -2161,7 +2161,7 @@ export default function Inventory() {
                           {addon.description && (
                             <p className="mb-2 text-sm leading-6 text-slate-600">{addon.description}</p>
                           )}
-                          <p className="text-base font-bold text-slate-950">Rs. {addon.price}</p>
+                          <p className="text-base font-bold text-primary">Rs. {addon.price}</p>
                           {addon.approvalStatus === 'rejected' && addon.rejectionReason && (
                             <p className="mt-2 text-xs font-medium text-red-600">Reason: {addon.rejectionReason}</p>
                           )}
@@ -2240,7 +2240,7 @@ export default function Inventory() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex items-center gap-2 flex-wrap">
-                        <h3 className="text-lg font-bold tracking-[-0.02em] text-slate-950">
+                        <h3 className="text-lg font-bold tracking-[-0.02em] text-primary">
                           {category.name}
                         </h3>
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
@@ -2335,7 +2335,7 @@ export default function Inventory() {
                                 </div>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                                    <p className="truncate text-sm font-semibold text-primary">{item.name}</p>
                                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                                       item.isVeg
                                         ? "bg-emerald-50 text-emerald-700"
@@ -2428,7 +2428,7 @@ export default function Inventory() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setFilterOpen(false)}
             />
             <motion.div
@@ -2470,7 +2470,7 @@ export default function Inventory() {
                             name="filter"
                             checked={selectedFilter === option.value}
                             onChange={() => setSelectedFilter(option.value)}
-                            className="w-5 h-5 text-black border-gray-300 focus:ring-black"
+                            className="w-5 h-5 text-gray-900 border-gray-300 focus:ring-black"
                           />
                           <span className="text-base text-gray-900">{option.label}</span>
                         </div>
@@ -2493,7 +2493,7 @@ export default function Inventory() {
                   )}
                   <button
                     onClick={handleFilterApply}
-                    className={`${selectedFilter !== "all" ? 'flex-1' : 'w-full'} bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors`}
+                    className={`${selectedFilter !== "all" ? 'flex-1' : 'w-full'} bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors`}
                   >
                     Apply
                   </button>
@@ -2512,7 +2512,7 @@ export default function Inventory() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-primary/50 z-50"
               onClick={() => setTogglePopupOpen(false)}
             />
             <motion.div
@@ -2577,7 +2577,7 @@ export default function Inventory() {
                         checked={selectedOption === "specific-time"}
                         onChange={() => setSelectedOption("specific-time")}
                         style={{ accentColor: "#000000" }}
-                        className="ml-auto w-5 h-5 !text-black !border-gray-300 !bg-black !focus:ring-black"
+                        className="ml-auto w-5 h-5 !text-gray-900 !border-gray-300 !bg-primary !focus:ring-black"
                       />
                     </div>
                   </label>
@@ -2593,7 +2593,7 @@ export default function Inventory() {
                         checked={selectedOption === "next-business-day"}
                         onChange={() => setSelectedOption("next-business-day")}
                         style={{ accentColor: "#000000" }}
-                        className="ml-auto w-5 h-5 !text-black !border-gray-300 !bg-black !focus:ring-black"
+                        className="ml-auto w-5 h-5 !text-gray-900 !border-gray-300 !bg-primary !focus:ring-black"
                       />
                     </div>
                   </label>
@@ -2609,7 +2609,7 @@ export default function Inventory() {
                         checked={selectedOption === "custom-date-time"}
                         onChange={() => setSelectedOption("custom-date-time")}
                         style={{ accentColor: "#000000" }}
-                        className="ml-auto w-5 h-5 text-black border-gray-300 focus:ring-black"
+                        className="ml-auto w-5 h-5 text-gray-900 border-gray-300 focus:ring-black"
                       />
                     </div>
                   </label>
@@ -2644,7 +2644,7 @@ export default function Inventory() {
                           checked={selectedOption === "manual"}
                           onChange={() => setSelectedOption("manual")}
                           style={{ accentColor: "#000000" }}
-                          className="ml-auto w-5 h-5 !text-black !border-gray-300 !bg-black !focus:ring-black"
+                          className="ml-auto w-5 h-5 !text-gray-900 !border-gray-300 !bg-primary !focus:ring-black"
                         />
                       </div>
                       <p className="text-sm text-gray-500">
@@ -2664,7 +2664,7 @@ export default function Inventory() {
                   </button>
                   <button
                     onClick={handleToggleConfirm}
-                    className="flex-1 bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                    className="flex-1 bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
                   >
                     Confirm
                   </button>
@@ -2702,7 +2702,7 @@ export default function Inventory() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsAddPopupOpen(false)}
-              className="fixed inset-0 bg-black/50 z-[70]"
+              className="fixed inset-0 bg-primary/50 z-[70]"
             />
             <motion.div
               initial={{ y: "100%" }}
@@ -2741,7 +2741,7 @@ export default function Inventory() {
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => setIsAddPopupOpen(true)}
-            className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(15,23,42,0.85)]"
+            className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(15,23,42,0.85)]"
           >
             + Add item
           </motion.button>
@@ -2753,9 +2753,9 @@ export default function Inventory() {
           >
             <span className="w-5 h-5 flex items-center justify-center">
               {isMenuOpen ? (
-                <X className="w-4 h-4 text-slate-900" />
+                <X className="w-4 h-4 text-primary" />
               ) : (
-                <Utensils className="w-4 h-4 text-slate-900" />
+                <Utensils className="w-4 h-4 text-primary" />
               )}
             </span>
             <span>{isMenuOpen ? "Close" : "Menu"}</span>
@@ -2766,7 +2766,7 @@ export default function Inventory() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-30"
+                  className="fixed inset-0 bg-primary/40 z-30"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -2783,7 +2783,7 @@ export default function Inventory() {
                 >
                   <div className="h-full flex flex-col">
                     <div className="bg-[linear-gradient(135deg,#f8fbff_0%,#eef6ff_100%)] px-4 pt-4 pb-3">
-                      <p className="text-sm font-semibold text-slate-950">Jump to category</p>
+                      <p className="text-sm font-semibold text-primary">Jump to category</p>
                     </div>
                     <div className="mx-4 h-px bg-slate-200" />
                     <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1">
@@ -2803,7 +2803,7 @@ export default function Inventory() {
                             className="w-full text-left py-3 focus:outline-none"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-slate-900">
+                              <span className="text-sm font-medium text-primary">
                                 {category.name}
                               </span>
                               <span className="flex h-7 min-w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">

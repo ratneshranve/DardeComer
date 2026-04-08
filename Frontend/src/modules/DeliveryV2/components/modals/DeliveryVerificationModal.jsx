@@ -146,7 +146,7 @@ const OtpModal = ({ order, onVerified, onClose }) => {
           successLabel="Verified!"
           disabled={otp.some(d => !d) || isVerifyingOtp || isOtpVerified || isAlreadyVerified}
           onConfirm={verifyOtp}
-          color="bg-gray-900"
+          color="bg-primary"
         />
       </motion.div>
     </div>

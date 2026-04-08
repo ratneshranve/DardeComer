@@ -110,7 +110,7 @@ export default function DeliveryWelcome() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="w-full max-w-sm bg-black rounded-3xl p-6 mb-8 relative overflow-hidden"
+          className="w-full max-w-sm bg-primary rounded-3xl p-6 mb-8 relative overflow-hidden"
         >
      
           {/* Money Illustration - Stack of Currency Notes */}
@@ -172,7 +172,7 @@ export default function DeliveryWelcome() {
         <div className="flex items-center gap-4 max-w-2xl mx-auto">
           <button
             onClick={toggleAudio}
-            className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+            className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors"
           >
             {isPlaying ? (
               <Pause className="w-5 h-5" />
@@ -404,7 +404,7 @@ export default function DeliveryWelcome() {
             transition={{ delay: 0.7, duration: 0.5 }}
           >
             {/* Bag Image Placeholder */}
-            <div className="w-20 h-20 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-20 h-20 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
               <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
@@ -424,7 +424,7 @@ export default function DeliveryWelcome() {
           {/* Proceed Button */}
           <motion.button
             onClick={handleProceed}
-            className="w-full bg-black text-white font-bold py-4 rounded-lg hover:bg-gray-800 transition-colors z-10 relative"
+            className="w-full bg-primary text-white font-bold py-4 rounded-lg hover:bg-primary/90 transition-colors z-10 relative"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9, duration: 0.5 }}
