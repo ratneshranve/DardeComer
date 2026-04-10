@@ -134,6 +134,10 @@ export const verifyUserOtpAndLogin = async (
   const needsNamePrompt = !userDoc || !userDoc.name || String(userDoc.name).trim() === "" || String(userDoc.name).toLowerCase() === "null";
   const isNewUser = needsNamePrompt;
   const trimmedName = typeof name === "string" ? name.trim() : "";
+  const hasPersistedName = (value) => {
+    const v = String(value || "").trim();
+    return v.length > 0 && v.toLowerCase() !== "null";
+  };
 
   if (!userDoc) {
     userDoc = await FoodUser.create({
@@ -147,7 +151,7 @@ export const verifyUserOtpAndLogin = async (
       userDoc.isVerified = true;
       needsSave = true;
     }
-    if (trimmedName && !userDoc.name) {
+    if (trimmedName && !hasPersistedName(userDoc.name)) {
       userDoc.name = trimmedName;
       needsSave = true;
     }

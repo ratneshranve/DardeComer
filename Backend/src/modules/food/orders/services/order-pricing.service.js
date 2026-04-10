@@ -6,6 +6,11 @@ import { FoodOffer } from '../../admin/models/offer.model.js';
 import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 
+function isTakeAwayType(deliveryType) {
+  const raw = String(deliveryType || '').trim().toLowerCase();
+  return raw === 'take away' || raw === 'takeaway' || raw === 'pickup';
+}
+
 export async function calculateOrderPricing(userId, dto) {
   const restaurant = await FoodRestaurant.findById(dto.restaurantId)
     .select("status")
@@ -33,10 +38,13 @@ export async function calculateOrderPricing(userId, dto) {
 
   const packagingFee = 0;
   const platformFee = Number(feeSettings.platformFee || 0);
+  const isTakeAway = isTakeAwayType(dto?.deliveryType);
 
   const freeThreshold = Number(feeSettings.freeDeliveryThreshold || 0);
   let deliveryFee = 0;
-  if (
+  if (isTakeAway) {
+    deliveryFee = 0;
+  } else if (
     Number.isFinite(freeThreshold) &&
     freeThreshold > 0 &&
     subtotal >= freeThreshold

@@ -11,6 +11,7 @@ import { useLocation } from "@food/hooks/useLocation"
 import { useZone } from "@food/hooks/useZone"
 import { restaurantAPI, adminAPI } from "@food/api"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
+import { getSourceMeta } from "@food/utils/sourceType"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -254,6 +255,7 @@ export default function SearchResults() {
               return hasName && hasRealImage
             })
             .map((restaurant) => {
+              const sourceMeta = getSourceMeta(restaurant)
               // Use backend data directly - filter out default values
               let deliveryTime = restaurant.estimatedDeliveryTime || null
               let distance = restaurant.distance || null
@@ -316,6 +318,8 @@ export default function SearchResults() {
                 offer: offer, // Use backend offer or null (defaults filtered out)
                 slug: restaurant.slug || restaurant.name?.toLowerCase().replace(/\s+/g, '-'),
                 restaurantId: restaurantId,
+                sourceLabel: sourceMeta.sourceLabel,
+                vendorType: sourceMeta.vendorType,
                 hasPaneer: false, // Will be updated after menu fetch
                 category: 'all',
               }
@@ -944,6 +948,11 @@ export default function SearchResults() {
                       <h3 className="font-semibold text-gray-900 dark:text-white text-xs line-clamp-1">
                         {restaurant.name}
                       </h3>
+                      <div className="mt-1">
+                        <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 dark:text-gray-200">
+                          {restaurant.sourceLabel || "Restaurant"}
+                        </span>
+                      </div>
                       {restaurant.deliveryTime && (
                         <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-[10px]">
                           <Clock className="h-2.5 w-2.5" />
@@ -1047,6 +1056,11 @@ export default function SearchResults() {
                           <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white line-clamp-1 lg:line-clamp-2">
                             {restaurant.name}
                           </h3>
+                          <div className="mt-1">
+                            <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
+                              {restaurant.sourceLabel || "Restaurant"}
+                            </span>
+                          </div>
                         </div>
                         {restaurant.rating && (
                           <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded-lg flex items-center gap-1">

@@ -33,6 +33,23 @@ export function generateFourDigitDeliveryOtp() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+function normalizeVendorType(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const compact = raw.replace(/[_\-\s]+/g, "");
+  if (compact === "homekitchen" || compact === "cloudkitchen" || compact === "kitchen") {
+    return "home_kitchen";
+  }
+  return "restaurant";
+}
+
+function sourceLabelFromVendorType(vendorType) {
+  return vendorType === "home_kitchen" ? "Home Kitchen" : "Restaurant";
+}
+
+function normalizeBusinessModel(value) {
+  return sourceLabelFromVendorType(normalizeVendorType(value));
+}
+
 export function sanitizeOrderForExternal(orderDoc) {
   const o = orderDoc?.toObject ? orderDoc.toObject() : { ...(orderDoc || {}) };
   delete o.deliveryOtp;
@@ -50,6 +67,11 @@ export function sanitizeOrderForExternal(orderDoc) {
   o.orderMongoId = (o._id || orderDoc?._id || "").toString();
   // Ensure orderId field for UI always contains the pretty ID
   o.orderId = o.order_id || o.orderMongoId; 
+  const restaurant = o?.restaurantId && typeof o.restaurantId === "object" ? o.restaurantId : null;
+  const businessModel = o?.businessModel || restaurant?.businessModel || "";
+  o.businessModel = normalizeBusinessModel(businessModel);
+  o.vendorType = normalizeVendorType(businessModel);
+  o.sourceLabel = sourceLabelFromVendorType(o.vendorType);
   return o;
 }
 
@@ -123,10 +145,21 @@ export function normalizeOrderForClient(orderDoc) {
   const order = orderDoc?.toObject ? orderDoc.toObject() : orderDoc || {};
   const mongoId = (order._id || orderDoc?._id || "").toString();
   const displayId = order.order_id || mongoId;
+  const restaurant =
+    order?.restaurantId && typeof order.restaurantId === "object"
+      ? order.restaurantId
+      : order?.restaurant && typeof order.restaurant === "object"
+        ? order.restaurant
+        : null;
+  const businessModel = order?.businessModel || restaurant?.businessModel || "";
+  const vendorType = normalizeVendorType(businessModel);
   return {
     ...order,
     orderMongoId: mongoId,
     orderId: displayId,
+    businessModel: normalizeBusinessModel(businessModel),
+    vendorType,
+    sourceLabel: sourceLabelFromVendorType(vendorType),
     status: order?.orderStatus || order?.status || "",
     deliveredAt:
       order?.deliveryState?.deliveredAt || order?.deliveredAt || null,

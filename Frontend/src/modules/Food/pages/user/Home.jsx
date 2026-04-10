@@ -84,6 +84,7 @@ import api, { publicGetOnce, restaurantAPI, adminAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
+import { getSourceMeta } from "@food/utils/sourceType";
 import HomeHeader from "@food/components/user/home/HomeHeader";
 import PromoRow from "@food/components/user/home/PromoRow";
 import FestBanner from "@food/components/user/home/FestBanner";
@@ -1695,6 +1696,7 @@ export default function Home() {
               // Keep single image for backward compatibility
               const image = allImages[0] || profileImageUrl || "";
               const offerText = restaurant.offer || null;
+              const sourceMeta = getSourceMeta(restaurant);
 
               return {
                 id: restaurant.restaurantId || restaurant._id,
@@ -1725,6 +1727,9 @@ export default function Home() {
                 offer: offerText,
                 slug: restaurant.slug,
                 restaurantId: restaurant.restaurantId,
+                vendorType: sourceMeta.vendorType,
+                sourceLabel: sourceMeta.sourceLabel,
+                businessModel: sourceMeta.businessModel,
                 pureVegRestaurant: restaurant.pureVegRestaurant === true,
                 location: restaurant.location, // Store location for distance recalculation
                 isActive: restaurant.isActive !== false, // Default to true if not specified

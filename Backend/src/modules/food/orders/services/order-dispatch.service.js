@@ -140,6 +140,11 @@ export async function tryAutoAssign(orderId, options = {}) {
     return null;
   }
 
+  if (String(order.deliveryType || '').toLowerCase() === 'take away') {
+    logger.info(`tryAutoAssign: Skip for ${orderId} (take away order).`);
+    return order;
+  }
+
   try {
     const offeredIds = (order.dispatch?.offeredTo || []).map(o => o.partnerId.toString());
     
@@ -265,6 +270,10 @@ export async function processDispatchTimeout(orderId, partnerId) {
   const order = await FoodOrder.findById(orderId);
   if (!order) return;
 
+  if (String(order.deliveryType || '').toLowerCase() === 'take away') {
+    return;
+  }
+
   const stillAssigned = order.dispatch?.status === 'assigned' &&
     String(order.dispatch?.deliveryPartnerId) === String(partnerId) &&
     !order.dispatch?.acceptedAt;
@@ -298,6 +307,10 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
   });
 
   if (!order) throw new NotFoundError('Order not found');
+
+  if (String(order.deliveryType || '').toLowerCase() === 'take away') {
+    throw new ValidationError('Take Away orders do not require delivery partner dispatch');
+  }
 
   const activeStatuses = ['confirmed', 'preparing', 'ready_for_pickup', 'ready'];
   if (!activeStatuses.includes(order.orderStatus)) {

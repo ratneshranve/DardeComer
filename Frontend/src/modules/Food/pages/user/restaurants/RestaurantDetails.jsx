@@ -48,6 +48,7 @@ import AddToCartAnimation from "@food/components/user/AddToCartAnimation"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { getSourceMeta } from "@food/utils/sourceType"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import {
   buildCartLineId,
@@ -480,6 +481,7 @@ function RestaurantDetailsContent() {
                   ? onboardingStep2.menuImageUrls
                   : []
           const normalizedRestaurantOffers = actualRestaurant?.restaurantOffers || apiRestaurant?.restaurantOffers || {}
+          const sourceMeta = getSourceMeta(actualRestaurant || apiRestaurant)
 
           // Transform API data to match expected format with comprehensive fallbacks
           // Handle both dining restaurant and regular restaurant data structures
@@ -530,6 +532,9 @@ function RestaurantDetailsContent() {
             menu: Array.isArray(actualRestaurant?.menu) ? actualRestaurant.menu : (Array.isArray(apiRestaurant?.menu) ? apiRestaurant.menu : []),
             slug: actualRestaurant?.slug || apiRestaurant?.slug || actualRestaurant?.name?.toLowerCase().replace(/\s+/g, '-') || apiRestaurant?.name?.toLowerCase().replace(/\s+/g, '-') || slug || "unknown",
             restaurantId: actualRestaurant?.restaurantId || actualRestaurant?._id || actualRestaurant?.id || apiRestaurant?.restaurantId || apiRestaurant?._id || apiRestaurant?.id || null,
+            vendorType: sourceMeta.vendorType,
+            sourceLabel: sourceMeta.sourceLabel,
+            businessModel: sourceMeta.businessModel,
             // Add other fields with defaults
             featuredDish: actualRestaurant?.featuredDish || apiRestaurant?.featuredDish || onboardingStep4?.featuredDish || "Special Dish",
             featuredPrice: actualRestaurant?.featuredPrice || apiRestaurant?.featuredPrice || onboardingStep4?.featuredPrice || 249,
@@ -2068,6 +2073,9 @@ function RestaurantDetailsContent() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{restaurant?.name || "Unknown Restaurant"}</h1>
+              <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                {restaurant?.sourceLabel || "Restaurant"}
+              </Badge>
               <Info className="h-5 w-5 text-gray-400" />
             </div>
             <div className="flex flex-col items-end">

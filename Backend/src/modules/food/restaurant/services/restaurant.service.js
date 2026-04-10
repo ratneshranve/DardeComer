@@ -89,6 +89,31 @@ const parseEstimatedDeliveryMinutes = (value) => {
     return Math.round(numbers[numbers.length - 1]);
 };
 
+const normalizeVendorType = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    const compact = raw.replace(/[_\-\s]+/g, '');
+    if (!compact) return 'restaurant';
+    if (
+        compact === 'homekitchen' ||
+        compact === 'cloudkitchen' ||
+        compact === 'kitchen'
+    ) {
+        return 'home_kitchen';
+    }
+    return 'restaurant';
+};
+
+const sourceLabelFromVendorType = (vendorType) =>
+    vendorType === 'home_kitchen' ? 'Home Kitchen' : 'Restaurant';
+
+const normalizeBusinessModel = (inputValue, fallbackValue = '') => {
+    const candidate =
+        inputValue !== undefined && inputValue !== null && String(inputValue).trim()
+            ? String(inputValue).trim()
+            : String(fallbackValue || '').trim();
+    return sourceLabelFromVendorType(normalizeVendorType(candidate));
+};
+
 const toRestaurantProfile = (doc) => {
     if (!doc) return null;
     const loc = doc.location && typeof doc.location === 'object' ? doc.location : null;
@@ -139,6 +164,9 @@ const toRestaurantProfile = (doc) => {
         restaurantId: doc.restaurantId || undefined,
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
+        businessModel: normalizeBusinessModel(doc.businessModel),
+        vendorType: normalizeVendorType(doc.businessModel),
+        sourceLabel: sourceLabelFromVendorType(normalizeVendorType(doc.businessModel)),
         zoneId: doc.zoneId ? String(doc.zoneId) : '',
         cuisines: Array.isArray(doc.cuisines) ? doc.cuisines : [],
         location,
@@ -285,7 +313,9 @@ export const registerRestaurant = async (payload, files) => {
         accountNumber,
         ifscCode,
         accountHolderName,
-        accountType
+        accountType,
+        businessModel,
+        vendorType
     } = payload;
 
     if (!ownerPhone) {
@@ -390,6 +420,7 @@ export const registerRestaurant = async (payload, files) => {
             ifscCode,
             accountHolderName,
             accountType,
+            businessModel: normalizeBusinessModel(vendorType, businessModel),
             menuImages,
             ...images
         });
@@ -438,6 +469,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'ownerEmail',
                 'ownerPhone',
                 'primaryContactNumber',
+                'businessModel',
                 'accountNumber',
                 'ifscCode',
                 'accountHolderName',
@@ -490,6 +522,7 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
                 'ownerEmail',
                 'ownerPhone',
                 'primaryContactNumber',
+                'businessModel',
                 'accountNumber',
                 'ifscCode',
                 'accountHolderName',
@@ -725,6 +758,9 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         const qrImage = body.upiQrImage !== undefined ? body.upiQrImage : body.upiQrCode;
         update.upiQrImage = String(qrImage || '').trim();
     }
+    if (body.businessModel !== undefined || body.vendorType !== undefined) {
+        update.businessModel = normalizeBusinessModel(body.vendorType, body.businessModel);
+    }
 
     if (body.name !== undefined || body.restaurantName !== undefined) {
         const raw = body.name !== undefined ? body.name : body.restaurantName;
@@ -938,6 +974,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
                     'ownerEmail',
                     'ownerPhone',
                     'primaryContactNumber',
+                'businessModel',
                 'pureVegRestaurant',
                 'profileImage',
                 'coverImages',
@@ -1254,12 +1291,31 @@ export const listApprovedRestaurants = async (query = {}) => {
         isAcceptingOrders: 1,
         status: 1,
         pureVegRestaurant: 1,
+        businessModel: 1,
         createdAt: 1,
         location: 1,
         openingTime: 1,
         closingTime: 1,
         openDays: 1
     };
+
+    const mapRestaurantForPublicList = (r = {}) => ({
+        ...r,
+        restaurantId: r._id,
+        id: r._id,
+        name: r.restaurantName || '',
+        businessModel: normalizeBusinessModel(r.businessModel),
+        vendorType: normalizeVendorType(r.businessModel),
+        sourceLabel: sourceLabelFromVendorType(normalizeVendorType(r.businessModel)),
+        rating: normalizeRatingValue(r.rating),
+        totalRatings: normalizeTotalRatingsValue(r.totalRatings),
+        profileImage: r.profileImage ? { url: r.profileImage } : null,
+        coverImages: Array.isArray(r.coverImages) ? r.coverImages : [],
+        openingTime: r.openingTime || null,
+        closingTime: r.closingTime || null,
+        openDays: Array.isArray(r.openDays) ? r.openDays : [],
+        menuImages: Array.isArray(r.menuImages) ? r.menuImages : []
+    });
 
     // Use $geoNear only when geo is explicitly needed (radius filter or nearest sorting).
     // This avoids accidentally hiding restaurants that do not have coordinates yet.
@@ -1309,7 +1365,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         ]);
 
         const total = totalDocs?.[0]?.count || 0;
-        return { restaurants: pageDocs, total, page, limit };
+        return { restaurants: (pageDocs || []).map(mapRestaurantForPublicList), total, page, limit };
     }
 
     // Non-geo path: normal query + sort.
@@ -1332,22 +1388,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         FoodRestaurant.countDocuments(filter)
     ]);
 
-    const restaurants = (restaurantsRaw || []).map((r) => ({
-        ...r,
-        // Frontend user app expects `name` and often checks `profileImage.url`
-        restaurantId: r._id,
-        id: r._id,
-        name: r.restaurantName || '',
-        rating: normalizeRatingValue(r.rating),
-        totalRatings: normalizeTotalRatingsValue(r.totalRatings),
-        profileImage: r.profileImage ? { url: r.profileImage } : null,
-        coverImages: Array.isArray(r.coverImages) ? r.coverImages : [],
-        openingTime: r.openingTime || null,
-        closingTime: r.closingTime || null,
-        openDays: Array.isArray(r.openDays) ? r.openDays : [],
-        // Keep menuImages as an array for fallbacks; allow both string and {url} on client.
-        menuImages: Array.isArray(r.menuImages) ? r.menuImages : []
-    }));
+    const restaurants = (restaurantsRaw || []).map(mapRestaurantForPublicList);
 
     return { restaurants, total, page, limit };
 };
@@ -1362,6 +1403,9 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
         if (!doc) return null;
         return {
             ...doc,
+            businessModel: normalizeBusinessModel(doc.businessModel),
+            vendorType: normalizeVendorType(doc.businessModel),
+            sourceLabel: sourceLabelFromVendorType(normalizeVendorType(doc.businessModel)),
             rating: normalizeRatingValue(doc.rating),
             totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
         };
@@ -1378,6 +1422,9 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     if (!doc) return null;
     return {
         ...doc,
+        businessModel: normalizeBusinessModel(doc.businessModel),
+        vendorType: normalizeVendorType(doc.businessModel),
+        sourceLabel: sourceLabelFromVendorType(normalizeVendorType(doc.businessModel)),
         rating: normalizeRatingValue(doc.rating),
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
     };

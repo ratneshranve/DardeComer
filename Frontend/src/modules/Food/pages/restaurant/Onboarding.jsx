@@ -39,6 +39,8 @@ const IFSC_CODE_REGEX = /^[A-Z0-9]{11}$/
 const OWNER_NAME_REGEX = /^[A-Za-z ]+$/
 const ACCOUNT_HOLDER_NAME_REGEX = /^[A-Za-z ]+$/
 const GST_LEGAL_NAME_REGEX = /^[A-Za-z ]+$/
+const BUSINESS_MODEL_RESTAURANT = "Restaurant"
+const BUSINESS_MODEL_HOME_KITCHEN = "Home Kitchen"
 const LOCAL_IMAGE_FILE_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.heif"
 const GALLERY_IMAGE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -53,6 +55,20 @@ let onboardingFileCache = {
     fssaiImage: null,
   },
 }
+
+const normalizeBusinessModelLabel = (value) => {
+  const raw = String(value || "").trim().toLowerCase()
+  const compact = raw.replace(/[_\-\s]+/g, "")
+  if (compact === "homekitchen" || compact === "cloudkitchen" || compact === "kitchen") {
+    return BUSINESS_MODEL_HOME_KITCHEN
+  }
+  return BUSINESS_MODEL_RESTAURANT
+}
+
+const toVendorTypeValue = (businessModel) =>
+  normalizeBusinessModelLabel(businessModel) === BUSINESS_MODEL_HOME_KITCHEN
+    ? "home_kitchen"
+    : "restaurant"
 
 // IndexedDB helpers for persistent file storage
 const ONBOARDING_FILES_DB = "RestaurantOnboardingFiles"
@@ -509,6 +525,7 @@ export default function RestaurantOnboarding() {
 
   const [step1, setStep1] = useState({
     restaurantName: "",
+    businessModel: BUSINESS_MODEL_RESTAURANT,
     pureVegRestaurant: null,
     ownerName: "",
     ownerEmail: "",
@@ -796,6 +813,7 @@ export default function RestaurantOnboarding() {
             setStep1((prev) => ({
               ...prev,
               restaurantName: localData.step1.restaurantName || "",
+              businessModel: normalizeBusinessModelLabel(localData.step1.businessModel),
               pureVegRestaurant:
                 typeof localData.step1.pureVegRestaurant === "boolean"
                   ? localData.step1.pureVegRestaurant
@@ -985,6 +1003,12 @@ export default function RestaurantOnboarding() {
             setStep1((prev) => ({
               ...prev,
               restaurantName: step1Data.restaurantName || data.name || data.restaurantName || prev.restaurantName || "",
+              businessModel: normalizeBusinessModelLabel(
+                step1Data.businessModel ||
+                  data.businessModel ||
+                  data.vendorType ||
+                  prev.businessModel,
+              ),
               pureVegRestaurant:
                 typeof step1Data.pureVegRestaurant === "boolean"
                   ? step1Data.pureVegRestaurant
@@ -1399,6 +1423,8 @@ export default function RestaurantOnboarding() {
 
           await restaurantAPI.updateProfile({
             restaurantName: step1.restaurantName || "",
+            businessModel: normalizeBusinessModelLabel(step1.businessModel),
+            vendorType: toVendorTypeValue(step1.businessModel),
             pureVegRestaurant: step1.pureVegRestaurant === true,
             ownerName: step1.ownerName || "",
             ownerEmail: (step1.ownerEmail || "").trim(),
@@ -1455,6 +1481,8 @@ export default function RestaurantOnboarding() {
 
         // Step 1
         formData.append("restaurantName", step1.restaurantName || "")
+        formData.append("businessModel", normalizeBusinessModelLabel(step1.businessModel))
+        formData.append("vendorType", toVendorTypeValue(step1.businessModel))
         formData.append(
           "pureVegRestaurant",
           step1.pureVegRestaurant === true ? "true" : "false",
@@ -1579,6 +1607,36 @@ export default function RestaurantOnboarding() {
               placeholder="Customers will see this name"
               disabled={!isEditing}
             />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700">Business type*</Label>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => isEditing && setStep1({ ...step1, businessModel: BUSINESS_MODEL_RESTAURANT })}
+                className={`px-3 py-1.5 text-xs rounded-full border ${
+                  normalizeBusinessModelLabel(step1.businessModel) === BUSINESS_MODEL_RESTAURANT
+                    ? "bg-primary text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200"
+                } ${!isEditing ? "opacity-70 cursor-not-allowed" : ""}`}
+              >
+                Restaurant
+              </button>
+              <button
+                type="button"
+                onClick={() => isEditing && setStep1({ ...step1, businessModel: BUSINESS_MODEL_HOME_KITCHEN })}
+                className={`px-3 py-1.5 text-xs rounded-full border ${
+                  normalizeBusinessModelLabel(step1.businessModel) === BUSINESS_MODEL_HOME_KITCHEN
+                    ? "bg-primary text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200"
+                } ${!isEditing ? "opacity-70 cursor-not-allowed" : ""}`}
+              >
+                Home Kitchen
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1">
+              Ye label users ko app me source type ke roop me dikhega.
+            </p>
           </div>
           <div>
             <Label className="text-xs text-gray-700">Pure veg restaurant?*</Label>

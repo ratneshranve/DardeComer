@@ -20,6 +20,7 @@ import { toast } from "sonner"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { getSourceMeta } from "@food/utils/sourceType"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import zoopSound from "@food/assets/audio/zomato_sms.mp3"
 const debugLog = (...args) => { }
@@ -76,6 +77,8 @@ const formatFullAddress = (address) => {
 }
 
 const RUPEE_SYMBOL = "\u20B9"
+const DELIVERY_TYPE_HOME = "Home Delivery"
+const DELIVERY_TYPE_TAKE_AWAY = "Take Away"
 const CART_RECIPIENT_DETAILS_STORAGE_KEY = "food-cart-recipient-details-v1"
 const CART_ORDER_NOTE_STORAGE_KEY = "food-cart-order-note-v1"
 
@@ -122,6 +125,15 @@ export default function Cart() {
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [couponCode, setCouponCode] = useState("")
   const [manualCouponCode, setManualCouponCode] = useState("")
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState(() => {
+    try {
+      if (typeof window === "undefined") return DELIVERY_TYPE_HOME
+      const stored = window.localStorage.getItem("cartDeliveryType")
+      return stored === DELIVERY_TYPE_TAKE_AWAY ? DELIVERY_TYPE_TAKE_AWAY : DELIVERY_TYPE_HOME
+    } catch {
+      return DELIVERY_TYPE_HOME
+    }
+  })
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cash")
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
@@ -365,7 +377,18 @@ export default function Cart() {
       : selectedAddress || savedAddress || currentLocationAddress || null
   }, [deliveryAddressMode, currentLocationAddress, selectedAddress, savedAddress])
 
+  const isTakeAwayOrder = selectedDeliveryType === DELIVERY_TYPE_TAKE_AWAY
   const hasSavedAddress = Boolean(defaultAddress && formatFullAddress(defaultAddress))
+  const hasAddressForOrder = isTakeAwayOrder ? true : hasSavedAddress
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return
+      window.localStorage.setItem("cartDeliveryType", selectedDeliveryType)
+    } catch {
+      // ignore persistence errors
+    }
+  }, [selectedDeliveryType])
   const recipientName = String(recipientDetails.name || "").trim() || userProfile?.name || "Your Name"
   const recipientPhone = sanitizeRecipientPhone(recipientDetails.phone || "") || userProfile?.phone || ""
   const selectedAddressCoordinates = defaultAddress?.location?.coordinates
@@ -850,7 +873,7 @@ export default function Cart() {
   // Calculate pricing from backend whenever cart, address, or coupon changes
   useEffect(() => {
     const calculatePricing = async () => {
-      if (cart.length === 0 || !hasSavedAddress) {
+      if (cart.length === 0 || (!isTakeAwayOrder && !hasSavedAddress)) {
         setPricing(null)
         return
       }
@@ -877,7 +900,8 @@ export default function Cart() {
           items,
           restaurantId: resolvedRestaurantId,
           deliveryAddress: defaultAddress,
-          couponCode: resolvedCouponCode
+          couponCode: resolvedCouponCode,
+          deliveryType: selectedDeliveryType
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -904,7 +928,7 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, defaultAddress, appliedCoupon, couponCode, restaurantId])
+  }, [cart, defaultAddress, appliedCoupon, couponCode, restaurantId, isTakeAwayOrder, hasSavedAddress, selectedDeliveryType])
 
   // Fetch wallet balance
   useEffect(() => {
@@ -980,6 +1004,10 @@ export default function Cart() {
   // Use backend pricing if available, otherwise fallback to database fee settings
   const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
   const fallbackDeliveryFee = (() => {
+    if (isTakeAwayOrder) {
+      return 0
+    }
+
     if (appliedCoupon?.freeDelivery) {
       return 0
     }
@@ -1009,7 +1037,7 @@ export default function Cart() {
 
     return Number(feeSettings.deliveryFee || 0)
   })()
-  const deliveryFee = pricing?.deliveryFee || fallbackDeliveryFee
+  const deliveryFee = isTakeAwayOrder ? 0 : (pricing?.deliveryFee || fallbackDeliveryFee)
   const deliveryFeeBreakdown = pricing?.deliveryFeeBreakdown || null
   const hasDistanceDeliveryBreakdown =
     deliveryFeeBreakdown?.source === "distance" &&
@@ -1032,6 +1060,7 @@ export default function Cart() {
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"
+  const restaurantSourceLabel = getSourceMeta(restaurantData || {}).sourceLabel
 
   const handleShare = async () => {
     const restaurantNameStr = restaurantName || companyName || "this restaurant"
@@ -1241,7 +1270,7 @@ export default function Cart() {
     }
 
     // Validate with backend first; only set applied if backend accepts
-    if (cart.length > 0 && hasSavedAddress) {
+    if (cart.length > 0 && (isTakeAwayOrder || hasSavedAddress)) {
       try {
         const items = cart.map(item => ({
           itemId: item.itemId || item.id,
@@ -1260,7 +1289,8 @@ export default function Cart() {
           items,
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: defaultAddress,
-          couponCode: coupon.code
+          couponCode: coupon.code,
+          deliveryType: selectedDeliveryType
         })
 
         const pricingData = response?.data?.data?.pricing
@@ -1288,8 +1318,8 @@ export default function Cart() {
       return
     }
 
-    if (cart.length === 0 || !hasSavedAddress) {
-      toast.error("Add items and delivery address first")
+    if (cart.length === 0 || (!isTakeAwayOrder && !hasSavedAddress)) {
+      toast.error(isTakeAwayOrder ? "Add items first" : "Add items and delivery address first")
       return
     }
 
@@ -1321,7 +1351,8 @@ export default function Cart() {
         items,
         restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
         deliveryAddress: defaultAddress,
-        couponCode: inputCode
+        couponCode: inputCode,
+        deliveryType: selectedDeliveryType
       })
 
       const pricingData = response?.data?.data?.pricing
@@ -1361,7 +1392,7 @@ export default function Cart() {
     setManualCouponCode("")
 
     // Recalculate pricing without coupon
-    if (cart.length > 0 && hasSavedAddress) {
+    if (cart.length > 0 && (isTakeAwayOrder || hasSavedAddress)) {
       try {
         const items = cart.map(item => ({
           itemId: item.itemId || item.id,
@@ -1380,7 +1411,8 @@ export default function Cart() {
           items,
           restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
           deliveryAddress: defaultAddress,
-          couponCode: null
+          couponCode: null,
+          deliveryType: selectedDeliveryType
         })
 
         if (response?.data?.success && response?.data?.data?.pricing) {
@@ -1394,7 +1426,7 @@ export default function Cart() {
 
 
   const handlePlaceOrder = async () => {
-    if (!hasSavedAddress) {
+    if (!isTakeAwayOrder && !hasSavedAddress) {
       toast.error("Please choose a delivery location to continue")
       openLocationSelector()
       return
@@ -1426,6 +1458,7 @@ export default function Cart() {
       debugLog("?? Starting order placement process...")
       debugLog("?? Cart items:", cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price })))
       debugLog("?? Applied coupon:", appliedCoupon?.code || "None")
+      debugLog("?? Delivery mode:", selectedDeliveryType)
       debugLog("?? Delivery address:", defaultAddress?.label || defaultAddress?.city)
 
       // Ensure couponCode is included in pricing
@@ -1626,18 +1659,23 @@ export default function Cart() {
         return;
       }
 
-      const orderPayload = {
-        items: orderItems,
-        address: {
+      const orderAddressPayload = defaultAddress
+        ? {
           ...defaultAddress,
           phone: recipientPhone || defaultAddress?.phone || "",
           name: recipientName,
           fullName: recipientName,
-        },
+        }
+        : undefined
+
+      const orderPayload = {
+        items: orderItems,
+        address: orderAddressPayload,
         customerName: recipientName,
         customerPhone: recipientPhone || defaultAddress?.phone || "",
         restaurantId: finalRestaurantId,
         restaurantName: finalRestaurantName || undefined,
+        deliveryType: selectedDeliveryType,
         pricing: orderPricing,
         note: note || "",
         sendCutlery: sendCutlery !== false,
@@ -1650,6 +1688,7 @@ export default function Cart() {
       debugLog('?? FINAL: Sending order to backend with:', {
         restaurantId: finalRestaurantId,
         restaurantName: finalRestaurantName,
+        deliveryType: selectedDeliveryType,
         itemCount: orderItems.length,
         totalAmount: orderPricing.total,
         paymentMethod: orderPayload.paymentMethod
@@ -1926,10 +1965,22 @@ export default function Cart() {
                 <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
               </Button>
               <div className="min-w-0">
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName}</p>
+                  <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
+                    {restaurantSourceLabel}
+                  </span>
+                </div>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
-                  {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <span className="font-semibold">Location</span>
-                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || defaultAddress?.city || "Select address") : "Select address"}</span>
+                  {isTakeAwayOrder
+                    ? `Pickup in ${restaurantData?.estimatedDeliveryTime || "10-15 mins"}`
+                    : `${restaurantData?.estimatedDeliveryTime || "10-15 mins"} to `}
+                  {!isTakeAwayOrder && <span className="font-semibold">Location</span>}
+                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">
+                    {isTakeAwayOrder
+                      ? (restaurantData?.name || restaurantName || "Restaurant")
+                      : (defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || defaultAddress?.city || "Select address") : "Select address")}
+                  </span>
                 </p>
               </div>
             </div>
@@ -2259,6 +2310,29 @@ export default function Cart() {
                 )}
               </div>
 
+              {/* Delivery Type */}
+              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
+                <p className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Order Type</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {[DELIVERY_TYPE_HOME, DELIVERY_TYPE_TAKE_AWAY].map((type) => {
+                    const active = selectedDeliveryType === type
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setSelectedDeliveryType(type)}
+                        className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${active
+                          ? "border-[#001A94] bg-blue-50 text-[#001A94] dark:bg-blue-900/20"
+                          : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                          }`}
+                      >
+                        {type}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               {/* Delivery Time */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="flex items-start gap-3 md:gap-4">
@@ -2267,7 +2341,8 @@ export default function Cart() {
                   </div>
                   <div className="flex-1">
                     <p className="text-base text-gray-800 dark:text-gray-200">
-                      Delivery in <span className="text-green-600 font-bold">{restaurantData?.estimatedDeliveryTime || "15-20 mins"}</span>
+                      {isTakeAwayOrder ? "Pickup in " : "Delivery in "}
+                      <span className="text-green-600 font-bold">{restaurantData?.estimatedDeliveryTime || "15-20 mins"}</span>
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
                       Want this later?
@@ -2316,22 +2391,32 @@ export default function Cart() {
                 )}
               </div>
 
-              {/* Delivery Address */}
+              {/* Delivery Address / Pickup */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="flex items-start justify-between w-full text-left">
                   <div className="flex items-start gap-4 flex-1">
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-xl mt-0.5">
-                      <MapPin className="h-5 w-5 text-[#001A94]" />
+                      {isTakeAwayOrder ? (
+                        <Building2 className="h-5 w-5 text-[#001A94]" />
+                      ) : (
+                        <MapPin className="h-5 w-5 text-[#001A94]" />
+                      )}
                     </div>
                     <div className="flex-1">
                         <div className="flex flex-col">
                           <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
-                            Delivery at{" "}
-                            <span className="font-semibold">
-                              {deliveryAddressMode === "current" ? "Current location" : "Location"}
-                            </span>
+                            {isTakeAwayOrder ? (
+                              <>Pickup from <span className="font-semibold">Restaurant</span></>
+                            ) : (
+                              <>Delivery at <span className="font-semibold">{deliveryAddressMode === "current" ? "Current location" : "Location"}</span></>
+                            )}
                           </p>
-                          {deliveryAddressMode === "current" ? (
+                          {isTakeAwayOrder ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 pr-4">
+                              {restaurantData?.name || restaurantName || "Restaurant"}
+                              {restaurantData?.city ? `, ${restaurantData.city}` : ""}
+                            </p>
+                          ) : deliveryAddressMode === "current" ? (
                             <div className="mt-1">
                               {currentLocationLoading || !currentLocationAddress ? (
                                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 animate-pulse">
@@ -2357,13 +2442,13 @@ export default function Cart() {
                             </p>
                           )}
                         </div>
-                        {!hasSavedAddress && (
+                        {!isTakeAwayOrder && !hasSavedAddress && (
                           <p className="text-sm text-[#001A94] mt-2 font-medium">
                             Select a delivery location to continue
                           </p>
                         )}
                         {/* Address Selection Buttons */}
-                        <div className="flex flex-wrap gap-2 mt-3">
+                        {!isTakeAwayOrder && <div className="flex flex-wrap gap-2 mt-3">
                           {["Home", "Work", "Other"].map((label) => {
                             const normalizedLabel = normalizeAddressLabel(label)
                             const addressExists = addresses.some(addr => normalizeAddressLabel(addr.label) === normalizedLabel)
@@ -2385,8 +2470,8 @@ export default function Cart() {
                               </button>
                             )
                           })}
-                        </div>
-                        {addresses.length > 0 && (
+                        </div>}
+                        {!isTakeAwayOrder && addresses.length > 0 && (
                           <div className="mt-4 space-y-3">
                             {addresses.map((address) => {
                               const addressId = getAddressId(address)
@@ -2427,14 +2512,16 @@ export default function Cart() {
                         )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={openLocationSelector}
-                    className="p-2 text-[#001A94] bg-blue-50 rounded-full hover:bg-blue-100 transition-colors dark:bg-blue-900/20 dark:hover:bg-blue-900/40"
-                    aria-label="Open location selector"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
+                  {!isTakeAwayOrder && (
+                    <button
+                      type="button"
+                      onClick={openLocationSelector}
+                      className="p-2 text-[#001A94] bg-blue-50 rounded-full hover:bg-blue-100 transition-colors dark:bg-blue-900/20 dark:hover:bg-blue-900/40"
+                      aria-label="Open location selector"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2539,7 +2626,7 @@ export default function Cart() {
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
+                      <span className="text-gray-600 dark:text-gray-400">{isTakeAwayOrder ? "Pickup Fee" : "Delivery Fee"}</span>
                       <span className={deliveryFee === 0 ? "text-[#001A94] font-medium" : "text-gray-800 dark:text-gray-200 font-medium"}>
                         {deliveryFee === 0 ? "FREE" : `${RUPEE_SYMBOL}${deliveryFee.toFixed(2)}`}
                       </span>
@@ -2635,7 +2722,7 @@ export default function Cart() {
               <div className="flex items-center gap-1 mx-auto text-sm md:text-lg tracking-wide">
                 {isPlacingOrder
                   ? "Processing..."
-                  : !hasSavedAddress
+                  : !hasAddressForOrder
                     ? "Select Address"
                     : "Place Order"}
                 <div className="flex align-center h-full">
@@ -2678,21 +2765,29 @@ export default function Cart() {
                     </div>
                   </div>
 
-                  {/* Delivery Address */}
+                  {/* Delivery Address / Pickup */}
                   <div className="flex items-center gap-4 mb-8">
                     <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
-                      <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path d="M9 22V12h6v10" />
-                      </svg>
+                      {isTakeAwayOrder ? (
+                        <Building2 className="w-7 h-7 text-gray-600" />
+                      ) : (
+                        <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path d="M9 22V12h6v10" />
+                        </svg>
+                      )}
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-gray-900">Delivering to Location</p>
+                      <p className="text-lg font-semibold text-gray-900">{isTakeAwayOrder ? "Pickup From Restaurant" : "Delivering to Location"}</p>
                       <p className="text-sm text-gray-600 mt-1">
-                        {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address") : "Add address"}
+                        {isTakeAwayOrder
+                          ? (restaurantData?.name || restaurantName || "Restaurant")
+                          : (defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address") : "Add address")}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {defaultAddress ? (formatFullAddress(defaultAddress) || "Address") : "Address"}
+                        {isTakeAwayOrder
+                          ? (restaurantData?.city || "")
+                          : (defaultAddress ? (formatFullAddress(defaultAddress) || "Address") : "Address")}
                       </p>
                     </div>
                   </div>

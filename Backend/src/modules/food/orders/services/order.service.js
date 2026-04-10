@@ -51,6 +51,46 @@ import {
   isStatusAdvance,
 } from './order.helpers.js';
 
+function normalizeDeliveryType(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'take away' || raw === 'takeaway' || raw === 'pickup') {
+    return 'Take Away';
+  }
+  return 'Home Delivery';
+}
+
+function buildTakeAwayAddressFallback(dto, restaurant) {
+  const restLocation = restaurant?.location || {};
+  const coords = Array.isArray(restLocation.coordinates)
+    ? restLocation.coordinates
+    : null;
+  return {
+    label: dto?.address?.label || 'Other',
+    name: dto?.address?.name || dto?.address?.fullName || dto?.customerName || '',
+    fullName: dto?.address?.fullName || dto?.address?.name || dto?.customerName || '',
+    street:
+      dto?.address?.street ||
+      restLocation?.address ||
+      restLocation?.formattedAddress ||
+      restaurant?.addressLine1 ||
+      restaurant?.restaurantName ||
+      'Restaurant Pickup',
+    additionalDetails:
+      dto?.address?.additionalDetails ||
+      restaurant?.addressLine2 ||
+      restaurant?.landmark ||
+      '',
+    city: dto?.address?.city || restLocation?.city || restaurant?.city || 'N/A',
+    state: dto?.address?.state || restLocation?.state || restaurant?.state || 'N/A',
+    zipCode: dto?.address?.zipCode || restLocation?.pincode || restaurant?.pincode || '',
+    phone: dto?.address?.phone || dto?.customerPhone || '',
+    location:
+      Array.isArray(coords) && coords.length === 2
+        ? { type: 'Point', coordinates: coords }
+        : undefined,
+  };
+}
+
 
 
 
@@ -128,7 +168,7 @@ export async function calculateOrder(userId, dto) {
 // ----- Create order -----
 export async function createOrder(userId, dto) {
   const restaurant = await FoodRestaurant.findById(dto.restaurantId)
-    .select("status restaurantName zoneId location isAcceptingOrders")
+    .select("status restaurantName businessModel zoneId location isAcceptingOrders addressLine1 addressLine2 city state pincode landmark")
     .lean();
   if (!restaurant) throw new ValidationError("Restaurant not found");
   if (restaurant.status !== "approved")
@@ -139,21 +179,25 @@ export async function createOrder(userId, dto) {
 
   const settings = await getDispatchSettings();
   const dispatchMode = settings.dispatchMode;
+  const deliveryType = normalizeDeliveryType(dto?.deliveryType);
+  const isTakeAway = deliveryType === 'Take Away';
 
-  const deliveryAddress = {
-    label: dto.address?.label || "Home",
-    name: dto.address?.name || dto.address?.fullName || dto.customerName || "",
-    fullName: dto.address?.fullName || dto.address?.name || dto.customerName || "",
-    street: dto.address?.street || "",
-    additionalDetails: dto.address?.additionalDetails || "",
-    city: dto.address?.city || "",
-    state: dto.address?.state || "",
-    zipCode: dto.address?.zipCode || "",
-    phone: dto.address?.phone || "",
-    location: dto.address?.location?.coordinates
-      ? { type: "Point", coordinates: dto.address.location.coordinates }
-      : undefined,
-  };
+  const deliveryAddress = isTakeAway
+    ? buildTakeAwayAddressFallback(dto, restaurant)
+    : {
+        label: dto.address?.label || "Home",
+        name: dto.address?.name || dto.address?.fullName || dto.customerName || "",
+        fullName: dto.address?.fullName || dto.address?.name || dto.customerName || "",
+        street: dto.address?.street || "",
+        additionalDetails: dto.address?.additionalDetails || "",
+        city: dto.address?.city || "",
+        state: dto.address?.state || "",
+        zipCode: dto.address?.zipCode || "",
+        phone: dto.address?.phone || "",
+        location: dto.address?.location?.coordinates
+          ? { type: "Point", coordinates: dto.address.location.coordinates }
+          : undefined,
+      };
 
   const paymentMethod =
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
@@ -177,6 +221,9 @@ export async function createOrder(userId, dto) {
     total: Number(dto.pricing?.total ?? 0),
     currency: String(dto.pricing?.currency || "INR"),
   };
+  if (isTakeAway) {
+    normalizedPricing.deliveryFee = 0;
+  }
   const computedTotal = Math.max(
     0,
     (Number.isFinite(normalizedPricing.subtotal)
@@ -202,6 +249,9 @@ export async function createOrder(userId, dto) {
   ) {
     normalizedPricing.total = computedTotal;
   }
+  if (isTakeAway) {
+    normalizedPricing.total = computedTotal;
+  }
 
   const payment = {
     method: paymentMethod,
@@ -213,6 +263,7 @@ export async function createOrder(userId, dto) {
 
   let distanceKm = null;
   if (
+    !isTakeAway &&
     restaurant.location?.coordinates?.length === 2 &&
     dto.address?.location?.coordinates?.length === 2
   ) {
@@ -226,7 +277,7 @@ export async function createOrder(userId, dto) {
     );
   }
 
-  const riderEarning = await getRiderEarning(distanceKm);
+  const riderEarning = isTakeAway ? 0 : await getRiderEarning(distanceKm);
   
   // Calculate restaurant commission from subtotal
   const { commissionAmount: restaurantCommission } = await foodTransactionService.getRestaurantCommissionSnapshot({
@@ -267,6 +318,7 @@ export async function createOrder(userId, dto) {
         note: "Order placed",
       },
     ],
+    deliveryType,
     note: dto.note || "",
     sendCutlery: dto.sendCutlery !== false,
     deliveryFleet: dto.deliveryFleet || "standard",
@@ -276,6 +328,12 @@ export async function createOrder(userId, dto) {
   });
 
   let razorpayPayload = null;
+
+  if (paymentMethod === "razorpay" && !isRazorpayConfigured()) {
+    throw new ValidationError(
+      "Online payment is temporarily unavailable. Razorpay is not configured on server.",
+    );
+  }
 
   if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
     const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
@@ -370,6 +428,7 @@ export async function createOrder(userId, dto) {
 
   if (
     dispatchMode === "auto" &&
+    !isTakeAway &&
     (isCash ||
       order.payment.status === "paid" ||
       order.payment.status === "cod_pending")
@@ -476,7 +535,7 @@ export async function listOrdersUser(userId, query) {
     FoodOrder.find(filter)
       .populate(
         "restaurantId",
-        "restaurantName profileImage area city location rating totalRatings",
+        "restaurantName businessModel profileImage area city location rating totalRatings",
       )
       .populate("dispatch.deliveryPartnerId", "name phone rating totalRatings")
       .sort({ createdAt: -1 })
@@ -502,7 +561,7 @@ export async function getOrderById(
   const order = await FoodOrder.findOne(identity)
     .populate(
       "restaurantId",
-      "restaurantName ownerPhone profileImage area city location rating totalRatings primaryContactNumber",
+      "restaurantName businessModel ownerPhone profileImage area city location rating totalRatings primaryContactNumber",
     )
     .populate("dispatch.deliveryPartnerId", "name fullName phone phoneNumber rating totalRatings profileImage avatar")
     .populate("userId", "name fullName phone email")
@@ -558,13 +617,12 @@ export async function getDropOtpUser(orderId, userId) {
   if (!order) throw new NotFoundError("Order not found");
 
   const phase = order.deliveryState?.currentPhase;
-  const status = order.orderStatus;
-  const eligiblePhases = ["at_drop", "en_route_to_delivery"];
-  const isEligible = eligiblePhases.includes(phase) || status === "picked_up";
+  const deliveryStateStatus = order.deliveryState?.status;
+  const isEligible = phase === "at_drop" || deliveryStateStatus === "reached_drop";
 
   if (!isEligible) {
     throw new ValidationError(
-      "Rider is still at the restaurant. Wait for them to pick up your order to see the OTP."
+      "OTP will be available once the delivery partner arrives at your location."
     );
   }
 
@@ -630,9 +688,9 @@ export async function resyncState(userId, role) {
 
     if (order) {
       const out = normalizeOrderForClient(order);
-      // Re-add handover OTP if order is picked up
+      // Re-add handover OTP only after rider reaches drop.
       if (
-        (order.deliveryState?.currentPhase === "at_drop" || order.orderStatus === "picked_up") &&
+        (order.deliveryState?.currentPhase === "at_drop" || order.deliveryState?.status === "reached_drop") &&
         !order.deliveryVerification?.dropOtp?.verified &&
         order.deliveryOtp
       ) {
@@ -1367,7 +1425,7 @@ export async function listOrdersAdmin(query) {
     FoodOrder.find(filter)
       .select("+deliveryOtp")
       .populate("userId", "name phone email")
-      .populate("restaurantId", "restaurantName area city ownerPhone")
+      .populate("restaurantId", "restaurantName businessModel area city ownerPhone")
       .populate("dispatch.deliveryPartnerId", "name phone")
       .sort({ createdAt: -1 })
       .skip(skip)

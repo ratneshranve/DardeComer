@@ -5,6 +5,7 @@ import { Heart, Bookmark, Star, Clock } from "lucide-react";
 import { Card, CardContent } from "@food/components/ui/card";
 import { Badge } from "@food/components/ui/badge";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
+import { getSourceMeta } from "@food/utils/sourceType";
 import RestaurantImageCarousel from "@food/components/user/restaurantImage"; // assuming this is where it's correctly from, wait, I need to check exports
 
 const HomeRestaurantCard = React.memo(({ 
@@ -27,6 +28,7 @@ const HomeRestaurantCard = React.memo(({
     new Date(availabilityTick),
     { ignoreOperationalStatus: true }
   );
+  const sourceMeta = getSourceMeta(restaurant);
 
   const handleToggleFavorite = useCallback((e) => {
     e.preventDefault();
@@ -213,6 +215,11 @@ const HomeRestaurantCard = React.memo(({
                       <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold line-clamp-1 mt-1 tracking-wide uppercase">
                         {restaurant.cuisine}
                       </p>
+                      <div className="mt-2">
+                        <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 text-[10px] font-semibold">
+                          {sourceMeta.sourceLabel}
+                        </Badge>
+                      </div>
                     </div>
                     <motion.div
                       className="flex-shrink-0 bg-gradient-to-tr from-green-600 to-green-500 shadow-md shadow-green-600/30 text-white px-2.5 py-1.5 rounded-[10px] flex items-center gap-1.5"

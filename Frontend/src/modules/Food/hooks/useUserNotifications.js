@@ -76,6 +76,9 @@ export const useUserNotifications = () => {
       debugLog('✅ User Socket connected, userId:', userId);
       setIsConnected(true);
       if (typeof window !== 'undefined') window.orderSocketConnected = true;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('orderSocketConnectionChanged', { detail: { connected: true } }));
+      }
       // Backend auto-joins 'user:userId' room based on role/token in config/socket.js
     });
 
@@ -87,10 +90,15 @@ export const useUserNotifications = () => {
 
       // Optional: Show toast for important updates (Cancel, Ready, etc.)
       const isImportant = String(data.orderStatus).includes('cancel') || ['ready_for_pickup', 'ready', 'confirmed'].includes(data.orderStatus);
-      if (isImportant) {
+      const isOrderTrackingPage =
+        typeof window !== 'undefined' &&
+        /^\/food\/user\/orders\/[^/]+/i.test(String(window.location?.pathname || ''));
+      if (isImportant && !isOrderTrackingPage) {
+        const toastId = `user-order-status-${String(data.orderMongoId || data.orderId || '')}`;
         toast.message(title, {
+          id: toastId,
           description: message,
-          duration: 10000
+          duration: 3500
         });
       }
 
@@ -129,9 +137,11 @@ export const useUserNotifications = () => {
       );
       const title = orderId ? `Order ${orderId}` : 'Delivery OTP';
       const parts = [message, otp ? `OTP: ${otp}` : ''].filter(Boolean);
+      const toastId = `delivery-drop-otp-${orderId || 'unknown'}`;
       toast.message(title, {
+        id: toastId,
         description: parts.join(' — ') || 'Handover OTP from your delivery partner.',
-        duration: 90_000
+        duration: 7000
       });
     });
 
@@ -149,12 +159,18 @@ export const useUserNotifications = () => {
       }
       setIsConnected(false);
       if (typeof window !== 'undefined') window.orderSocketConnected = false;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('orderSocketConnectionChanged', { detail: { connected: false } }));
+      }
     });
 
     socketRef.current.on('disconnect', (reason) => {
       debugLog('🔌 Socket disconnected:', reason);
       setIsConnected(false);
       if (typeof window !== 'undefined') window.orderSocketConnected = false;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('orderSocketConnectionChanged', { detail: { connected: false } }));
+      }
     });
 
     return () => {

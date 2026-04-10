@@ -68,12 +68,26 @@ const getAllOrdersTimestamp = (order) =>
   order?.createdAt ||
   new Date().toISOString();
 
+const getOrderTypeLabel = (order) => {
+  const deliveryType = String(order?.deliveryType || '').trim().toLowerCase();
+  if (deliveryType === 'take away' || deliveryType === 'takeaway' || deliveryType === 'pickup') {
+    return 'Take Away';
+  }
+  if (deliveryType === 'dine in' || deliveryType === 'dine-in') {
+    return 'Dine In';
+  }
+  if (deliveryType) {
+    return String(order.deliveryType);
+  }
+  return order?.deliveryFleet === 'standard' ? 'Home Delivery' : 'Express Delivery';
+};
+
 const transformOrderForList = (order) => ({
   orderId: order.orderId || order._id,
   mongoId: order._id,
   status: order.status || "pending",
   customerName: order.userId?.name || order.customerName || "Customer",
-  type: "Home Delivery",
+  type: getOrderTypeLabel(order),
   tableOrToken: null,
   timePlaced: new Date(getAllOrdersTimestamp(order)).toLocaleDateString(
     "en-US",
@@ -125,7 +139,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
             mongoId: order._id,
             status: order.status || "delivered",
             customerName: order.userId?.name || order.customerName || "Customer",
-            type: "Home Delivery",
+            type: getOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
@@ -331,7 +345,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
             mongoId: order._id,
             status: order.status || "cancelled",
             customerName: order.userId?.name || order.customerName || "Customer",
-            type: "Home Delivery",
+            type: getOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
@@ -662,6 +676,8 @@ function AllOrders({ onSelectOrder, onCancel }) {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [markingReadyOrderIds, setMarkingReadyOrderIds] = useState({});
+  const [completingTakeAwayOrderIds, setCompletingTakeAwayOrderIds] =
+    useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -753,6 +769,46 @@ function AllOrders({ onSelectOrder, onCancel }) {
     }
   };
 
+  const handleCompleteTakeAway = async ({ orderId, mongoId, customerName }) => {
+    const orderKey = mongoId || orderId;
+    if (!orderKey || completingTakeAwayOrderIds[orderKey]) return;
+
+    try {
+      setCompletingTakeAwayOrderIds((prev) => ({ ...prev, [orderKey]: true }));
+      await restaurantAPI.updateOrderStatus(orderKey, { orderStatus: "delivered" });
+      setOrders((prev) =>
+        prev
+          .map((order) =>
+            (order.mongoId || order.orderId) === orderKey
+              ? {
+                  ...order,
+                  status: "delivered",
+                  eta: null,
+                  sortTimestamp: Date.now(),
+                }
+              : order,
+          )
+          .sort((a, b) => {
+            const priorityDiff =
+              (allOrdersStatusPriority[a.status] ?? 999) -
+              (allOrdersStatusPriority[b.status] ?? 999);
+            if (priorityDiff !== 0) return priorityDiff;
+            return b.sortTimestamp - a.sortTimestamp;
+          }),
+      );
+      toast.success(
+        `Take Away order ${orderId} completed${customerName ? ` for ${customerName}` : ""}`,
+      );
+    } catch (error) {
+      debugError("Error completing takeaway order from All orders:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to complete takeaway order",
+      );
+    } finally {
+      setCompletingTakeAwayOrderIds((prev) => ({ ...prev, [orderKey]: false }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="pt-4 pb-6">
@@ -813,8 +869,16 @@ function AllOrders({ onSelectOrder, onCancel }) {
                 onMarkReady={
                   normalizedStatus === "preparing" ? handleMarkReady : undefined
                 }
+                onCompleteTakeAway={
+                  normalizedStatus === "ready"
+                    ? handleCompleteTakeAway
+                    : undefined
+                }
                 isMarkingReady={Boolean(
                   markingReadyOrderIds[order.mongoId || order.orderId],
+                )}
+                isCompletingTakeAway={Boolean(
+                  completingTakeAwayOrderIds[order.mongoId || order.orderId],
                 )}
               />
             );
@@ -2757,11 +2821,14 @@ function OrderCard({
   onSelect,
   onCancel,
   onMarkReady,
+  onCompleteTakeAway,
   isMarkingReady = false,
+  isCompletingTakeAway = false,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
   const isReady = normalizedStatus === "ready";
   const isPreparing = normalizedStatus === "preparing";
+  const isTakeAwayType = String(type || '').trim().toLowerCase() === 'take away';
   const statusLabel = String(status || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -2857,7 +2924,7 @@ function OrderCard({
                 {tableOrToken ? ` • ${tableOrToken}` : ""}
               </p>
               {/* Delivery Assignment Status - Only show for active orders */}
-              {(isPreparing || isReady || normalizedStatus === "confirmed") && (
+              {!isTakeAwayType && (isPreparing || isReady || normalizedStatus === "confirmed") && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
@@ -2893,6 +2960,18 @@ function OrderCard({
                   disabled={isMarkingReady}
                   className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-green-600 text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
                   {isMarkingReady ? "Marking..." : "Mark Ready"}
+                </button>
+              )}
+              {isReady && isTakeAwayType && onCompleteTakeAway && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCompleteTakeAway({ orderId, mongoId, customerName });
+                  }}
+                  disabled={isCompletingTakeAway}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+                  {isCompletingTakeAway ? "Completing..." : "Complete Pickup"}
                 </button>
               )}
               {/* Hide ETA for ready orders */}
@@ -2951,10 +3030,7 @@ function PreparingOrders({
               mongoId: order._id,
               status: order.status || "preparing",
               customerName: order.userId?.name || "Customer",
-              type:
-                order.deliveryFleet === "standard"
-                  ? "Home Delivery"
-                  : "Express Delivery",
+              type: getOrderTypeLabel(order),
               tableOrToken: null,
               timePlaced: new Date(order.createdAt).toLocaleTimeString(
                 "en-US",
@@ -3237,6 +3313,7 @@ function PreparingOrders({
 function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [completingTakeAwayOrderIds, setCompletingTakeAwayOrderIds] = useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -3259,10 +3336,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
             mongoId: order._id,
             status: order.status || "ready",
             customerName: order.userId?.name || "Customer",
-            type:
-              order.deliveryFleet === "standard"
-                ? "Home Delivery"
-                : "Express Delivery",
+            type: getOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
@@ -3312,6 +3386,32 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
     };
   }, [refreshToken]); // Re-fetch only when parent requests it
 
+  const handleCompleteTakeAway = async ({ orderId, mongoId, customerName }) => {
+    const orderKey = mongoId || orderId;
+    if (!orderKey || completingTakeAwayOrderIds[orderKey]) return;
+
+    try {
+      setCompletingTakeAwayOrderIds((prev) => ({ ...prev, [orderKey]: true }));
+      await restaurantAPI.updateOrderStatus(orderKey, { orderStatus: 'delivered' });
+      setOrders((prev) =>
+        prev.filter((order) => (order.mongoId || order.orderId) !== orderKey),
+      );
+      toast.success(
+        `Take Away order ${orderId} completed${customerName ? ` for ${customerName}` : ''}`,
+      );
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || 'Failed to complete takeaway order';
+      toast.error(message);
+    } finally {
+      setCompletingTakeAwayOrderIds((prev) => {
+        const next = { ...prev };
+        delete next[orderKey];
+        return next;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="pt-4 pb-6">
@@ -3343,6 +3443,10 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
               key={order.orderId || order.mongoId}
               {...order}
               onSelect={onSelectOrder}
+              onCompleteTakeAway={handleCompleteTakeAway}
+              isCompletingTakeAway={Boolean(
+                completingTakeAwayOrderIds[order.mongoId || order.orderId],
+              )}
             />
           ))}
         </div>
@@ -3377,10 +3481,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
             mongoId: order._id,
             status: order.status || "out_for_delivery",
             customerName: order.userId?.name || "Customer",
-            type:
-              order.deliveryFleet === "standard"
-                ? "Home Delivery"
-                : "Express Delivery",
+            type: getOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",

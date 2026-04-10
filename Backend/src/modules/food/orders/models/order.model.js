@@ -274,6 +274,11 @@ const orderSchema = new mongoose.Schema(
             type: orderRatingsSchema,
             default: () => ({})
         },
+        deliveryType: {
+            type: String,
+            enum: ['Home Delivery', 'Take Away'],
+            default: 'Home Delivery'
+        },
         note: { type: String, default: '', trim: true },
         sendCutlery: { type: Boolean, default: true },
         deliveryFleet: { type: String, default: 'standard', trim: true },

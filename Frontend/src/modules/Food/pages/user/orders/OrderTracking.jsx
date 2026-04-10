@@ -35,7 +35,6 @@ import { useLocation as useUserLocation } from "@food/hooks/useLocation"
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap"
 import { orderAPI, restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
-import { useUserNotifications } from "@food/hooks/useUserNotifications"
 import circleIcon from "@food/assets/circleicon.png"
 import { RESTAURANT_PIN_SVG, CUSTOMER_PIN_SVG, RIDER_BIKE_SVG } from "@food/constants/mapIcons"
 
@@ -86,7 +85,7 @@ const AnimatedCheckmark = ({ delay = 0 }) => (
 )
 
 // Real Delivery Map Component with User Live Location
-const DeliveryMap = memo(({ orderId, order, isVisible, fallbackCustomerCoords = null, userLiveCoords = null, userLocationAccuracy = null, onEtaUpdate = null }) => {
+const DeliveryMap = memo(({ orderId, order, isVisible, isTakeAwayOrder = false, fallbackCustomerCoords = null, userLiveCoords = null, userLocationAccuracy = null, onEtaUpdate = null }) => {
   const toPointFromGeoJSON = (coords) => {
     if (!Array.isArray(coords) || coords.length < 2) return null;
     const lng = Number(coords[0]);
@@ -155,7 +154,11 @@ const DeliveryMap = memo(({ orderId, order, isVisible, fallbackCustomerCoords = 
     order?.id
   ].filter(Boolean), [order?.orderId, order?.mongoId, order?._id, orderId, order?.id]);
 
-  if (!isVisible || !orderId || !order || !restaurantCoords || !customerCoords) {
+  const effectiveCustomerCoords = isTakeAwayOrder
+    ? (restaurantCoords || customerCoords)
+    : customerCoords;
+
+  if (!isVisible || !orderId || !order || !restaurantCoords || !effectiveCustomerCoords) {
     return (
       <div
         className="relative min-h-[450px] bg-gradient-to-b from-gray-100 to-gray-200"
@@ -173,7 +176,7 @@ const DeliveryMap = memo(({ orderId, order, isVisible, fallbackCustomerCoords = 
         orderId={orderId}
         orderTrackingIds={orderTrackingIdsList}
         restaurantCoords={restaurantCoords}
-        customerCoords={customerCoords}
+        customerCoords={effectiveCustomerCoords}
 
         userLiveCoords={userLiveCoords}
         userLocationAccuracy={userLocationAccuracy}
@@ -338,6 +341,7 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     subtotal: apiOrder?.pricing?.subtotal || apiOrder?.subtotal || 0,
     paymentMethod: apiOrder?.paymentMethod || apiOrder?.payment?.method || previousOrder?.paymentMethod || null,
     payment: apiOrder?.payment || previousOrder?.payment || null,
+    deliveryType: apiOrder?.deliveryType || previousOrder?.deliveryType || 'Home Delivery',
     // Preserve delivery OTP code received via socket event.
     // API responses intentionally strip the secret code for security,
     // so without preserving it the UI would lose the OTP on each poll refresh.
@@ -394,6 +398,8 @@ function mapOrderToTrackingUiStatus(orderLike) {
   if (!orderLike) return "placed"
   const statusRaw = orderLike.status || orderLike.orderStatus
   const phase = orderLike.deliveryState?.currentPhase
+  const deliveryTypeRaw = String(orderLike.deliveryType || '').trim().toLowerCase()
+  const isTakeAway = deliveryTypeRaw === 'take away' || deliveryTypeRaw === 'takeaway' || deliveryTypeRaw === 'pickup'
 
   // Terminal states handled first
   if (isFoodOrderCancelledStatus(statusRaw)) return "cancelled"
@@ -404,8 +410,8 @@ function mapOrderToTrackingUiStatus(orderLike) {
   
   if (phase === "reached_drop" || phase === "at_drop" || statusRaw === "at_drop") return "at_drop"
   if (phase === "en_route_to_delivery" || statusRaw === "picked_up" || statusRaw === "out_for_delivery") return "on_way"
-  if (phase === "at_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "at_pickup"
-  if (phase === "en_route_to_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "assigned"
+  if (!isTakeAway && phase === "at_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "at_pickup"
+  if (!isTakeAway && phase === "en_route_to_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "assigned"
 
   // Fallback to basic status mapping
   return mapBackendOrderStatusToUi(statusRaw)
@@ -432,8 +438,9 @@ export default function OrderTracking() {
   const { getOrderById } = useOrders()
   const { profile, getDefaultAddress } = useProfile()
   const { location: userLiveLocation } = useUserLocation()
-
-  const { isConnected: isSocketConnected } = useUserNotifications()
+  const [isSocketConnected, setIsSocketConnected] = useState(
+    () => (typeof window !== 'undefined' ? Boolean(window.orderSocketConnected) : false)
+  )
   
   // State for order data
   const [order, setOrder] = useState(null)
@@ -465,6 +472,15 @@ export default function OrderTracking() {
   // Kept separately so UI still renders even if the event arrives
   // before the order API poll populates `order` state.
   const [socketDropOtpCode, setSocketDropOtpCode] = useState(null)
+
+  // Socket connection is managed globally in UserLayout; consume status changes here.
+  useEffect(() => {
+    const handleSocketConnectionChanged = (event) => {
+      setIsSocketConnected(Boolean(event?.detail?.connected))
+    }
+    window.addEventListener('orderSocketConnectionChanged', handleSocketConnectionChanged)
+    return () => window.removeEventListener('orderSocketConnectionChanged', handleSocketConnectionChanged)
+  }, [])
 
 
   // OTP received via socket event (deliveryDropOtp)
@@ -784,6 +800,12 @@ export default function OrderTracking() {
     return code ? String(code) : null
   }, [order?.deliveryVerification?.dropOtp?.code, socketDropOtpCode])
 
+  const isRiderAtDrop = useMemo(() => {
+    const phase = String(order?.deliveryState?.currentPhase || '').toLowerCase()
+    const deliveryStateStatus = String(order?.deliveryState?.status || '').toLowerCase()
+    return phase === 'at_drop' || deliveryStateStatus === 'reached_drop'
+  }, [order?.deliveryState?.currentPhase, order?.deliveryState?.status])
+
   useEffect(() => {
     if (!isEditWindowOpen) return
     const interval = setInterval(() => {
@@ -938,12 +960,25 @@ export default function OrderTracking() {
       debugLog('?? Order status notification received:', { message, status, idMatches });
 
       if (idMatches) {
+        const nextStatusRaw = payload.orderStatus || status
         const next = mapOrderToTrackingUiStatus({
-          status,
-          orderStatus: payload.orderStatus || status,
+          status: nextStatusRaw,
+          orderStatus: nextStatusRaw,
           deliveryState: payload.deliveryState,
         });
         setOrderStatus(next);
+
+        // Apply socket status to visible order immediately, without waiting for poll.
+        setOrder((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            status: nextStatusRaw || prev.status,
+            orderStatus: nextStatusRaw || prev.orderStatus,
+            ...(payload.deliveryState ? { deliveryState: payload.deliveryState } : {}),
+            ...(payload.deliveryVerification ? { deliveryVerification: payload.deliveryVerification } : {}),
+          }
+        })
 
         // Pull latest order state without refresh spam on bursty socket events.
         const now = Date.now();
@@ -953,11 +988,13 @@ export default function OrderTracking() {
         }
       }
 
-      // Show notification toast
-      if (message) {
+      // Show notification toast only for this order's matching events.
+      if (idMatches && message) {
+        const toastId = `order-tracking-${String(orderId)}`
         toast.success(message, {
+          id: toastId,
           duration: 5000,
-          icon: '???',
+          icon: '🔔',
           position: 'top-center',
           description: estimatedDeliveryTime
             ? `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes`
@@ -1239,6 +1276,31 @@ export default function OrderTracking() {
     orderStatus === "delivered" ||
     order?.status === "delivered" ||
     Boolean(order?.deliveredAt)
+  const deliveryTypeRaw = String(order?.deliveryType || '').trim().toLowerCase()
+  const isTakeAwayOrder =
+    deliveryTypeRaw === 'take away' ||
+    deliveryTypeRaw === 'takeaway' ||
+    deliveryTypeRaw === 'pickup'
+
+  const statusSubtitle = (() => {
+    if (!isTakeAwayOrder) return currentStatus.subtitle
+    if (orderStatus === 'placed') return 'Waiting for restaurant to accept'
+    if (orderStatus === 'confirmed') return 'Restaurant accepted your takeaway order'
+    if (orderStatus === 'preparing') return 'Restaurant is preparing your order'
+    if (orderStatus === 'ready' || orderStatus === 'at_pickup') return 'Your order is ready for pickup'
+    if (orderStatus === 'on_way') return 'Pickup in progress'
+    if (orderStatus === 'delivered') return 'Order picked up successfully'
+    return currentStatus.subtitle
+  })()
+  const statusTitle = (() => {
+    if (!isTakeAwayOrder) return currentStatus.title
+    if (orderStatus === 'assigned') return 'Pickup partner assignment'
+    if (orderStatus === 'at_pickup') return 'Ready for pickup'
+    if (orderStatus === 'ready') return 'Ready for pickup'
+    if (orderStatus === 'on_way') return 'Pickup in progress'
+    if (orderStatus === 'at_drop') return 'Pickup completed'
+    return currentStatus.title
+  })()
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#0a0a0a]">
@@ -1359,6 +1421,7 @@ export default function OrderTracking() {
           orderId={orderId}
           order={order}
           isVisible={order !== null}
+          isTakeAwayOrder={isTakeAwayOrder}
           fallbackCustomerCoords={fallbackCustomerCoords}
           userLiveCoords={userLiveCoords}
           userLocationAccuracy={userLiveLocation?.accuracy ?? null}
@@ -1400,7 +1463,7 @@ export default function OrderTracking() {
           </motion.div>
         )}
 
-        {customerDeliveryOtp && orderStatus !== 'delivered' && orderStatus !== 'cancelled' && (
+        {!isTakeAwayOrder && isRiderAtDrop && customerDeliveryOtp && orderStatus !== 'delivered' && orderStatus !== 'cancelled' && (
           <motion.div
             className="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100"
             initial={{ opacity: 0, y: 20 }}
@@ -1449,14 +1512,14 @@ export default function OrderTracking() {
               )}
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-gray-900 leading-tight">{currentStatus.title}</p>
-              <p className="text-sm text-gray-500 mt-1 leading-snug">{currentStatus.subtitle}</p>
+              <p className="font-semibold text-gray-900 leading-tight">{statusTitle}</p>
+              <p className="text-sm text-gray-500 mt-1 leading-snug">{statusSubtitle}</p>
             </div>
           </div>
         </motion.div>
 
         {/* Delivery Partner Info */}
-        {order?.deliveryPartnerId && (
+        {!isTakeAwayOrder && order?.deliveryPartnerId && (
           <motion.div
             className="bg-white rounded-xl shadow-sm overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
@@ -1499,7 +1562,7 @@ export default function OrderTracking() {
         )}
 
         {/* Delivery Partner Safety */}
-        <motion.button
+        {!isTakeAwayOrder && <motion.button
           className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1511,10 +1574,10 @@ export default function OrderTracking() {
             Learn about delivery partner safety
           </span>
           <ChevronRight className="w-5 h-5 text-gray-400" />
-        </motion.button>
+        </motion.button>}
 
         {/* Delivery Details Banner */}
-        <motion.div
+        {!isTakeAwayOrder && <motion.div
           className="bg-yellow-50 rounded-xl p-4 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1523,7 +1586,7 @@ export default function OrderTracking() {
           <p className="text-yellow-800 font-medium">
             All your delivery details in one place ??
           </p>
-        </motion.div>
+        </motion.div>}
 
         {/* Contact & Address Section */}
         <motion.div
@@ -1551,7 +1614,7 @@ export default function OrderTracking() {
             }
             showArrow={false}
           />
-          <SectionItem
+          {!isTakeAwayOrder && <SectionItem
             iconNode={
               <div
                 dangerouslySetInnerHTML={{ __html: SAFE_CUSTOMER_PIN }}
@@ -1599,8 +1662,8 @@ export default function OrderTracking() {
               return 'Add delivery address'
             })()}
             showArrow={false}
-          />
-          <SectionItem
+          />}
+          {!isTakeAwayOrder && <SectionItem
             icon={MessageSquare}
             title={order?.note ? "Edit delivery instructions" : "Add delivery instructions"}
             subtitle={order?.note ? order.note.substring(0, 35) + (order.note.length > 35 ? "..." : "") : ""}
@@ -1608,7 +1671,18 @@ export default function OrderTracking() {
               setDeliveryInstructions(order?.note || "");
               setIsInstructionsModalOpen(true);
             }}
-          />
+          />}
+          {isTakeAwayOrder && <SectionItem
+            iconNode={
+              <div
+                dangerouslySetInnerHTML={{ __html: SAFE_RESTAURANT_PIN }}
+                className="w-6 h-6 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
+              />
+            }
+            title="Pickup from Restaurant"
+            subtitle={order?.restaurantAddress || 'Restaurant location'}
+            showArrow={false}
+          />}
         </motion.div>
 
         {/* Restaurant Section */}
@@ -1766,7 +1840,7 @@ export default function OrderTracking() {
             </div>
 
             {/* Delivery Instructions Section */}
-            {order?.note && (
+            {!isTakeAwayOrder && order?.note && (
               <div className="bg-orange-50/50 rounded-xl p-4 border border-orange-100 flex gap-3">
                 <MessageSquare className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
                 <div>
@@ -1826,7 +1900,7 @@ export default function OrderTracking() {
               )}
 
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Delivery Fee</span>
+                <span className="text-gray-600">{isTakeAwayOrder ? 'Pickup Fee' : 'Delivery Fee'}</span>
                 <span className="text-gray-900 font-medium">₹{Number(order?.deliveryFee || 0).toFixed(2)}</span>
               </div>
 
@@ -1874,7 +1948,7 @@ export default function OrderTracking() {
       </Dialog>
 
       {/* Delivery Instructions Modal */}
-      <Dialog open={isInstructionsModalOpen} onOpenChange={setIsInstructionsModalOpen}>
+      {!isTakeAwayOrder && <Dialog open={isInstructionsModalOpen} onOpenChange={setIsInstructionsModalOpen}>
         <DialogContent className="sm:max-w-md w-[95vw] rounded-3xl p-6 border-0 shadow-2xl bg-white max-h-[90vh] overflow-y-auto z-[200]">
           <DialogHeader className="mb-2">
             <DialogTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-400 bg-clip-text text-transparent">
@@ -1900,7 +1974,7 @@ export default function OrderTracking() {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   )
 }

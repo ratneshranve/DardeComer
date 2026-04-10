@@ -21,11 +21,8 @@ export async function getGoogleMapsApiKey() {
     return cachedApiKey;
   }
 
-  /*
   cachedApiKey = sanitizeApiKey(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
-  return cachedApiKey;
-  */
-  return null;
+  return cachedApiKey || "";
 }
 
 /**

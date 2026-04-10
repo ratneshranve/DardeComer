@@ -154,7 +154,7 @@ export default function ZoneSetup() {
         if (!apiKey || apiKey.trim() === "") {
           debugError("? API key is empty or not found in database")
           setMapLoading(false)
-          alert("Google Maps API key not found in database. Please contact administrator to add the API key in admin panel.")
+          alert("Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in frontend .env.")
           return
         }
       } catch (apiKeyError) {

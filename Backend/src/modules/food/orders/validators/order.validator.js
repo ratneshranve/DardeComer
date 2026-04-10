@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { ValidationError } from '../../../../core/auth/errors.js';
 
+const normalizeDeliveryType = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'Home Delivery';
+    if (raw === 'take away' || raw === 'takeaway' || raw === 'pickup') return 'Take Away';
+    return 'Home Delivery';
+};
+
 const orderItemSchema = z.object({
     itemId: z.string().min(1, 'Item id required'),
     name: z.string().min(1, 'Item name required'),
@@ -50,7 +57,8 @@ export function validateCalculateOrderDto(body) {
         deliveryAddressId: z.string().optional(),
         zoneId: z.string().optional(),
         couponCode: z.string().optional(),
-        deliveryFleet: z.string().optional()
+        deliveryFleet: z.string().optional(),
+        deliveryType: z.string().optional().transform(normalizeDeliveryType)
     });
     const result = schema.safeParse(body);
     if (!result.success) {
@@ -65,18 +73,28 @@ export function validateCalculateOrderDto(body) {
 export function validateCreateOrderDto(body) {
     const schema = z.object({
         items: z.array(orderItemSchema).min(1, 'At least one item required'),
-        address: addressSchema,
+        address: addressSchema.optional(),
         restaurantId: z.string().min(1, 'Restaurant id required'),
         restaurantName: z.string().optional(),
         customerName: z.string().optional(),
         customerPhone: z.string().optional(),
         pricing: pricingSchema,
         deliveryFleet: z.string().optional(),
+        deliveryType: z.string().optional().transform(normalizeDeliveryType),
         note: z.string().optional(),
         sendCutlery: z.boolean().optional(),
         // 'razorpay_qr' means COD-style flow, but payment is collected via Razorpay QR at delivery.
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet']),
         zoneId: z.string().nullable().optional()
+    }).superRefine((data, ctx) => {
+        const deliveryType = normalizeDeliveryType(data.deliveryType);
+        if (deliveryType === 'Home Delivery' && !data.address) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Address required for home delivery',
+                path: ['address']
+            });
+        }
     });
     const result = schema.safeParse(body);
     if (!result.success) {

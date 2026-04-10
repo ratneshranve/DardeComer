@@ -21,6 +21,28 @@ const isPointInPolygon = (lat, lng, polygon) => {
     return inside;
 };
 
+const normalizeVendorType = (value) => {
+    const raw = String(value || '').trim().toLowerCase();
+    const compact = raw.replace(/[_\-\s]+/g, '');
+    if (compact === 'homekitchen' || compact === 'cloudkitchen' || compact === 'kitchen') {
+        return 'home_kitchen';
+    }
+    return 'restaurant';
+};
+
+const sourceLabelFromVendorType = (vendorType) =>
+    vendorType === 'home_kitchen' ? 'Home Kitchen' : 'Restaurant';
+
+const withSourceMeta = (restaurant = {}) => {
+    const vendorType = normalizeVendorType(restaurant.businessModel);
+    return {
+        ...restaurant,
+        businessModel: sourceLabelFromVendorType(vendorType),
+        vendorType,
+        sourceLabel: sourceLabelFromVendorType(vendorType)
+    };
+};
+
 /**
  * Unified Search Service
  * Searches for restaurants by name and also searches for food items, 
@@ -190,7 +212,7 @@ export const searchUnified = async (query = {}, options = {}) => {
     const finalResult = {
         success: true,
         data: {
-            restaurants: results.slice(skip, skip + limit),
+            restaurants: results.slice(skip, skip + limit).map(withSourceMeta),
             total: results.length,
             page: parseInt(page),
             limit: parseInt(limit),

@@ -3,7 +3,7 @@ import { motion } from "framer-motion"
 import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
 import { Phone, Lock, ArrowRight, ShieldCheck, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { authAPI } from "@food/api"
+import { authAPI, userAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
@@ -15,6 +15,8 @@ export default function UnifiedOTPFastLogin() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState(1)
+  const [name, setName] = useState("")
+  const [pendingAuthData, setPendingAuthData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
@@ -95,7 +97,66 @@ export default function UnifiedOTPFastLogin() {
   const handleEditNumber = () => {
     setStep(1)
     setOtp("")
+    setName("")
+    setPendingAuthData(null)
     setResendTimer(0)
+  }
+
+  const resolvePushContext = async () => {
+    let fcmToken = null
+    let platform = "web"
+    try {
+      if (typeof window !== "undefined") {
+        if (window.flutter_inappwebview) {
+          platform = "mobile"
+          const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"]
+          for (const handlerName of handlerNames) {
+            try {
+              const t = await window.flutter_inappwebview.callHandler(handlerName, { module: "user" })
+              if (t && typeof t === "string" && t.length > 20) {
+                fcmToken = t.trim()
+                break
+              }
+            } catch (e) {}
+          }
+        } else {
+          fcmToken = localStorage.getItem("fcm_web_registered_token_user") || null
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to get FCM token during login", e)
+    }
+    return { fcmToken, platform }
+  }
+
+  const completeLogin = (data) => {
+    const accessToken = data.accessToken
+    const refreshToken = data.refreshToken || null
+    const user = data.user
+    const role = data.role || user?.role || "user"
+
+    if (!accessToken || !user) {
+      throw new Error("Invalid response from server")
+    }
+
+    // Map backend internal role to frontend module key
+    let moduleKey = "user"
+    let navigatePath = "/food/user"
+
+    if (role === "DELIVERY_PARTNER") {
+      moduleKey = "delivery"
+      navigatePath = "/food/delivery"
+    } else if (role === "RESTAURANT") {
+      moduleKey = "restaurant"
+      navigatePath = "/food/restaurant"
+    } else if (role === "ADMIN") {
+      moduleKey = "admin"
+      navigatePath = "/food/admin"
+    }
+
+    setAuthData(moduleKey, accessToken, user, refreshToken)
+    toast.success(`Login successful! Logged in as ${role.toLowerCase().replace('_', ' ')}`)
+    navigate(navigatePath, { replace: true })
   }
 
   const handleVerifyOTP = async (e) => {
@@ -110,60 +171,23 @@ export default function UnifiedOTPFastLogin() {
     submitting.current = true
     setLoading(true)
     try {
-      // Try to get FCM token before verifying OTP
-      let fcmToken = null;
-      let platform = "web";
-      try {
-        if (typeof window !== "undefined") {
-          if (window.flutter_inappwebview) {
-            platform = "mobile";
-            const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"];
-            for (const handlerName of handlerNames) {
-              try {
-                const t = await window.flutter_inappwebview.callHandler(handlerName, { module: "user" });
-                if (t && typeof t === "string" && t.length > 20) {
-                  fcmToken = t.trim();
-                  break;
-                }
-              } catch (e) {}
-            }
-          } else {
-            fcmToken = localStorage.getItem("fcm_web_registered_token_user") || null;
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to get FCM token during login", e);
-      }
+      const { fcmToken, platform } = await resolvePushContext()
 
       const response = await authAPI.verifyOTP(phoneNumber, otpDigits, "login", null, null, "user", null, null, fcmToken, platform)
       const data = response?.data?.data || response?.data || {}
-      const accessToken = data.accessToken
-      const refreshToken = data.refreshToken || null
-      const user = data.user
-      const role = data.role || (user?.role) || "user"
+      const user = data?.user || {}
+      const hasName = typeof user.name === "string" && user.name.trim().length > 0 && user.name.trim().toLowerCase() !== "null"
+      const needsName = data?.isNewUser === true || !hasName
 
-      if (!accessToken || !user) {
-        throw new Error("Invalid response from server")
+      if (needsName) {
+        setPendingAuthData(data)
+        setStep(3)
+        setLoading(false)
+        submitting.current = false
+        return
       }
 
-      // Map backend internal role to frontend module key
-      let moduleKey = "user"
-      let navigatePath = "/food/user"
-
-      if (role === "DELIVERY_PARTNER") {
-        moduleKey = "delivery"
-        navigatePath = "/food/delivery"
-      } else if (role === "RESTAURANT") {
-        moduleKey = "restaurant"
-        navigatePath = "/food/restaurant"
-      } else if (role === "ADMIN") {
-        moduleKey = "admin"
-        navigatePath = "/food/admin"
-      }
-
-      setAuthData(moduleKey, accessToken, user, refreshToken)
-      toast.success(`Login successful! Logged in as ${role.toLowerCase().replace('_', ' ')}`)
-      navigate(navigatePath, { replace: true })
+      completeLogin(data)
     } catch (err) {
       const status = err?.response?.status
       let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Invalid OTP. Please try again."
@@ -174,6 +198,50 @@ export default function UnifiedOTPFastLogin() {
           msg = "Invalid or expired code, or account not active."
         }
       }
+      toast.error(msg)
+    } finally {
+      setLoading(false)
+      submitting.current = false
+    }
+  }
+
+  const handleSubmitName = async (e) => {
+    e.preventDefault()
+    const trimmedName = String(name || "").trim()
+    if (trimmedName.length < 2) {
+      toast.error("Please enter your name (min 2 characters)")
+      return
+    }
+
+    if (!pendingAuthData?.accessToken || !pendingAuthData?.user) {
+      toast.error("Session expired. Please verify OTP again.")
+      setStep(2)
+      return
+    }
+
+    if (submitting.current) return
+    submitting.current = true
+    setLoading(true)
+    try {
+      const refreshToken = pendingAuthData?.refreshToken || null
+      // Set tokens first so profile update can use authenticated user context.
+      setAuthData("user", pendingAuthData.accessToken, pendingAuthData.user, refreshToken)
+
+      const updateRes = await userAPI.updateProfile({ name: trimmedName })
+      const updatedUser =
+        updateRes?.data?.data?.user ||
+        updateRes?.data?.user ||
+        { ...pendingAuthData.user, name: trimmedName }
+
+      const finalizedData = {
+        ...pendingAuthData,
+        user: updatedUser,
+      }
+
+      setPendingAuthData(null)
+      completeLogin(finalizedData)
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Failed to complete signup."
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -248,7 +316,7 @@ export default function UnifiedOTPFastLogin() {
               <div className="h-1 w-12 bg-[#001A94] mx-auto rounded-full" />
            </div>
 
-          <form onSubmit={step === 1 ? handleSendOTP : handleVerifyOTP} className="space-y-5">
+          <form onSubmit={step === 1 ? handleSendOTP : step === 2 ? handleVerifyOTP : handleSubmitName} className="space-y-5">
             {step === 1 ? (
               <div className="space-y-6">
                 <div className="space-y-4">
@@ -275,7 +343,7 @@ export default function UnifiedOTPFastLogin() {
                   We will send success notifications and order updates via SMS
                 </p>
               </div>
-            ) : (
+            ) : step === 2 ? (
               <div className="space-y-6">
                 <div className="space-y-4">
                    <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
@@ -354,6 +422,30 @@ export default function UnifiedOTPFastLogin() {
                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                    <div className="w-10 h-10 bg-[#001A94]/10 rounded-full flex items-center justify-center">
+                      <ShieldCheck className="w-5 h-5 text-[#001A94]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest leading-none mb-1">Complete your profile</p>
+                      <p className="text-sm font-black text-gray-900 dark:text-white">Name is required for new users</p>
+                    </div>
+                    <button type="button" onClick={() => setStep(2)} className="text-xs text-[#001A94] font-black underline cursor-pointer">Back</button>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="block w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-bold text-lg"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+              </div>
             )}
 
             <button
@@ -368,7 +460,7 @@ export default function UnifiedOTPFastLogin() {
               {loading ? (
                 <Loader2 className="w-7 h-7 animate-spin mx-auto text-white" />
               ) : (
-                step === 1 ? "Get Verification Code" : "Continue"
+                step === 1 ? "Get Verification Code" : step === 2 ? "Continue" : "Complete Signup"
               )}
             </button>
           </form>

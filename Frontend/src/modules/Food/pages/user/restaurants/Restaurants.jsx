@@ -14,6 +14,7 @@ import { useLocation } from "@food/hooks/useLocation"
 import { restaurantAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
+import { getSourceMeta } from "@food/utils/sourceType"
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "")
 
@@ -67,6 +68,7 @@ export default function Restaurants() {
         if (cancelled) return
 
         const transformed = list.map((restaurant) => {
+          const sourceMeta = getSourceMeta(restaurant)
           const slug =
             restaurant?.slug ||
             String(restaurant?.name || "")
@@ -86,6 +88,8 @@ export default function Restaurants() {
             distance: restaurant?.distance ? (typeof restaurant.distance === 'number' ? `${restaurant.distance.toFixed(1)} km` : restaurant.distance) : "1.2 km",
             priceRange: restaurant?.priceRange || "$$",
             image: pickRestaurantImage(restaurant),
+            sourceLabel: sourceMeta.sourceLabel,
+            vendorType: sourceMeta.vendorType,
           }
         })
 
@@ -171,6 +175,9 @@ export default function Restaurants() {
                                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 line-clamp-1">
                                     {restaurant.cuisine}
                                   </p>
+                                  <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                                    {restaurant.sourceLabel}
+                                  </span>
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-full">
                                       <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-yellow-400 text-yellow-400" />

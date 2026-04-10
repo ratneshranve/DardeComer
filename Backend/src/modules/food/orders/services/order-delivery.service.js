@@ -31,6 +31,15 @@ import {
   isStatusAdvance,
 } from './order.helpers.js';
 
+const HOME_DELIVERY_FILTER = {
+  $or: [
+    { deliveryType: { $exists: false } },
+    { deliveryType: null },
+    { deliveryType: '' },
+    { deliveryType: 'Home Delivery' },
+  ],
+};
+
 function emitOrderUpdate(order, deliveryPartnerId) {
   try {
     const io = getIO();
@@ -182,6 +191,7 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
 
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
   const order = await FoodOrder.findOne({
+    ...HOME_DELIVERY_FILTER,
     'dispatch.deliveryPartnerId': partnerId,
     'dispatch.status': 'accepted',
     orderStatus: {
@@ -212,21 +222,26 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
 export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const filter = {
-    $or: [
+    $and: [
+      HOME_DELIVERY_FILTER,
       {
-        'dispatch.status': 'unassigned',
-        orderStatus: { $in: ['created', 'confirmed', 'preparing', 'ready_for_pickup'] },
-      },
-      {
-        'dispatch.deliveryPartnerId': new mongoose.Types.ObjectId(deliveryPartnerId),
-        orderStatus: {
-          $nin: [
-            'delivered',
-            'cancelled_by_user',
-            'cancelled_by_restaurant',
-            'cancelled_by_admin',
-          ],
-        },
+        $or: [
+          {
+            'dispatch.status': 'unassigned',
+            orderStatus: { $in: ['created', 'confirmed', 'preparing', 'ready_for_pickup'] },
+          },
+          {
+            'dispatch.deliveryPartnerId': new mongoose.Types.ObjectId(deliveryPartnerId),
+            orderStatus: {
+              $nin: [
+                'delivered',
+                'cancelled_by_user',
+                'cancelled_by_restaurant',
+                'cancelled_by_admin',
+              ],
+            },
+          },
+        ],
       },
     ],
   };
@@ -292,6 +307,7 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId) {
   const order = await FoodOrder.findOneAndUpdate(
     {
       ...identity,
+      ...HOME_DELIVERY_FILTER,
       orderStatus: { $in: acceptedStatuses },
       $or: [
         { 'dispatch.status': 'unassigned' },
@@ -619,7 +635,7 @@ export async function confirmPickupDelivery(orderId, deliveryPartnerId, billImag
     billImageUrl,
   };
 
-  // Pre-generate handover OTP so user can see it as soon as food is on the way
+  // Pre-generate handover OTP; user should receive it only after rider reaches drop.
   const existingOtp = String(order.deliveryOtp || '').trim();
   if (!existingOtp) {
     order.deliveryOtp = generateFourDigitDeliveryOtp();
@@ -630,8 +646,6 @@ export async function confirmPickupDelivery(orderId, deliveryPartnerId, billImag
       dropOtp: { required: true, verified: false },
     };
   }
-
-  emitDeliveryDropOtpToUser(order, String(order.deliveryOtp || "").trim());
 
   pushStatusHistory(order, {
     byRole: 'DELIVERY_PARTNER',
