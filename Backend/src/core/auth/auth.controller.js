@@ -30,6 +30,23 @@ import { validateAdminForgotPasswordRequestDto } from "../../dtos/auth/adminForg
 import { validateAdminForgotPasswordResetDto } from "../../dtos/auth/adminForgotPasswordReset.dto.js";
 import { sendResponse } from "../../utils/response.js";
 
+const buildUserLoginPayload = (result) => {
+  const user = result?.user || {};
+
+  return {
+    token: result?.accessToken || "",
+    user: {
+      id: String(user?._id || user?.id || ""),
+      name: String(user?.name || ""),
+      phone: String(user?.phone || ""),
+      email: String(user?.email || ""),
+      walletAmount: Number(user?.walletAmount ?? 0),
+      refCode: String(user?.refCode || user?.referralCode || ""),
+      status: String(user?.status || (user?.isActive === false ? "Inactive" : "Active")),
+    },
+  };
+};
+
 export const requestUserOtpController = async (req, res, next) => {
   try {
     const { phone } = validateUserOtpRequestDto(req.body);
@@ -56,7 +73,7 @@ export const verifyUserOtpController = async (req, res, next) => {
       platform,
       name,
     );
-    return sendResponse(res, 200, "Login successful", result);
+    return sendResponse(res, 200, "Login successful", buildUserLoginPayload(result));
   } catch (error) {
     next(error);
   }

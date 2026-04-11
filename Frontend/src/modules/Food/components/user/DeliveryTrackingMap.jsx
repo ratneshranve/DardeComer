@@ -259,6 +259,18 @@ const DeliveryTrackingMap = ({
     return restaurantCoords || { lat: 0, lng: 0 };
   }, [isOrderPickedUp, restaurantCoords, customerCoords]);
 
+  const restaurantMarkerUrl = useMemo(() => {
+    const direct = order?.restaurantImage || order?.restaurant?.logo || order?.restaurant?.profileImage;
+    const nested = order?.restaurantId?.logo || order?.restaurantId?.profileImage?.url || order?.restaurantId?.profileImage;
+    return direct || nested || 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png';
+  }, [order]);
+
+  const customerMarkerUrl = useMemo(() => {
+    const direct = order?.customerImage || order?.user?.logo || order?.user?.profileImage;
+    const nested = order?.userId?.logo || order?.userId?.profileImage?.url || order?.userId?.profileImage;
+    return direct || nested || 'https://cdn-icons-png.flaticon.com/512/1275/1275302.png';
+  }, [order]);
+
   const zoom = useMemo(() => 15, []);
 
   const baselineDirectionsServiceOptions = useMemo(() => {
@@ -314,8 +326,9 @@ const DeliveryTrackingMap = ({
           <Marker
             position={restaurantCoords}
             icon={{
-              url: `data:image/svg+xml,${encodeURIComponent(RESTAURANT_PIN_SVG)}`,
-              anchor: (window.google && window.google.maps) ? new window.google.maps.Point(24, 24) : undefined
+              url: restaurantMarkerUrl,
+              scaledSize: (window.google && window.google.maps) ? new window.google.maps.Size(44, 44) : undefined,
+              anchor: (window.google && window.google.maps) ? new window.google.maps.Point(22, 22) : undefined
             }}
           />
         )}
@@ -324,8 +337,9 @@ const DeliveryTrackingMap = ({
           <Marker
             position={customerCoords}
             icon={{
-              url: `data:image/svg+xml,${encodeURIComponent(CUSTOMER_PIN_SVG)}`,
-              anchor: (window.google && window.google.maps) ? new window.google.maps.Point(24, 24) : undefined
+              url: customerMarkerUrl,
+              scaledSize: (window.google && window.google.maps) ? new window.google.maps.Size(44, 44) : undefined,
+              anchor: (window.google && window.google.maps) ? new window.google.maps.Point(22, 22) : undefined
             }}
           />
         )}
@@ -335,13 +349,14 @@ const DeliveryTrackingMap = ({
             position={riderLocation}
             mapPaneName={OverlayView.MARKER_LAYER}
           >
-            <div className="relative -translate-x-1/2 -translate-y-1/2">
-              <div 
-                dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG }} 
-                className="w-12 h-12"
-                style={{ 
+            <div className="relative w-[72px] h-[72px] -translate-x-1/2 -translate-y-1/2">
+              <img
+                src="/MapRider.png"
+                alt="Rider"
+                className="w-full h-full object-contain"
+                style={{
                   transform: `rotate(${riderLocation.heading || 0}deg)`,
-                  transition: 'transform 0.5s linear' 
+                  transition: 'transform 0.5s linear'
                 }}
               />
             </div>

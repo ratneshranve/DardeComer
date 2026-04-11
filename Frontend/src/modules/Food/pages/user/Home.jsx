@@ -476,6 +476,7 @@ const MemoizedHomeRestaurantCard = React.memo(({
 // Memoized Components for Performance (Categories & Filters)
 const MemoizedCategoryItem = React.memo(({ category, index }) => (
   <motion.div
+    className="w-[78px] sm:w-[86px] flex-shrink-0"
     initial={{ opacity: 0, scale: 0.9, y: 10 }}
     animate={{ opacity: 1, scale: 1, y: 0 }}
     transition={{ duration: 0.4, delay: index * 0.05, type: "spring", stiffness: 300, damping: 20 }}
@@ -785,25 +786,24 @@ export default function Home() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const heroShell = heroShellRef.current;
-      const stickyHeader = stickyHeaderRef.current;
-
-      if (!heroShell) {
-        setHasScrolledPastBanner(false);
-        return;
-      }
-
-      const heroRect = heroShell.getBoundingClientRect();
-      const stickyHeight = stickyHeader?.getBoundingClientRect().height || 0;
-      setHasScrolledPastBanner(heroRect.bottom <= stickyHeight);
+      const scrollY = Math.max(
+        window.scrollY || 0,
+        window.pageYOffset || 0,
+        document.documentElement?.scrollTop || 0,
+        document.body?.scrollTop || 0,
+      );
+      // Keep only one search bar on top; show sticky one after header area is crossed.
+      setHasScrolledPastBanner(scrollY > 140);
     };
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
+    document.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
   }, []);
@@ -2604,6 +2604,28 @@ export default function Home() {
             placeholders={placeholders}
           />
 
+          {hasScrolledPastBanner && (
+            <div
+              ref={stickyHeaderRef}
+              className="fixed top-0 inset-x-0 z-[80] px-4 pt-2 pb-2 bg-[#001A94]/95 backdrop-blur-md shadow-lg"
+              onClick={handleSearchFocus}
+            >
+              <div className="relative max-w-[480px] mx-auto">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-[#001A94]" />
+                </div>
+                <div className="w-full h-12 bg-white rounded-2xl flex items-center pl-11 pr-4 shadow-xl shadow-[#001A94]/20 overflow-hidden">
+                  <span className="text-[#001A94]/60 font-bold text-sm truncate">
+                    {placeholders?.[placeholderIndex] || 'Search "pizza"'}
+                  </span>
+                </div>
+                <div className="absolute inset-y-0 right-4 flex items-center pr-1 border-l border-gray-100 ml-3">
+                  <Mic className="h-4 w-4 text-[#001A94] ml-3" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white dark:bg-[#0a0a0a]">
             {/* Flavour Fest Banner */}
             <FestBanner />
@@ -2623,13 +2645,28 @@ export default function Home() {
               <div className="flex items-center gap-2 min-w-0">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white min-w-0 flex-shrink leading-tight">What's on your mind today?</h2>
                 <div className="h-[1px] bg-gray-100 dark:bg-gray-800 flex-1"></div>
-                <Link to="/food/user/categories" className="text-sm font-bold text-gray-400 dark:text-gray-500 flex items-center gap-0.5 whitespace-nowrap shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategoriesModal(true)}
+                  className="text-sm font-bold text-gray-400 dark:text-gray-500 flex items-center gap-0.5 whitespace-nowrap shrink-0"
+                >
                   View All <ArrowDownUp className="h-3 w-3 rotate-90" />
-                </Link>
+                </button>
               </div>
               
-              <div className="grid grid-cols-4 gap-y-8 gap-x-4">
-                {displayCategories.slice(0, 8).map((category, index) => <MemoizedCategoryItem key={category.id || index} category={category} index={index} />)}
+              <div
+                ref={categoryScrollRef}
+                className="overflow-x-auto overflow-y-hidden whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="inline-flex items-start gap-4 min-w-max pb-1">
+                  {displayCategories.map((category, index) => (
+                    <MemoizedCategoryItem
+                      key={category.id || index}
+                      category={category}
+                      index={index}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 

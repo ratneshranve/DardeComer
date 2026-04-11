@@ -81,8 +81,9 @@ export default function DesktopNavbar({ showLogo = true }) {
     // Check active routes - support both /user/* and /* paths
     const isDining = location.pathname === "/food/user/dining" || location.pathname === "/food/dining"
     const isUnder250 = location.pathname === "/food/user/under-250" || location.pathname === "/food/under-250"
+    const isHomeKitchen = location.pathname === "/food/user/home-kitchens" || location.pathname === "/food/home-kitchens"
     const isProfile = location.pathname.startsWith("/food/user/profile") || location.pathname.startsWith("/food/profile")
-    const isDelivery = !isDining && !isUnder250 && !isProfile && (location.pathname === "/food/user" || location.pathname === "/food" || (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile")))
+    const isDelivery = !isDining && !isUnder250 && !isHomeKitchen && !isProfile && (location.pathname === "/food/user" || location.pathname === "/food" || (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/home-kitchens") && !location.pathname.includes("/profile")))
     const isBannerRoute =
         location.pathname === "/food/user" ||
         location.pathname === "/food" ||
@@ -344,7 +345,7 @@ export default function DesktopNavbar({ showLogo = true }) {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-center h-12">
                         {/* Navigation Tabs - Centered with spacing */}
-                        <div className="flex items-center space-x-24">
+                        <div className="flex items-center space-x-16">
                             {/* Delivery Tab */}
                             <Link
                                 to="/food/user"
@@ -365,7 +366,7 @@ export default function DesktopNavbar({ showLogo = true }) {
                                 )}
                             </Link>
 
-                            {/* Under 250 Tab */}
+                            {/* Under 200 Tab */}
                             <Link
                                 to="/food/user/under-250"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isUnder250
@@ -373,7 +374,7 @@ export default function DesktopNavbar({ showLogo = true }) {
                                     : "text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
                                     }`}
                             >
-                                <span className="text-sm font-bold tracking-wide uppercase">Under 250</span>
+                                <span className="text-sm font-bold tracking-wide uppercase">Under 200</span>
                                 {isUnder250 && (
                                     <motion.div
                                         layoutId="navIndicator"
@@ -395,6 +396,26 @@ export default function DesktopNavbar({ showLogo = true }) {
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Dining</span>
                                 {isDining && (
+                                    <motion.div
+                                        layoutId="navIndicator"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-primary dark:bg-primary"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: 0.3 }}
+                                    />
+                                )}
+                            </Link>
+
+                            {/* Home Kitchen Tab */}
+                            <Link
+                                to="/food/user/home-kitchens"
+                                className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isHomeKitchen
+                                    ? "text-primary dark:text-primary"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary"
+                                    }`}
+                            >
+                                <span className="text-sm font-bold tracking-wide uppercase">Home Kitchen</span>
+                                {isHomeKitchen && (
                                     <motion.div
                                         layoutId="navIndicator"
                                         className="absolute -bottom-3 left-0 right-0 h-0.5 bg-primary dark:bg-primary"

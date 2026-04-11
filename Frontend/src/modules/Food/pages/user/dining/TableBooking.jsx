@@ -247,7 +247,7 @@ export default function TableBooking() {
 
   return (
     <AnimatedPage className="min-h-screen bg-[#f5f6fb] pb-40">
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#ffe7c6] via-[#fff1d7] to-[#f5f6fb] px-4 pb-10 pt-5">
+      <div className="relative overflow-hidden bg-gradient-to-b from-[#dce9ff] via-[#edf4ff] to-[#f5f6fb] px-4 pb-10 pt-5">
         <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)]" />
 
         <div className="relative z-10">
@@ -305,7 +305,7 @@ export default function TableBooking() {
                   onClick={() => setSelectedDate(date)}
                   className={`rounded-[18px] border px-3 py-4 text-center transition-colors ${
                     active
-                      ? "border-[#ef8f98] bg-[#fffaf9]"
+                      ? "border-[#001A94] bg-[#F0F4FF]"
                       : "border-[#ececf2] bg-white"
                   }`}
                 >
@@ -336,7 +336,7 @@ export default function TableBooking() {
                   onClick={() => setSelectedMealPeriod(period.id)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                     active
-                      ? "border-[#ef8f98] bg-white text-[#d64f63]"
+                      ? "border-[#001A94] bg-white text-[#001A94]"
                       : "border-[#ececf2] bg-[#fafafc] text-[#666f82]"
                   }`}
                 >
@@ -360,7 +360,7 @@ export default function TableBooking() {
                     onClick={() => setSelectedSlot(slot)}
                     className={`rounded-[16px] border px-3 py-4 text-center transition-colors ${
                       active
-                        ? "border-[#ef8f98] bg-[#fffaf9]"
+                        ? "border-[#001A94] bg-[#F0F4FF]"
                         : "border-[#ececf2] bg-white"
                     }`}
                   >
@@ -389,7 +389,7 @@ export default function TableBooking() {
             onClick={handleProceed}
             className={`h-14 w-full rounded-2xl text-lg font-bold ${
               canProceed
-                ? "bg-[#eb4d60] text-white hover:bg-[#d73f52]"
+                ? "bg-[#001A94] text-white hover:bg-[#00147A]"
                 : "bg-[#a4abba] text-white/95"
             }`}
           >

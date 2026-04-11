@@ -8,11 +8,8 @@ import {
   Tag,
   User,
   Leaf,
-  Palette,
   Bookmark,
   Building2,
-  Moon,
-  Sun,
   Check,
   Percent,
   Info,
@@ -77,7 +74,6 @@ export default function Profile() {
 
   // Popup states
   const [vegModeOpen, setVegModeOpen] = useState(false);
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -94,24 +90,6 @@ export default function Profile() {
     setVegMode(nextValue);
     localStorage.setItem("userVegMode", String(nextValue));
   };
-
-  // Settings states
-  const [appearance, setAppearance] = useState(() => {
-    // Load theme from localStorage or default to 'light'
-    return localStorage.getItem("appTheme") || "light";
-  });
-
-  // Apply theme to document
-  useEffect(() => {
-    const root = document.documentElement;
-    if (appearance === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    // Save to localStorage
-    localStorage.setItem("appTheme", appearance);
-  }, [appearance]);
 
   // Get first letter of name for avatar
   const avatarInitial =
@@ -751,40 +729,6 @@ export default function Profile() {
             </Card>
           </motion.div>
 
-          <motion.div
-            whileHover={{ x: 4, scale: 1.01 }}
-            transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-            <Card
-              className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
-              onClick={() => setAppearanceOpen(true)}>
-              <CardContent className="p-4  flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
-                    whileHover={{ rotate: 15, scale: 1.1 }}
-                    transition={{ duration: 0.3 }}>
-                    <Palette className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                  </motion.div>
-                  <span className="text-base font-medium text-gray-900 dark:text-white">
-                    Appearance
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <motion.span
-                    className="text-base font-medium text-gray-900 dark:text-white capitalize"
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.2 }}>
-                    {appearance}
-                  </motion.span>
-                  <motion.div
-                    whileHover={{ x: 4 }}
-                    transition={{ duration: 0.2 }}>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
-                  </motion.div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
 
         {/* Collections Section */}
@@ -1150,77 +1094,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Appearance Popup */}
-      <Dialog open={appearanceOpen} onOpenChange={setAppearanceOpen}>
-        <DialogContent className="max-w-sm md:max-w-md lg:max-w-lg w-[calc(100%-2rem)] rounded-2xl p-0 overflow-hidden bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800">
-          <DialogHeader className="p-5 pb-3">
-            <DialogTitle className="text-lg font-bold text-gray-900 dark:text-white">
-              Appearance
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
-              Choose your preferred theme
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 px-5 pb-5">
-            <button
-              onClick={() => {
-                setAppearance("light");
-                setAppearanceOpen(false);
-              }}
-              className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${appearance === "light"
-                  ? "border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-900/20"
-                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
-                }`}>
-              <div
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${appearance === "light"
-                    ? "border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500"
-                    : "border-gray-300 dark:border-gray-600"
-                  }`}>
-                {appearance === "light" && (
-                  <Check className="h-3 w-3 text-white" />
-                )}
-              </div>
-              <Sun className="h-5 w-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0" />
-              <div className="text-left">
-                <p className="font-medium text-gray-900 dark:text-white text-sm">
-                  Light
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Default light theme
-                </p>
-              </div>
-            </button>
-            <button
-              onClick={() => {
-                setAppearance("dark");
-                setAppearanceOpen(false);
-              }}
-              className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${appearance === "dark"
-                  ? "border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
-                }`}>
-              <div
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${appearance === "dark"
-                    ? "border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500"
-                    : "border-gray-300 dark:border-gray-600"
-                  }`}>
-                {appearance === "dark" && (
-                  <Check className="h-3 w-3 text-white" />
-                )}
-              </div>
-              <Moon className="h-5 w-5 text-gray-600 dark:text-gray-300 flex-shrink-0" />
-              <div className="text-left">
-                <p className="font-medium text-gray-900 dark:text-white text-sm">
-                  Dark
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Dark theme
-                </p>
-              </div>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </AnimatedPage>
   );
 }

@@ -1,17 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ShieldCheck } from "lucide-react"
-import { Button } from "@food/components/ui/button"
+import { Loader2, Phone } from "lucide-react"
 import { restaurantAPI } from "@food/api"
-import { useCompanyName } from "@food/hooks/useCompanyName"
 
 const DEFAULT_COUNTRY_CODE = "+91"
-const countryCodes = [
-  { code: DEFAULT_COUNTRY_CODE, country: "IN", flag: "India" },
-]
 
 export default function RestaurantLogin() {
-  const companyName = useCompanyName()
   const navigate = useNavigate()
   const phoneInputRef = useRef(null)
   const [formData, setFormData] = useState(() => {
@@ -48,13 +42,8 @@ export default function RestaurantLogin() {
     if (!phone || phone.trim() === "") return "Phone number is required"
 
     const digitsOnly = phone.replace(/\D/g, "")
-    if (digitsOnly.length < 7) return "Phone number must be at least 7 digits"
+    if (digitsOnly.length < 8) return "Phone number must be at least 8 digits"
     if (digitsOnly.length > 15) return "Phone number is too long"
-
-    if (digitsOnly.length !== 10) return "Indian phone number must be 10 digits"
-    if (!["6", "7", "8", "9"].includes(digitsOnly[0])) {
-      return "Invalid Indian mobile number"
-    }
 
     return ""
   }
@@ -78,7 +67,8 @@ export default function RestaurantLogin() {
     }, 180)
   }
 
-  const handleSendOTP = async () => {
+  const handleSendOTP = async (event) => {
+    if (event?.preventDefault) event.preventDefault()
     const phoneError = validatePhone(formData.phone, formData.countryCode)
     setError(phoneError)
     if (phoneError) return
@@ -112,112 +102,94 @@ export default function RestaurantLogin() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-white flex flex-col overflow-y-auto overscroll-contain font-sans"
+      className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0"
       style={{ paddingBottom: keyboardInset ? `${keyboardInset + 24}px` : undefined }}
     >
-      {/* Curved Header Background */}
-      <div className="relative h-[250px] sm:h-[300px] w-full bg-primary overflow-hidden">
-        {/* Abstract Circles like in the image */}
-        <div className="absolute -top-10 -left-10 w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-white/10" />
-        <div className="absolute top-20 -right-10 w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-white/10" />
-        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-72 h-72 sm:w-80 sm:h-80 rounded-full bg-white/5" />
-
-        <div className="absolute bottom-0 w-full h-[86px] sm:h-[100px] bg-white rounded-t-[86px] sm:rounded-t-[100px] shadow-[0_-20px_40px_rgba(0,0,0,0.05)]" />
-      </div>
-
-      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-10 sm:-mt-16 z-10">
-        <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-3 sm:mb-6">
-          <div className="text-center">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-primary rounded-2xl mx-auto flex items-center justify-center transform rotate-12 shadow-lg mb-1">
-              <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-white -rotate-12" />
-            </div>
-          </div>
+      <div className="w-full min-h-[180px] bg-[#001A94] dark:bg-[#001166] rounded-b-[2.5rem] p-6 text-center text-white relative overflow-hidden shadow-2xl flex items-center justify-center">
+        <div className="absolute inset-0 bg-white/5 opacity-50 blur-3xl rounded-full -top-1/2 -left-1/4 animate-pulse" />
+        <div className="absolute right-0 bottom-0 w-32 h-32 md:w-48 md:h-48 opacity-10 pointer-events-none">
+          <svg viewBox="0 0 200 200" fill="currentColor">
+            <path d="M100 0C44.8 0 0 44.8 0 100s44.8 100 100 100 100-44.8 100-100S155.2 0 100 0zm0 180c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/>
+          </svg>
         </div>
 
-        <div className="text-center space-y-1 sm:space-y-2 mb-4 sm:mb-10">
-          <h1 className="text-2xl sm:text-3xl font-black text-primary tracking-tight">
-            {companyName}
+        <div className="relative z-10 flex flex-col items-center">
+          <h1 className="text-2xl md:text-5xl font-normal tracking-tight mb-1">
+            <span className="font-bold">DarDeComer</span>{" "}
+            <span className="font-normal">Restaurant</span>
           </h1>
-          <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">
-            Partner Login
+          <p className="text-xs md:text-base font-medium text-white/90 tracking-[0.2em] uppercase">
+            Taste the best, forget the rest
           </p>
         </div>
+      </div>
 
-        <div className="w-full max-w-[400px] flex flex-col gap-4 sm:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="space-y-2.5 sm:space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Registered Mobile Number</label>
-              
-              <div className="flex items-center gap-2 h-16 bg-slate-50 border border-slate-100 rounded-[32px] px-6 focus-within:border-primary/30 focus-within:ring-4 focus-within:ring-primary/10 transition-all overflow-hidden">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-primary text-lg">{formData.countryCode}</span>
+      <div className="flex-1 max-w-[480px] mx-auto w-full px-6 py-4 flex flex-col justify-center -mt-8 relative z-20">
+        <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-50">
+          <div className="text-center mb-6 space-y-2">
+            <h2 className="text-2xl font-normal tracking-normal text-gray-900 dark:text-white" style={{ fontFamily: "'Saira Stencil', sans-serif" }}>Login or Signup</h2>
+            <div className="h-1 w-12 bg-[#001A94] mx-auto rounded-full" />
+          </div>
+
+          <form onSubmit={handleSendOTP} className="space-y-6">
+            <div className="space-y-4">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
+                  <Phone className="w-5 h-5 text-gray-400 group-focus-within:text-[#001A94] transition-colors" />
                 </div>
-                
-                <div className="w-[1px] h-6 bg-slate-200 ml-2" />
-
+                <div className="absolute left-8 inset-y-0 flex items-center pointer-events-none">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-800 pr-3">+91</span>
+                </div>
                 <input
                   ref={phoneInputRef}
                   type="tel"
+                  required
                   maxLength={10}
                   inputMode="numeric"
                   autoComplete="tel-national"
                   enterKeyHint="done"
-                  placeholder="Mobile number"
+                  placeholder="Phone number"
                   value={formData.phone}
                   onChange={handlePhoneChange}
                   onFocus={ensurePhoneFieldVisible}
-                  className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-primary placeholder-slate-300 caret-primary px-2"
-                  style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
+                  className="block w-full pl-20 pr-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-medium text-lg"
                 />
               </div>
-
-              {error && (
-                <p className="text-[#ef4f5f] text-xs font-bold italic ml-4 animate-bounce">
-                  {error}
-                </p>
-              )}
             </div>
 
-            <Button
-              onClick={handleSendOTP}
+            {error ? <p className="text-sm text-red-500">{error}</p> : null}
+
+            <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+              We will send success notifications and order updates via SMS
+            </p>
+
+            <button
+              type="submit"
               disabled={!isValidPhone || isSending}
-              className={`w-full h-14 sm:h-16 rounded-[32px] font-black text-base sm:text-lg tracking-widest uppercase transition-all duration-300 ${
+              className={`w-full py-4 rounded-2xl font-semibold text-lg transition-all relative overflow-hidden shadow-xl ${
                 isValidPhone && !isSending
-                  ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 transform active:scale-[0.98]"
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  ? "bg-[#001A94] hover:bg-[#001166] text-white hover:shadow-2xl hover:shadow-[#001A94]/30 active:scale-[0.98] hover:-translate-y-0.5"
+                  : "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50 text-gray-500"
               }`}
             >
-              {isSending ? "Processing..." : "Continue"}
-            </Button>
-          </div>
+              {isSending ? <Loader2 className="w-7 h-7 animate-spin mx-auto text-white" /> : "Get Verification Code"}
+            </button>
 
-          <div className={`text-center pt-2 sm:pt-4 pb-1 sm:pb-2 ${keyboardInset ? "hidden" : ""}`}>
-            <p className="text-slate-400 text-xs font-medium">
-              By logging in, you agree to our <br />
-              <button
-                type="button"
-                onClick={() => navigate("/food/restaurant/terms")}
-                className="bg-transparent border-0 p-0 text-primary font-bold hover:underline cursor-pointer"
-              >
-                Terms
-              </button>{" "}
-              and{" "}
-              <button
-                type="button"
-                onClick={() => navigate("/food/restaurant/privacy")}
-                className="bg-transparent border-0 p-0 text-primary font-bold hover:underline cursor-pointer"
-              >
-                Privacy Policy
-              </button>
-            </p>
-          </div>
+          </form>
         </div>
-      </div>
 
-      <div className={`pb-4 sm:pb-8 text-center ${keyboardInset ? "hidden" : ""}`}>
-          <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
-            &copy; {new Date().getFullYear()} {companyName.toUpperCase()} PARTNER
+        <div className={`mt-6 text-center space-y-2 ${keyboardInset ? "hidden" : ""}`}>
+          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em] leading-relaxed">
+            By continuing, you agree to our <br />
+            <button type="button" onClick={() => navigate("/food/restaurant/terms")} className="text-gray-900 underline cursor-pointer hover:text-[#001A94] transition-colors bg-transparent border-0 p-0">
+              Terms of Service
+            </button>{" "}
+            &{" "}
+            <button type="button" onClick={() => navigate("/food/restaurant/privacy")} className="text-gray-900 underline cursor-pointer hover:text-[#001A94] transition-colors bg-transparent border-0 p-0">
+              Privacy Policy
+            </button>
           </p>
+        </div>
       </div>
     </div>
   )

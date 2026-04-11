@@ -63,14 +63,14 @@ function ReviewModal({ booking, onClose, onSubmit }) {
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             placeholder="Write about the food, service, and atmosphere..."
-                            className="w-full h-32 p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-red-500 transition-all text-sm resize-none"
+                            className="w-full h-32 p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-[#001A94] transition-all text-sm resize-none"
                         />
                     </div>
 
                     <Button
                         onClick={handleSubmit}
                         disabled={submitting}
-                        className="w-full bg-red-500 hover:bg-red-600 text-white font-bold h-12 rounded-2xl shadow-lg shadow-red-200"
+                        className="w-full bg-[#001A94] hover:bg-[#00147A] text-white font-bold h-12 rounded-2xl shadow-lg shadow-[#001A94]/20"
                     >
                         {submitting ? "Submitting..." : "Submit Review"}
                     </Button>
@@ -100,9 +100,9 @@ export default function MyBookings() {
         const key = String(status || "").toLowerCase()
         if (key === "confirmed") return "bg-amber-100 text-amber-700"
         if (key === "accepted") return "bg-green-100 text-green-700"
-        if (key === "checked-in") return "bg-[#FFF2EB] text-[#EB590E]"
-        if (key === "completed") return "bg-blue-100 text-blue-700"
-        if (key === "cancelled") return "bg-red-100 text-red-700"
+        if (key === "checked-in") return "bg-[#E6ECFF] text-[#001A94]"
+        if (key === "completed") return "bg-[#E6ECFF] text-[#001A94]"
+        if (key === "cancelled") return "bg-[#E6ECFF] text-[#001A94]"
         return "bg-slate-100 text-slate-700"
     }
 
@@ -197,7 +197,7 @@ export default function MyBookings() {
                                 {booking.status === 'completed' && (
                                     <button
                                         onClick={() => setSelectedBooking(booking)}
-                                        className="mt-3 w-full py-2 bg-red-50 text-red-600 text-[11px] font-bold rounded-lg border border-red-100 hover:bg-red-100 transition-colors"
+                                        className="mt-3 w-full py-2 bg-[#F0F4FF] text-[#001A94] text-[11px] font-bold rounded-lg border border-[#D6E1FF] hover:bg-[#E6ECFF] transition-colors"
                                     >
                                         RATE & REVIEW
                                     </button>
@@ -213,7 +213,7 @@ export default function MyBookings() {
                         <h3 className="text-lg font-bold text-gray-800">No bookings yet</h3>
                         <p className="text-gray-500 text-sm mt-2">Book your favorite restaurant for a great dining experience!</p>
                         <Link to="/dining">
-                            <button className="mt-6 bg-red-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-red-200">
+                            <button className="mt-6 bg-[#001A94] text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-[#001A94]/20">
                                 Book a table
                             </button>
                         </Link>

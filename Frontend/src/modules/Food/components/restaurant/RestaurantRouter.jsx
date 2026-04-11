@@ -1,12 +1,11 @@
 import { Suspense, lazy } from "react"
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, Navigate } from "react-router-dom"
 import ProtectedRoute from "@food/components/ProtectedRoute"
 import Loader from "@food/components/Loader"
 
 // Lazy Loading Components
 const RestaurantOrdersPage = lazy(() => import("@food/pages/restaurant/OrdersPage"))
 const AllOrdersPage = lazy(() => import("@food/pages/restaurant/AllOrdersPage"))
-const RestaurantDetailsPage = lazy(() => import("@food/pages/restaurant/RestaurantDetailsPage"))
 const EditRestaurantPage = lazy(() => import("@food/pages/restaurant/EditRestaurantPage"))
 const FoodDetailsPage = lazy(() => import("@food/pages/restaurant/FoodDetailsPage"))
 const EditFoodPage = lazy(() => import("@food/pages/restaurant/EditFoodPage"))
@@ -90,7 +89,7 @@ export default function RestaurantRouter() {
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantOrdersPage /></ProtectedRoute>} path="orders" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AllOrdersPage /></ProtectedRoute>} path="orders/all" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OrderDetails /></ProtectedRoute>} path="orders/:orderId" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantDetailsPage /></ProtectedRoute>} path="details" />
+        <Route path="details" element={<Navigate to="/food/restaurant" replace />} />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditRestaurantPage /></ProtectedRoute>} path="edit" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AllFoodPage /></ProtectedRoute>} path="food/all" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><FoodDetailsPage /></ProtectedRoute>} path="food/:id" />

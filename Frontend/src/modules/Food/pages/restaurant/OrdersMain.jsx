@@ -917,6 +917,8 @@ export default function OrdersMain() {
   const [showCancelPopup, setShowCancelPopup] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [orderToCancel, setOrderToCancel] = useState(null);
+  const isOrderPopupOpen =
+    showNewOrderPopup || showRejectPopup || showCancelPopup;
   const [acceptSwipeProgress, setAcceptSwipeProgress] = useState(0);
   const [isAcceptingOrder, setIsAcceptingOrder] = useState(false);
   const audioRef = useRef(null);
@@ -926,8 +928,10 @@ export default function OrdersMain() {
   const acceptSwipeActiveRef = useRef(false);
   const [restaurantStatus, setRestaurantStatus] = useState({
     isActive: null,
+    status: null,
     rejectionReason: null,
     onboarding: null,
+    hasSubmittedForVerification: false,
     isLoading: true,
   });
   const [isReverifying, setIsReverifying] = useState(false);
@@ -1004,15 +1008,49 @@ export default function OrdersMain() {
         const restaurant =
           response?.data?.data?.restaurant || response?.data?.restaurant;
         if (restaurant) {
+          const normalizedStatus = String(restaurant.status || "")
+            .trim()
+            .toLowerCase();
+          const completedSteps = Number(restaurant?.onboarding?.completedSteps || 0);
+          const hasServerRestaurantRecord = Boolean(
+            restaurant?._id || restaurant?.id || restaurant?.restaurantId,
+          );
+          const hasOperationalIdentity = Boolean(
+            String(restaurant?.slug || "").trim() ||
+              String(restaurant?.restaurantId || "").trim(),
+          );
+          const hasModerationStatus =
+            normalizedStatus === "pending" ||
+            normalizedStatus === "approved" ||
+            normalizedStatus === "rejected";
+          const hasReviewState =
+            hasModerationStatus ||
+            Boolean(restaurant?.approvedAt) ||
+            Boolean(restaurant?.rejectedAt) ||
+            Boolean(restaurant?.rejectionReason);
+          const hasSubmittedForVerification =
+            completedSteps >= 4 || (hasOperationalIdentity && hasReviewState);
+          const isInactiveRestaurant = restaurant?.isActive === false;
+          const shouldBypassOnboardingRedirect =
+            (hasServerRestaurantRecord && hasModerationStatus) ||
+            isInactiveRestaurant ||
+            hasSubmittedForVerification;
+
           setRestaurantStatus({
             isActive: restaurant.isActive,
+            status: restaurant.status || null,
             rejectionReason: restaurant.rejectionReason || null,
             onboarding: restaurant.onboarding || null,
+            hasSubmittedForVerification:
+              shouldBypassOnboardingRedirect,
             isLoading: false,
           });
 
           // Check if onboarding is incomplete and redirect if needed
-          if (!isRestaurantOnboardingComplete(restaurant)) {
+          if (
+            !shouldBypassOnboardingRedirect &&
+            !isRestaurantOnboardingComplete(restaurant)
+          ) {
             // Onboarding is incomplete, redirect to onboarding page
             const incompleteStep = await checkOnboardingStatus();
             if (incompleteStep) {
@@ -1067,8 +1105,12 @@ export default function OrdersMain() {
       if (restaurant) {
         setRestaurantStatus({
           isActive: restaurant.isActive,
+          status: restaurant.status || null,
           rejectionReason: restaurant.rejectionReason || null,
           onboarding: restaurant.onboarding || null,
+          hasSubmittedForVerification:
+            Number(restaurant?.onboarding?.completedSteps || 0) >= 4 ||
+            restaurant?.isActive === false,
           isLoading: false,
         });
       }
@@ -1393,6 +1435,14 @@ export default function OrdersMain() {
     return { maxTravel };
   };
 
+  const stopRestaurantAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.loop = false;
+    }
+  };
+
   const triggerSwipeAccept = () => {
     if (isAcceptingOrder) return;
     setAcceptSwipeProgress(1);
@@ -1431,10 +1481,7 @@ export default function OrdersMain() {
     if (isAcceptingOrder) return;
     setIsAcceptingOrder(true);
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopRestaurantAlertSound();
 
     // Use popupOrder (from Socket.IO or API fallback) or newOrder (from hook)
     const orderToAccept = popupOrder || newOrder;
@@ -1510,10 +1557,7 @@ export default function OrdersMain() {
       }
     }
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopRestaurantAlertSound();
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
@@ -1524,6 +1568,7 @@ export default function OrdersMain() {
   };
 
   const handleRejectCancel = () => {
+    stopRestaurantAlertSound();
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
@@ -2052,7 +2097,10 @@ export default function OrdersMain() {
         {/* Verification Pending Card - Show if onboarding is complete (all 4 steps) and restaurant is not active */}
         {!restaurantStatus.isLoading &&
           !restaurantStatus.isActive &&
-          restaurantStatus.onboarding?.completedSteps === 4 && (
+          String(restaurantStatus.status || "").toLowerCase() !== "approved" &&
+          (restaurantStatus.onboarding?.completedSteps === 4 ||
+            restaurantStatus.hasSubmittedForVerification ||
+            String(restaurantStatus.status || "").toLowerCase() === "pending") && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2156,7 +2204,7 @@ export default function OrdersMain() {
         {showNewOrderPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[60] bg-primary/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[90] bg-primary/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
@@ -2490,7 +2538,7 @@ export default function OrdersMain() {
         {showRejectPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[70] bg-primary/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[100] bg-primary/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2584,7 +2632,7 @@ export default function OrdersMain() {
         {showCancelPopup && orderToCancel && (
           <>
             <motion.div
-              className="fixed inset-0 z-[70] bg-primary/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[100] bg-primary/60 flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2796,7 +2844,7 @@ export default function OrdersMain() {
       </AnimatePresence>
 
       {/* Bottom Navigation - Sticky */}
-      <BottomNavOrders />
+      {!isOrderPopupOpen && <BottomNavOrders />}
     </div>
   );
 }

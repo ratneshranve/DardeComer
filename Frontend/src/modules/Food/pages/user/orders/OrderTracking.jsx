@@ -454,6 +454,7 @@ export default function OrderTracking() {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
+  const [refundDestination, setRefundDestination] = useState("source")
   const [isCancelling, setIsCancelling] = useState(false)
   const [isInstructionsModalOpen, setIsInstructionsModalOpen] = useState(false)
   const [deliveryInstructions, setDeliveryInstructions] = useState("")
@@ -692,6 +693,12 @@ export default function OrderTracking() {
       "picked_up",
     ].includes(status)
   }, [order?.status])
+
+  const isOnlineRazorpayPaid = useMemo(() => {
+    const method = String(order?.payment?.method || order?.paymentMethod || '').toLowerCase()
+    const status = String(order?.payment?.status || '').toLowerCase()
+    return method === 'razorpay' && (status === 'paid' || status === 'refunded')
+  }, [order?.payment?.method, order?.paymentMethod, order?.payment?.status])
 
   // Single source of truth: backend order.status (+ deliveryState phase for live ride)
   useEffect(() => {
@@ -1038,6 +1045,7 @@ export default function OrderTracking() {
     // Allow cancellation for all payment methods (Razorpay, COD, Wallet)
     // Only restrict if order is already cancelled or delivered (checked above)
 
+    setRefundDestination('source')
     setShowCancelDialog(true);
   };
 
@@ -1051,16 +1059,25 @@ export default function OrderTracking() {
     try {
       const cancelLookupId =
         lookupIdsRef.current[0] || normalizeLookupId(orderId)
-      const response = await orderAPI.cancelOrder(cancelLookupId, { reason: cancellationReason.trim() });
+      const payload = {
+        reason: cancellationReason.trim(),
+        ...(isOnlineRazorpayPaid ? { refundTo: refundDestination } : {})
+      }
+      const response = await orderAPI.cancelOrder(cancelLookupId, payload);
       if (response.data?.success) {
         const paymentMethod = order?.payment?.method || order?.paymentMethod;
         const successMessage = response.data?.message ||
           (paymentMethod === 'cash' || paymentMethod === 'cod'
             ? 'Order cancelled successfully. No refund required as payment was not made.'
-            : 'Order cancelled successfully. Refund will be processed after admin approval.');
+            : (isOnlineRazorpayPaid
+              ? (refundDestination === 'wallet'
+                ? 'Order cancelled successfully. Refund has been credited to your wallet.'
+                : 'Order cancelled successfully. Amount will be credited to your source account in 2-3 working days.')
+              : 'Order cancelled successfully. Refund will be processed shortly.'));
         toast.success(successMessage);
         setShowCancelDialog(false);
         setCancellationReason("");
+        setRefundDestination('source')
         // Refresh order data
         const orderResponse = await fetchOrderDetailsWithFallback({ force: true });
         if (orderResponse.data?.success && orderResponse.data.data?.order) {
@@ -1772,12 +1789,48 @@ export default function OrderTracking() {
                 disabled={isCancelling}
               />
             </div>
+            {isOnlineRazorpayPaid && (
+              <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm font-semibold text-gray-800">Choose refund destination</p>
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3">
+                  <input
+                    type="radio"
+                    name="refundDestination"
+                    value="wallet"
+                    checked={refundDestination === 'wallet'}
+                    onChange={(e) => setRefundDestination(e.target.value)}
+                    disabled={isCancelling}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Refund to Wallet</p>
+                    <p className="text-xs text-gray-600">Instant credit to your in-app wallet.</p>
+                  </div>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3">
+                  <input
+                    type="radio"
+                    name="refundDestination"
+                    value="source"
+                    checked={refundDestination === 'source'}
+                    onChange={(e) => setRefundDestination(e.target.value)}
+                    disabled={isCancelling}
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Refund to Source Payment</p>
+                    <p className="text-xs text-gray-600">Amount will be credited in 2-3 working days.</p>
+                  </div>
+                </label>
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowCancelDialog(false);
                   setCancellationReason("");
+                  setRefundDestination('source')
                 }}
                 disabled={isCancelling}
                 className="flex-1"

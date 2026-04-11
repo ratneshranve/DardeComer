@@ -15,6 +15,7 @@ const DiningExplore50 = lazy(() => import("@food/pages/user/DiningExplore50"))
 const DiningExploreNear = lazy(() => import("@food/pages/user/DiningExploreNear"))
 const Coffee = lazy(() => import("@food/pages/user/Coffee"))
 const Under250 = lazy(() => import("@food/pages/user/Under250"))
+const HomeKitchens = lazy(() => import("@food/pages/user/HomeKitchens"))
 const Categories = lazy(() => import("@food/pages/user/Categories"))
 const CategoryPage = lazy(() => import("@food/pages/user/CategoryPage"))
 const Restaurants = lazy(() => import("@food/pages/user/restaurants/Restaurants"))
@@ -116,6 +117,7 @@ export default function UserRouter() {
             }
           />
           <Route path="under-250" element={<Under250 />} />
+          <Route path="home-kitchens" element={<HomeKitchens />} />
           <Route path="categories" element={<Categories />} />
           <Route path="category/:category" element={<CategoryPage />} />
           <Route path="restaurants" element={<Restaurants />} />

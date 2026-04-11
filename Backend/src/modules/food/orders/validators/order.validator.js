@@ -121,7 +121,8 @@ export function validateVerifyPaymentDto(body) {
 
 export function validateCancelOrderDto(body) {
     const schema = z.object({
-        reason: z.string().optional()
+        reason: z.string().optional(),
+        refundTo: z.enum(['wallet', 'source']).optional()
     });
     const result = schema.safeParse(body || {});
     if (!result.success) {

@@ -94,7 +94,7 @@ export async function cancelOrderController(req, res, next) {
         const userId = req.user?.userId;
         const orderId = req.params.orderId;
         const dto = validateCancelOrderDto(req.body);
-        const order = await orderService.cancelOrder(orderId, userId, dto.reason);
+        const order = await orderService.cancelOrder(orderId, userId, dto.reason, dto.refundTo);
         return sendResponse(res, 200, 'Order cancelled', { order });
     } catch (err) {
         next(err);

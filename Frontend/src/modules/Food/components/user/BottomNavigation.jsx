@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { Tag, User, Truck, UtensilsCrossed } from "lucide-react"
+import { Tag, User, Truck, UtensilsCrossed, House } from "lucide-react"
 
 export default function BottomNavigation() {
   const location = useLocation()
@@ -8,10 +8,12 @@ export default function BottomNavigation() {
   // Check active routes - support both /user/* and /* paths
   const isDining = pathname === "/food/dining" || pathname.startsWith("/food/user/dining")
   const isUnder250 = pathname === "/food/under-250" || pathname.startsWith("/food/user/under-250")
+  const isHomeKitchen = pathname === "/food/home-kitchens" || pathname.startsWith("/food/user/home-kitchens")
   const isProfile = pathname.startsWith("/food/profile") || pathname.startsWith("/food/user/profile")
   const isDelivery =
     !isDining &&
     !isUnder250 &&
+    !isHomeKitchen &&
     !isProfile &&
     (pathname === "/food" ||
       pathname === "/food/" ||
@@ -19,6 +21,7 @@ export default function BottomNavigation() {
       (pathname.startsWith("/food/user") &&
         !pathname.includes("/dining") &&
         !pathname.includes("/under-250") &&
+        !pathname.includes("/home-kitchens") &&
         !pathname.includes("/profile")))
 
   return (
@@ -29,13 +32,13 @@ export default function BottomNavigation() {
         {/* Delivery Tab */}
         <Link
           to="/food/user"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isDelivery
+          className={`flex flex-1 flex-col items-center gap-1 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isDelivery
               ? "text-primary dark:text-primary"
               : "text-gray-600 dark:text-gray-400"
             }`}
         >
           < Truck className={`h-5 w-5 ${isDelivery ? "text-primary dark:text-primary fill-primary dark:fill-primary" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
-          <span className={`text-xs sm:text-sm font-medium ${isDelivery ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
+          <span className={`text-[11px] leading-none whitespace-nowrap font-medium ${isDelivery ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
             Delivery
           </span>
           {isDelivery && (
@@ -49,13 +52,13 @@ export default function BottomNavigation() {
         {/* Dining Tab */}
         <Link
           to="/food/user/dining"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isDining
+          className={`flex flex-1 flex-col items-center gap-1 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isDining
               ? "text-primary dark:text-primary"
               : "text-gray-600 dark:text-gray-400"
             }`}
         >
           <UtensilsCrossed className={`h-5 w-5 ${isDining ? "text-primary dark:text-primary" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
-          <span className={`text-xs sm:text-sm font-medium ${isDining ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
+          <span className={`text-[11px] leading-none whitespace-nowrap font-medium ${isDining ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
             Dining
           </span>
           {isDining && (
@@ -66,19 +69,39 @@ export default function BottomNavigation() {
         {/* Divider */}
         <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
 
-        {/* Under 250 Tab */}
+        {/* Under 200 Tab */}
         <Link
           to="/food/user/under-250"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isUnder250
+          className={`flex flex-1 flex-col items-center gap-1 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isUnder250
               ? "text-primary dark:text-primary"
               : "text-gray-600 dark:text-gray-400"
             }`}
         >
           <Tag className={`h-5 w-5 ${isUnder250 ? "text-primary dark:text-primary fill-primary dark:fill-primary" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
-          <span className={`text-xs sm:text-sm font-medium ${isUnder250 ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Under 250
+          <span className={`text-[11px] leading-none whitespace-nowrap font-medium ${isUnder250 ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
+            Under 200
           </span>
           {isUnder250 && (
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary dark:bg-primary rounded-b-full" />
+          )}
+        </Link>
+
+        {/* Divider */}
+        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+
+        {/* Home Kitchen Tab */}
+        <Link
+          to="/food/user/home-kitchens"
+          className={`flex flex-1 flex-col items-center gap-1 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isHomeKitchen
+              ? "text-primary dark:text-primary"
+              : "text-gray-600 dark:text-gray-400"
+            }`}
+        >
+          <House className={`h-5 w-5 ${isHomeKitchen ? "text-primary dark:text-primary" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
+          <span className={`text-[11px] leading-none whitespace-nowrap font-medium ${isHomeKitchen ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
+            Kitchen
+          </span>
+          {isHomeKitchen && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary dark:bg-primary rounded-b-full" />
           )}
         </Link>
@@ -89,13 +112,13 @@ export default function BottomNavigation() {
         {/* Profile Tab */}
         <Link
           to="/food/user/profile"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isProfile
+          className={`flex flex-1 flex-col items-center gap-1 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isProfile
               ? "text-primary dark:text-primary"
               : "text-gray-600 dark:text-gray-400"
             }`}
         >
           <User className={`h-5 w-5 ${isProfile ? "text-primary dark:text-primary fill-primary dark:fill-primary" : "text-gray-600 dark:text-gray-400"}`} />
-          <span className={`text-xs sm:text-sm font-medium ${isProfile ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
+          <span className={`text-[11px] leading-none whitespace-nowrap font-medium ${isProfile ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
             Profile
           </span>
           {isProfile && (

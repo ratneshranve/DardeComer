@@ -236,6 +236,16 @@ export const useDeliveryNotifications = () => {
     alertLoopStartedAtRef.current = 0;
   }, []);
 
+  const stopNotificationSound = useCallback(() => {
+    stopAlertLoop();
+    activeOrderRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.loop = false;
+    }
+  }, [stopAlertLoop]);
+
   const startAlertLoop = useCallback((playSoundFn) => {
     stopAlertLoop();
     alertLoopStartedAtRef.current = Date.now();
@@ -974,7 +984,7 @@ export const useDeliveryNotifications = () => {
 
     return () => {
       debugLog('? Cleaning up socket connection...');
-      stopAlertLoop();
+      stopNotificationSound();
       joinedDeliveryRoomRef.current = null;
       window.removeEventListener('deliveryAuthChanged', handleAuthChange);
       window.removeEventListener('authRefreshed', handleAuthRefreshed);
@@ -1008,8 +1018,7 @@ export const useDeliveryNotifications = () => {
 
   // Helper functions
   const clearNewOrder = () => {
-    stopAlertLoop();
-    activeOrderRef.current = null;
+    stopNotificationSound();
     setNewOrder(null);
   };
 
@@ -1033,6 +1042,7 @@ export const useDeliveryNotifications = () => {
   return {
     newOrder,
     clearNewOrder,
+    stopNotificationSound,
     orderReady,
     clearOrderReady,
     orderStatusUpdate,

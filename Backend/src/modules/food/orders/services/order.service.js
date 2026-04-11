@@ -717,7 +717,7 @@ export async function resyncState(userId, role) {
   return {};
 }
 
-export async function cancelOrder(orderId, userId, reason) {
+export async function cancelOrder(orderId, userId, reason, refundTo) {
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
 
@@ -743,40 +743,66 @@ export async function cancelOrder(orderId, userId, reason) {
 
   const paymentMethod = String(order.payment?.method || "cash").toLowerCase();
   const paymentStatus = String(order.payment?.status || "cod_pending").toLowerCase();
+  const refundPreference = String(refundTo || "source").toLowerCase() === "wallet" ? "wallet" : "source";
   const hasRefundProcessed =
     String(order.payment?.refund?.status || "none").toLowerCase() === "processed";
 
-  // ✅ NEW: Automated Razorpay Refund on User Cancel
   if (
     paymentStatus === "paid" &&
     paymentMethod === "razorpay" &&
     order.payment?.razorpay?.paymentId &&
     !hasRefundProcessed
   ) {
-    try {
-      const refundResult = await initiateRazorpayRefund(
-        order.payment.razorpay.paymentId,
-        order.pricing.total
-      );
-
-      if (refundResult.success) {
+    if (refundPreference === "wallet") {
+      try {
+        await userWalletService.refundWalletBalance(
+          userId,
+          order.pricing.total,
+          `Refund for cancelled order #${order.order_id || order._id}`,
+          { orderId: order._id }
+        );
         order.payment.status = "refunded";
         order.payment.refund = {
           status: "processed",
           amount: order.pricing.total,
-          refundId: refundResult.refundId,
-          processedAt: new Date()
+          processedAt: new Date(),
+          destination: "wallet"
         };
-      } else {
-        // Log failure but let order cancellation proceed
+      } catch (err) {
+        console.error(`Wallet refund processing error for Order ${orderId}:`, err);
         order.payment.refund = {
           status: "failed",
-          amount: order.pricing.total
+          amount: order.pricing.total,
+          destination: "wallet"
         };
       }
-    } catch (err) {
-      console.error(`Refund processing error for Order ${orderId}:`, err);
-      order.payment.refund = { status: "failed", amount: order.pricing.total };
+    } else {
+      try {
+        const refundResult = await initiateRazorpayRefund(
+          order.payment.razorpay.paymentId,
+          order.pricing.total
+        );
+
+        if (refundResult.success) {
+          order.payment.status = "refunded";
+          order.payment.refund = {
+            status: "processed",
+            amount: order.pricing.total,
+            refundId: refundResult.refundId,
+            processedAt: new Date(),
+            destination: "source"
+          };
+        } else {
+          order.payment.refund = {
+            status: "failed",
+            amount: order.pricing.total,
+            destination: "source"
+          };
+        }
+      } catch (err) {
+        console.error(`Refund processing error for Order ${orderId}:`, err);
+        order.payment.refund = { status: "failed", amount: order.pricing.total, destination: "source" };
+      }
     }
   } else if (
     paymentStatus === "paid" &&
@@ -789,11 +815,12 @@ export async function cancelOrder(orderId, userId, reason) {
       order.payment.refund = {
         status: "processed",
         amount: order.pricing.total,
-        processedAt: new Date()
+        processedAt: new Date(),
+        destination: "wallet"
       };
     } catch (err) {
       console.error(`Wallet refund processing error for Order ${orderId}:`, err);
-      order.payment.refund = { status: "failed", amount: order.pricing.total };
+      order.payment.refund = { status: "failed", amount: order.pricing.total, destination: "wallet" };
     }
   }
 
@@ -829,7 +856,12 @@ export async function cancelOrder(orderId, userId, reason) {
   const isOnlinePaid =
     finalPaymentMethod === "razorpay" &&
     (finalPaymentStatus === "paid" || finalPaymentStatus === "refunded");
-  const refundDetail = isOnlinePaid ? ` Your refund of ₹${order.pricing.total} is being processed and will be credited to your original payment method within 5-7 working days.` : "";
+  const refundDestination = String(order.payment?.refund?.destination || "source").toLowerCase();
+  const refundDetail = isOnlinePaid
+    ? refundDestination === "wallet"
+      ? ` Your refund of ₹${order.pricing.total} has been credited to your wallet.`
+      : ` Your refund of ₹${order.pricing.total} is being processed and will be credited to your source account within 2-3 working days.`
+    : "";
   
   await notifyOwnersSafely(
     [

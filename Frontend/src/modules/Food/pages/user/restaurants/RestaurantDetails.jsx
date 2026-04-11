@@ -1650,10 +1650,10 @@ function RestaurantDetailsContent() {
     if (!items) return items
 
     return items.filter((item) => {
-      // Under 250 filter (when coming from Under 250 page)
+      // Under 200 filter (when coming from Under page)
       if (showOnlyUnder250) {
         const finalPrice = getFinalPrice(item);
-        if (finalPrice > 250) return false;
+        if (finalPrice > 200) return false;
       }
 
       // Search filter
@@ -2796,7 +2796,7 @@ function RestaurantDetailsContent() {
 
       {/* Menu Button - Sticky at page bottom right (hidden when filter or menu sheet open) */}
       {!showFilterSheet && !showMenuSheet && !showMenuOptionsSheet && (
-        <div className="sticky dark:bg-[#1a1a1a] bottom-4 flex justify-end px-4 z-50 mt-auto">
+        <div className="fixed bottom-4 right-4 z-50 w-fit">
           <Button
             className="bg-[#1a1a1a] dark:bg-[#001A94] hover:bg-black dark:hover:bg-[#00157A] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#001A94]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group"
             size="lg"

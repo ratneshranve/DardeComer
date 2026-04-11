@@ -221,15 +221,12 @@ export default function OTP() {
       )
       const data = response?.data?.data || response?.data || {}
 
-      const accessToken = data.accessToken
+      const accessToken = data.accessToken || data.token
       const refreshToken = data.refreshToken ?? null
       const user = data.user
 
       if (!accessToken || !user) {
         throw new Error("Invalid response from server")
-      }
-      if (!refreshToken) {
-        throw new Error("Invalid response from server: missing refresh token")
       }
 
       // Check if user needs name prompt (isNewUser flag or missing name)
@@ -322,15 +319,12 @@ export default function OTP() {
       )
       const data = response?.data?.data || response?.data || {}
 
-      const accessToken = data.accessToken
+      const accessToken = data.accessToken || data.token
       const refreshToken = data.refreshToken ?? null
       const user = data.user
 
       if (!accessToken || !user) {
         throw new Error("Invalid response from server")
-      }
-      if (!refreshToken) {
-        throw new Error("Invalid response from server: missing refresh token")
       }
 
       sessionStorage.removeItem("userAuthData")

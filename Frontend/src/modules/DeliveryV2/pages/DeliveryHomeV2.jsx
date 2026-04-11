@@ -69,7 +69,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const { isOnline, toggleOnline, activeOrder, tripStatus, setRiderLocation, setActiveOrder, updateTripStatus, clearActiveOrder } = useDeliveryStore();
   const { isWithinRange, distanceToTarget } = useProximityCheck();
   const { acceptOrder, reachPickup, pickUpOrder, reachDrop, completeDelivery, resetTrip } = useOrderManager();
-  const { newOrder, clearNewOrder, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
+  const { newOrder, clearNewOrder, stopNotificationSound, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation } = useDeliveryNotifications();
   const companyName = useCompanyName();
   const { unreadCount: notificationUnreadCount } = useNotificationInbox("delivery", { limit: 20 });
 
@@ -772,8 +772,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 {incomingOrder && (
                   <NewOrderModal 
                     order={incomingOrder} 
-                    onAccept={(o) => { acceptOrder(o); setIncomingOrder(null); clearNewOrder(); }}
-                    onReject={() => { setIncomingOrder(null); clearNewOrder(); }}
+                    onAccept={(o) => { stopNotificationSound(); acceptOrder(o); setIncomingOrder(null); clearNewOrder(); }}
+                    onReject={() => { stopNotificationSound(); setIncomingOrder(null); clearNewOrder(); }}
                     onMinimize={() => setIsModalMinimized(true)}
                   />
                 )}

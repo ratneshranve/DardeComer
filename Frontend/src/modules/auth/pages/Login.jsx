@@ -130,7 +130,7 @@ export default function UnifiedOTPFastLogin() {
   }
 
   const completeLogin = (data) => {
-    const accessToken = data.accessToken
+    const accessToken = data?.accessToken || data?.token
     const refreshToken = data.refreshToken || null
     const user = data.user
     const role = data.role || user?.role || "user"
@@ -159,6 +159,16 @@ export default function UnifiedOTPFastLogin() {
     navigate(navigatePath, { replace: true })
   }
 
+  const normalizeAuthPayload = (raw) => {
+    const data = raw || {}
+    return {
+      ...data,
+      accessToken: data?.accessToken || data?.token || null,
+      refreshToken: data?.refreshToken || null,
+      user: data?.user || null,
+    }
+  }
+
   const handleVerifyOTP = async (e) => {
     e.preventDefault()
     const phone = normalizedPhone()
@@ -174,7 +184,7 @@ export default function UnifiedOTPFastLogin() {
       const { fcmToken, platform } = await resolvePushContext()
 
       const response = await authAPI.verifyOTP(phoneNumber, otpDigits, "login", null, null, "user", null, null, fcmToken, platform)
-      const data = response?.data?.data || response?.data || {}
+      const data = normalizeAuthPayload(response?.data?.data || response?.data || {})
       const user = data?.user || {}
       const hasName = typeof user.name === "string" && user.name.trim().length > 0 && user.name.trim().toLowerCase() !== "null"
       const needsName = data?.isNewUser === true || !hasName
@@ -213,7 +223,8 @@ export default function UnifiedOTPFastLogin() {
       return
     }
 
-    if (!pendingAuthData?.accessToken || !pendingAuthData?.user) {
+    const accessToken = pendingAuthData?.accessToken || pendingAuthData?.token
+    if (!accessToken || !pendingAuthData?.user) {
       toast.error("Session expired. Please verify OTP again.")
       setStep(2)
       return
@@ -225,7 +236,7 @@ export default function UnifiedOTPFastLogin() {
     try {
       const refreshToken = pendingAuthData?.refreshToken || null
       // Set tokens first so profile update can use authenticated user context.
-      setAuthData("user", pendingAuthData.accessToken, pendingAuthData.user, refreshToken)
+      setAuthData("user", accessToken, pendingAuthData.user, refreshToken)
 
       const updateRes = await userAPI.updateProfile({ name: trimmedName })
       const updatedUser =
@@ -235,6 +246,8 @@ export default function UnifiedOTPFastLogin() {
 
       const finalizedData = {
         ...pendingAuthData,
+        accessToken,
+        token: accessToken,
         user: updatedUser,
       }
 
@@ -293,16 +306,16 @@ export default function UnifiedOTPFastLogin() {
             animate={{ scale: 1 }}
             className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-xl overflow-hidden p-1"
           >
-             {logoUrl ? <img src={logoUrl} alt="Logo" className="w-[90%] h-[90%] object-contain" /> : <span className="text-[#001A94] text-3xl font-black">{companyName?.[0] || "D"}</span>}
+             {logoUrl ? <img src={logoUrl} alt="Logo" className="w-[90%] h-[90%] object-contain" /> : <span className="text-[#001A94] text-3xl font-medium">{companyName?.[0] || "D"}</span>}
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl md:text-5xl font-black tracking-tight mb-1"
+            className="text-2xl md:text-5xl font-medium tracking-tight mb-1"
           >
             {companyName || "DarDeComer"}
           </motion.h1>
-          <p className="text-xs md:text-base font-bold text-white/90 tracking-[0.2em] uppercase">
+          <p className="text-xs md:text-base font-medium text-white/90 tracking-[0.2em] uppercase">
             Taste the best, forget the rest
           </p>
         </div>
@@ -312,7 +325,7 @@ export default function UnifiedOTPFastLogin() {
         {/* Main Card */}
         <div className="bg-white dark:bg-[#1a1a1a] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-none border border-gray-50 dark:border-gray-800">
            <div className="text-center mb-6 space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white">Login or Signup</h2>
+                  <h2 className="text-2xl font-normal text-gray-900 dark:text-white" style={{ fontFamily: "'Saira Stencil', sans-serif" }}>Login or Signup</h2>
               <div className="h-1 w-12 bg-[#001A94] mx-auto rounded-full" />
            </div>
 
@@ -325,7 +338,7 @@ export default function UnifiedOTPFastLogin() {
                       <Phone className="w-5 h-5 text-gray-400 group-focus-within:text-[#001A94] transition-colors" />
                     </div>
                     <div className="absolute left-8 inset-y-0 flex items-center pointer-events-none">
-                       <span className="text-sm font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-800 pr-3">+91</span>
+                       <span className="text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-800 pr-3">+91</span>
                     </div>
                     <input
                       type="tel"
@@ -334,7 +347,7 @@ export default function UnifiedOTPFastLogin() {
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       maxLength={10}
-                      className="block w-full pl-20 pr-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-bold text-lg"
+                      className="block w-full pl-20 pr-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-medium text-lg"
                       placeholder="Phone number"
                     />
                   </div>
@@ -351,10 +364,10 @@ export default function UnifiedOTPFastLogin() {
                          <ShieldCheck className="w-5 h-5 text-[#001A94]" />
                       </div>
                       <div className="flex-1">
-                         <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest leading-none mb-1">Sent to</p>
-                         <p className="text-sm font-black text-gray-900 dark:text-white">+91 {phoneNumber}</p>
+                         <p className="text-[10px] uppercase font-medium text-gray-400 tracking-widest leading-none mb-1">Sent to</p>
+                         <p className="text-sm font-medium text-gray-900 dark:text-white">+91 {phoneNumber}</p>
                       </div>
-                      <button type="button" onClick={handleEditNumber} className="text-xs text-[#001A94] font-black underline cursor-pointer">Edit</button>
+                      <button type="button" onClick={handleEditNumber} className="text-xs text-[#001A94] font-medium underline cursor-pointer">Edit</button>
                    </div>
 
                   <div className="flex justify-center gap-3 mt-4">
@@ -399,7 +412,7 @@ export default function UnifiedOTPFastLogin() {
                             document.getElementById(`otp-${Math.min(pasteData.length, 3)}`)?.focus();
                           }
                         }}
-                        className="w-14 h-14 sm:w-16 sm:h-16 text-center text-xl sm:text-3xl font-black bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] rounded-xl sm:rounded-2xl outline-none transition-all text-gray-900 dark:text-white"
+                        className="w-14 h-14 sm:w-16 sm:h-16 text-center text-xl sm:text-3xl font-medium bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] rounded-xl sm:rounded-2xl outline-none transition-all text-gray-900 dark:text-white"
                         placeholder="-"
                       />
                     ))}
@@ -414,7 +427,7 @@ export default function UnifiedOTPFastLogin() {
                         type="button"
                         onClick={handleResendOTP}
                         disabled={loading}
-                        className="text-xs font-black text-[#001A94] underline disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="text-xs font-medium text-[#001A94] underline disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         Resend OTP
                       </button>
@@ -430,10 +443,10 @@ export default function UnifiedOTPFastLogin() {
                       <ShieldCheck className="w-5 h-5 text-[#001A94]" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest leading-none mb-1">Complete your profile</p>
-                      <p className="text-sm font-black text-gray-900 dark:text-white">Name is required for new users</p>
+                      <p className="text-[10px] uppercase font-medium text-gray-400 tracking-widest leading-none mb-1">Complete your profile</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Name is required for new users</p>
                     </div>
-                    <button type="button" onClick={() => setStep(2)} className="text-xs text-[#001A94] font-black underline cursor-pointer">Back</button>
+                    <button type="button" onClick={() => setStep(2)} className="text-xs text-[#001A94] font-medium underline cursor-pointer">Back</button>
                   </div>
                   <input
                     type="text"
@@ -441,7 +454,7 @@ export default function UnifiedOTPFastLogin() {
                     autoFocus
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="block w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-bold text-lg"
+                    className="block w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-medium text-lg"
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -451,7 +464,7 @@ export default function UnifiedOTPFastLogin() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-4 rounded-2xl font-black text-lg transition-all relative overflow-hidden shadow-xl ${
+              className={`w-full py-4 rounded-2xl font-medium text-lg transition-all relative overflow-hidden shadow-xl ${
                 loading
                   ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
                   : "bg-[#001A94] hover:bg-[#001166] text-white hover:shadow-2xl hover:shadow-[#001A94]/30 active:scale-[0.98] hover:-translate-y-0.5"
@@ -467,7 +480,7 @@ export default function UnifiedOTPFastLogin() {
         </div>
 
         <div className="mt-6 text-center space-y-2">
-           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
+           <p className="text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em] leading-relaxed">
              By continuing, you agree to our <br />
              <Link to="/food/user/profile/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#001A94] transition-colors">Terms of Service</Link> & <Link to="/food/user/profile/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#001A94] transition-colors">Privacy Policy</Link>
            </p>
