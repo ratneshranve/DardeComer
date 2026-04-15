@@ -74,6 +74,12 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
   return false;
 }
 
+const isUserCancelledOrderUpdate = (data = {}) => {
+  const status = String(data?.orderStatus || data?.status || "").toLowerCase();
+  const cancelledBy = String(data?.cancelledBy || "").toLowerCase();
+  return status === "cancelled_by_user" || cancelledBy === "user";
+};
+
 
 /**
  * Hook for restaurant to receive real-time order notifications with sound
@@ -619,7 +625,39 @@ export const useRestaurantNotifications = () => {
     // Listen for order status updates
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
-      // You can handle status updates here if needed
+
+      if (isUserCancelledOrderUpdate(data)) {
+        const cancelledOrderId =
+          data?.orderMongoId || data?.orderId || data?._id || data?.id || null;
+
+        setNewOrder((prev) => {
+          if (!prev) return null;
+          const prevIds = [
+            prev?.orderMongoId,
+            prev?.orderId,
+            prev?._id,
+            prev?.id,
+          ]
+            .filter(Boolean)
+            .map((v) => String(v));
+
+          if (!cancelledOrderId || prevIds.includes(String(cancelledOrderId))) {
+            stopAlertLoop();
+            activeOrderRef.current = null;
+            return null;
+          }
+
+          return prev;
+        });
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('restaurantOrderStatusUpdate', {
+              detail: data || {},
+            }),
+          );
+        }
+      }
     });
 
     socketRef.current.on('admin_notification', (payload) => {

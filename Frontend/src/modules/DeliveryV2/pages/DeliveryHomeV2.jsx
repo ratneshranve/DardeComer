@@ -536,13 +536,34 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
   useEffect(() => {
     if (orderStatusUpdate) {
-      if (orderStatusUpdate.status === 'cancelled') {
+      const statusRaw = String(
+        orderStatusUpdate.status || orderStatusUpdate.orderStatus || ''
+      ).toLowerCase();
+      const dispatchStatusRaw = String(orderStatusUpdate.dispatchStatus || '').toLowerCase();
+      const incomingOrderId = String(
+        orderStatusUpdate.orderId ||
+        orderStatusUpdate.orderMongoId ||
+        orderStatusUpdate._id ||
+        ''
+      );
+      const currentActiveOrderId = String(
+        activeOrder?.orderId || activeOrder?._id || activeOrder?.orderMongoId || ''
+      );
+
+      const isCancelled =
+        statusRaw === 'cancelled' ||
+        statusRaw.includes('cancelled_by_') ||
+        dispatchStatusRaw === 'cancelled';
+      const isForCurrentActiveOrder =
+        !incomingOrderId || !currentActiveOrderId || incomingOrderId === currentActiveOrderId;
+
+      if (isCancelled && isForCurrentActiveOrder) {
         toast.error('Order cancelled');
         resetTrip();
       }
       clearOrderStatusUpdate();
     }
-  }, [orderStatusUpdate, resetTrip, clearOrderStatusUpdate]);
+  }, [orderStatusUpdate, activeOrder, resetTrip, clearOrderStatusUpdate]);
 
 
   const handleCenterMap = () => {

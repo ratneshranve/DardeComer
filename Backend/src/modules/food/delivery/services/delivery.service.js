@@ -8,6 +8,16 @@ import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 
+const COD_PAYMENT_METHODS = ['cash', 'cod', 'cash_on_delivery', 'cash on delivery'];
+const COD_COLLECTION_AMOUNT_EXPR = {
+    $max: [
+        { $ifNull: ['$payment.amountDue', 0] },
+        { $ifNull: ['$pricing.total', 0] },
+        { $ifNull: ['$amounts.totalCustomerPaid', 0] },
+        { $ifNull: ['$totalAmount', 0] }
+    ]
+};
+
 export const registerDeliveryPartner = async (payload, files) => {
     const { 
         name, phone, email, countryCode, address, city, state, 
@@ -352,14 +362,19 @@ export const getDeliveryPartnerWallet = async (deliveryPartnerId) => {
                 $match: {
                     'dispatch.deliveryPartnerId': partnerId,
                     orderStatus: 'delivered',
-                    'payment.method': 'cash',
-                    'payment.status': 'paid'
+                    $or: [
+                        {
+                            'payment.method': { $in: COD_PAYMENT_METHODS },
+                            'payment.status': { $in: ['paid', 'cod_pending', 'captured', 'settled'] }
+                        },
+                        { paymentMethod: { $in: COD_PAYMENT_METHODS } }
+                    ]
                 }
             },
             {
                 $group: {
                     _id: null,
-                    cashInHand: { $sum: { $ifNull: ['$riderEarning', 0] } }
+                    cashInHand: { $sum: COD_COLLECTION_AMOUNT_EXPR }
                 }
             }
         ])
@@ -404,7 +419,9 @@ export const getDeliveryPartnerWallet = async (deliveryPartnerId) => {
             orderId: o.orderId || String(o._id),
             paymentMethod: o?.payment?.method || '',
             metadata: { orderId: o.orderId || String(o._id) },
-            description: o?.payment?.method === 'cash' ? 'COD delivery earning' : 'Online delivery earning'
+            description: COD_PAYMENT_METHODS.includes(String(o?.payment?.method || o?.paymentMethod || '').toLowerCase())
+                ? 'COD delivery earning'
+                : 'Online delivery earning'
         };
     });
 
@@ -579,12 +596,20 @@ const toTripDto = (order) => {
         order?.restaurant?.restaurantName ||
         '';
 
-    const paymentMethod = order?.payment?.method || order?.paymentMethod || '';
+    const paymentMethod = String(order?.payment?.method || order?.paymentMethod || '').toLowerCase();
     const pricingTotal = Number(order?.pricing?.total) || Number(order?.totalAmount) || 0;
 
     const earningAmount = Number(order?.riderEarning ?? order?.deliveryEarning ?? 0) || 0;
-    const codAmount = paymentMethod === 'cash' ? Number(order?.payment?.amountDue) || 0 : 0;
-    const codCollectedAmount = paymentMethod === 'cash' && order?.payment?.status === 'paid' ? codAmount : 0;
+    const isCodOrder = COD_PAYMENT_METHODS.includes(paymentMethod);
+    const codAmount = isCodOrder
+        ? Math.max(
+            Number(order?.payment?.amountDue) || 0,
+            pricingTotal,
+            Number(order?.amounts?.totalCustomerPaid) || 0,
+            Number(order?.totalAmount) || 0
+        )
+        : 0;
+    const codCollectedAmount = isCodOrder ? codAmount : 0;
     return {
         id: order?._id,
         _id: order?._id,

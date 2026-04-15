@@ -59,6 +59,21 @@ export default function Profile() {
   const { openLocationSelector } = useLocationSelector();
   const navigate = useNavigate();
   const companyName = useCompanyName();
+  const safeName =
+    typeof userProfile?.name === "string" ? userProfile.name.trim() : "";
+  const safePhoneRaw = userProfile?.phone;
+  const safePhone =
+    typeof safePhoneRaw === "string"
+      ? safePhoneRaw.trim()
+      : safePhoneRaw != null
+        ? String(safePhoneRaw).trim()
+        : "";
+  const safeEmail =
+    typeof userProfile?.email === "string" ? userProfile.email.trim() : "";
+  const safeProfileImage =
+    typeof userProfile?.profileImage === "string"
+      ? userProfile.profileImage.trim()
+      : "";
   const defaultAddress = getDefaultAddress?.();
   const savedAddressSummary = defaultAddress
     ? [
@@ -93,18 +108,15 @@ export default function Profile() {
 
   // Get first letter of name for avatar
   const avatarInitial =
-    userProfile?.name?.charAt(0)?.toUpperCase() ||
-    userProfile?.phone?.charAt(1)?.toUpperCase() ||
+    safeName.charAt(0)?.toUpperCase() ||
+    safePhone.charAt(1)?.toUpperCase() ||
     "U";
-  const displayName = userProfile?.name || userProfile?.phone || "User";
+  const displayName = safeName || safePhone || "User";
   // Only show email if it exists and is valid, otherwise show phone or "Not available"
   const hasValidEmail =
-    userProfile?.email &&
-    userProfile.email.trim() !== "" &&
-    userProfile.email.includes("@");
-  const displayEmail = hasValidEmail
-    ? userProfile.email
-    : userProfile?.phone || "Not available";
+    safeEmail !== "" &&
+    safeEmail.includes("@");
+  const displayEmail = hasValidEmail ? safeEmail : safePhone || "Not available";
 
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
@@ -439,14 +451,9 @@ export default function Profile() {
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ duration: 0.3, type: "spring", stiffness: 300 }}>
                 <Avatar className="h-16 w-16 bg-blue-300 border-0">
-                  {userProfile?.profileImage && (
+                  {safeProfileImage && (
                     <AvatarImage
-                      src={
-                        userProfile.profileImage &&
-                          userProfile.profileImage.trim()
-                          ? userProfile.profileImage
-                          : undefined
-                      }
+                      src={safeProfileImage || undefined}
                       alt={displayName}
                     />
                   )}
@@ -461,16 +468,16 @@ export default function Profile() {
                 </h2>
                 {hasValidEmail && (
                   <p className="text-sm text-black dark:text-gray-300 mb-1">
-                    {userProfile.email}
+                    {safeEmail}
                   </p>
                 )}
-                {userProfile?.phone && (
+                {safePhone && (
                   <p
                     className={`text-sm ${hasValidEmail ? "text-gray-600 dark:text-gray-400" : "text-black dark:text-white"} mb-3`}>
-                    {userProfile.phone}
+                    {safePhone}
                   </p>
                 )}
-                {!hasValidEmail && !userProfile?.phone && (
+                {!hasValidEmail && !safePhone && (
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                     Not available
                   </p>

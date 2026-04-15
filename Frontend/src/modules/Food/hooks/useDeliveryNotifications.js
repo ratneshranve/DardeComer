@@ -181,6 +181,7 @@ export const useDeliveryNotifications = () => {
   const userInteractedRef = useRef(false);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
+  const availableCashLimitRef = useRef(null);
   
   // Step 2: All state hooks (unconditional)
   const [newOrder, setNewOrder] = useState(null);
@@ -193,6 +194,7 @@ export const useDeliveryNotifications = () => {
   const ALERT_LOOP_MAX_MS = 120000;
   const ALERT_DEDUPE_MS = 15000;
   const BROWSER_NOTIFICATION_DEDUPE_MS = 20000;
+  const CASH_LIMIT_REFRESH_MS = 60000;
   const NOTIFICATION_PERMISSION_ASKED_KEY = 'delivery_notification_permission_asked';
 
   // Step 3: All callbacks before effects (unconditional)
@@ -207,6 +209,100 @@ export const useDeliveryNotifications = () => {
       ''
     ).trim()
   );
+
+  const toSafeNumber = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+
+  const getOrderAmount = (orderData = {}) => {
+    return toSafeNumber(
+      orderData?.total ??
+      orderData?.pricing?.total ??
+      orderData?.orderTotal ??
+      orderData?.orderAmount ??
+      orderData?.payment?.amount ??
+      orderData?.amount
+    );
+  };
+
+  const isCashOnDeliveryOrder = (orderData = {}) => {
+    const rawMethod = String(
+      orderData?.paymentMethod ??
+      orderData?.payment?.method ??
+      orderData?.paymentType ??
+      ''
+    ).toLowerCase();
+
+    return [
+      'cash',
+      'cod',
+      'cash_on_delivery',
+      'cash on delivery',
+    ].includes(rawMethod);
+  };
+
+  const extractAvailableCashLimit = (response = {}) => {
+    const payload = response?.data?.data ?? response?.data ?? {};
+    const wallet = payload?.wallet ?? payload;
+
+    const directAvailable = [
+      wallet?.availableCashLimit,
+      payload?.availableCashLimit,
+      wallet?.cashLimitAvailable,
+      payload?.cashLimitAvailable,
+    ]
+      .map((value) => Number(value))
+      .find((value) => Number.isFinite(value));
+
+    if (Number.isFinite(directAvailable)) {
+      return Math.max(0, directAvailable);
+    }
+
+    const totalLimit = [wallet?.totalCashLimit, payload?.totalCashLimit, wallet?.deliveryCashLimit, payload?.deliveryCashLimit]
+      .map((value) => Number(value))
+      .find((value) => Number.isFinite(value));
+    const cashInHand = [wallet?.cashInHand, payload?.cashInHand, wallet?.cashCollected, payload?.cashCollected]
+      .map((value) => Number(value))
+      .find((value) => Number.isFinite(value));
+
+    if (Number.isFinite(totalLimit)) {
+      return Math.max(0, totalLimit - (Number.isFinite(cashInHand) ? cashInHand : 0));
+    }
+
+    return toSafeNumber(totalLimit);
+  };
+
+  const refreshAvailableCashLimit = useCallback(async () => {
+    try {
+      const walletResponse = await deliveryAPI.getWallet();
+      availableCashLimitRef.current = extractAvailableCashLimit(walletResponse);
+      return availableCashLimitRef.current;
+    } catch {
+      try {
+        const cashLimitResponse = await deliveryAPI.getCashLimit();
+        availableCashLimitRef.current = extractAvailableCashLimit(cashLimitResponse);
+        return availableCashLimitRef.current;
+      } catch {
+        return availableCashLimitRef.current;
+      }
+    }
+  }, []);
+
+  const shouldSuppressIncomingCodAlert = useCallback(async (orderData = {}) => {
+    if (!isCashOnDeliveryOrder(orderData)) return false;
+
+    const orderAmount = getOrderAmount(orderData);
+    if (orderAmount <= 0) return false;
+
+    let availableLimit = availableCashLimitRef.current;
+    if (availableLimit == null) {
+      availableLimit = await refreshAvailableCashLimit();
+    }
+
+    if (!Number.isFinite(availableLimit)) return false;
+    return orderAmount > availableLimit;
+  }, [refreshAvailableCashLimit]);
 
   const shouldProcessOrderAlert = (orderData = {}) => {
     const key = getOrderAlertKey(orderData);
@@ -425,6 +521,16 @@ export const useDeliveryNotifications = () => {
       });
 
       if (recoverableOrder && !activeOrderRef.current) {
+        const suppressRecoveredOrder = await shouldSuppressIncomingCodAlert(recoverableOrder);
+        if (suppressRecoveredOrder) {
+          debugLog('Recovered COD order ignored due to cash-limit check', {
+            orderId: recoverableOrder?.orderId || recoverableOrder?.orderMongoId || recoverableOrder?._id,
+            orderAmount: getOrderAmount(recoverableOrder),
+            availableCashLimit: availableCashLimitRef.current,
+          });
+          return;
+        }
+
         debugLog('Recovered available delivery order after reconnect/focus:', recoverableOrder);
         setNewOrder(recoverableOrder);
         handleIncomingOrderAlert(recoverableOrder);
@@ -432,7 +538,7 @@ export const useDeliveryNotifications = () => {
     } catch (error) {
       debugWarn('Delivery recovery sync failed:', error?.message || error);
     }
-  }, [deliveryPartnerId, handleIncomingOrderAlert]);
+  }, [deliveryPartnerId, handleIncomingOrderAlert, shouldSuppressIncomingCodAlert]);
 
   const joinDeliveryRoomIfPossible = useCallback(() => {
     if (!socketRef.current?.connected || !deliveryPartnerId) {
@@ -643,6 +749,34 @@ export const useDeliveryNotifications = () => {
       }
     };
   }, []); // Note: This runs once on mount. To update dynamically, we'd need to listen to storage events
+
+  useEffect(() => {
+    void refreshAvailableCashLimit();
+
+    const intervalId = setInterval(() => {
+      void refreshAvailableCashLimit();
+    }, CASH_LIMIT_REFRESH_MS);
+
+    const handleFocus = () => {
+      void refreshAvailableCashLimit();
+    };
+
+    const handleVisibilityRefresh = () => {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState === 'visible') {
+        void refreshAvailableCashLimit();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityRefresh);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityRefresh);
+    };
+  }, [refreshAvailableCashLimit]);
 
   // Fetch delivery partner ID
   useEffect(() => {
@@ -861,43 +995,77 @@ export const useDeliveryNotifications = () => {
     });
 
     socketRef.current.on('new_order', (orderData) => {
-      debugLog('New order received via socket', {
-        orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
-        dispatchStatus: orderData?.dispatch?.status,
-      });
-      setNewOrder(orderData);
-      handleIncomingOrderAlert(orderData);
+      void (async () => {
+        if (await shouldSuppressIncomingCodAlert(orderData)) {
+          debugLog('COD order alert suppressed due to cash-limit check', {
+            orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
+            orderAmount: getOrderAmount(orderData),
+            availableCashLimit: availableCashLimitRef.current,
+          });
+          return;
+        }
+
+        debugLog('New order received via socket', {
+          orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
+          dispatchStatus: orderData?.dispatch?.status,
+        });
+        setNewOrder(orderData);
+        handleIncomingOrderAlert(orderData);
+      })();
     });
 
     // Listen for priority-based order notifications (new_order_available)
     socketRef.current.on('new_order_available', (orderData) => {
-      debugLog('New order available received via socket', {
-        orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
-        phase: orderData?.phase || 'unknown',
-        dispatchStatus: orderData?.dispatch?.status,
-      });
-      // Treat it the same as new_order for now - delivery boy can accept it
-      setNewOrder(orderData);
-      handleIncomingOrderAlert(orderData);
+      void (async () => {
+        if (await shouldSuppressIncomingCodAlert(orderData)) {
+          debugLog('COD available-order alert suppressed due to cash-limit check', {
+            orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
+            orderAmount: getOrderAmount(orderData),
+            availableCashLimit: availableCashLimitRef.current,
+          });
+          return;
+        }
+
+        debugLog('New order available received via socket', {
+          orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
+          phase: orderData?.phase || 'unknown',
+          dispatchStatus: orderData?.dispatch?.status,
+        });
+        // Treat it the same as new_order for now - delivery boy can accept it
+        setNewOrder(orderData);
+        handleIncomingOrderAlert(orderData);
+      })();
     });
 
     socketRef.current.on('play_notification_sound', (data) => {
-      debugLog('play_notification_sound received', {
-        orderId: data?.orderId || data?.orderMongoId || data?.order_id,
-      });
-      const normalizedData = {
-        orderId: data?.orderId || data?.order_id,
-        orderMongoId: data?.orderMongoId || data?.order_mongo_id,
-        ...data
-      };
-      // Force immediate buzz for notification events, even if dedupe would skip.
-      activeOrderRef.current = normalizedData || { id: Date.now() };
-      playNotificationSound(normalizedData);
-      startAlertLoop(playNotificationSound);
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        showBackgroundOrderNotification(normalizedData);
-      }
-      handleIncomingOrderAlert(normalizedData);
+      void (async () => {
+        const normalizedData = {
+          orderId: data?.orderId || data?.order_id,
+          orderMongoId: data?.orderMongoId || data?.order_mongo_id,
+          ...data
+        };
+
+        if (await shouldSuppressIncomingCodAlert(normalizedData)) {
+          debugLog('Direct sound alert suppressed due to COD cash-limit check', {
+            orderId: normalizedData?.orderId || normalizedData?.orderMongoId || normalizedData?._id,
+            orderAmount: getOrderAmount(normalizedData),
+            availableCashLimit: availableCashLimitRef.current,
+          });
+          return;
+        }
+
+        debugLog('play_notification_sound received', {
+          orderId: normalizedData?.orderId || normalizedData?.orderMongoId || normalizedData?.order_id,
+        });
+        // Force immediate buzz for notification events, even if dedupe would skip.
+        activeOrderRef.current = normalizedData || { id: Date.now() };
+        playNotificationSound(normalizedData);
+        startAlertLoop(playNotificationSound);
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          showBackgroundOrderNotification(normalizedData);
+        }
+        handleIncomingOrderAlert(normalizedData);
+      })();
     });
 
     socketRef.current.on('order_ready', (orderData) => {
@@ -996,7 +1164,7 @@ export const useDeliveryNotifications = () => {
         socketRef.current = null;
       }
     };
-  }, [deliveryPartnerId, handleIncomingOrderAlert, joinDeliveryRoomIfPossible, playNotificationSound, recoverDeliveryState, showBackgroundOrderNotification, startAlertLoop, stopAlertLoop]);
+  }, [deliveryPartnerId, handleIncomingOrderAlert, joinDeliveryRoomIfPossible, playNotificationSound, recoverDeliveryState, shouldSuppressIncomingCodAlert, showBackgroundOrderNotification, startAlertLoop, stopAlertLoop]);
 
   useEffect(() => {
     if (!deliveryPartnerId) {

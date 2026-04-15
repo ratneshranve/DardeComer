@@ -1206,6 +1206,55 @@ export default function OrdersMain() {
     }
   }, [newOrder]);
 
+  useEffect(() => {
+    const handleRestaurantOrderStatusUpdate = (event) => {
+      const data = event?.detail || {};
+      const status = String(data?.orderStatus || data?.status || "").toLowerCase();
+      const cancelledBy = String(data?.cancelledBy || "").toLowerCase();
+
+      const isCancelledByUser =
+        status === "cancelled_by_user" || cancelledBy === "user";
+      if (!isCancelledByUser) return;
+
+      const cancelledOrderId = String(
+        data?.orderMongoId || data?.orderId || data?._id || data?.id || "",
+      );
+
+      const activePopupOrder = popupOrder || newOrder;
+      const activeIds = [
+        activePopupOrder?.orderMongoId,
+        activePopupOrder?.orderId,
+        activePopupOrder?._id,
+        activePopupOrder?.id,
+      ]
+        .filter(Boolean)
+        .map((v) => String(v));
+
+      if (cancelledOrderId && activeIds.includes(cancelledOrderId)) {
+        stopRestaurantAlertSound();
+        setShowNewOrderPopup(false);
+        setPopupOrder(null);
+        clearNewOrder();
+        setCountdown(240);
+      }
+
+      toast.info(data?.message || "Customer cancelled the order.");
+      requestOrdersRefresh();
+    };
+
+    window.addEventListener(
+      "restaurantOrderStatusUpdate",
+      handleRestaurantOrderStatusUpdate,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "restaurantOrderStatusUpdate",
+        handleRestaurantOrderStatusUpdate,
+      );
+    };
+  }, [popupOrder, newOrder]);
+
   // Keep refs in sync to avoid stale state inside one-time event handlers.
   useEffect(() => {
     showNewOrderPopupRef.current = showNewOrderPopup;

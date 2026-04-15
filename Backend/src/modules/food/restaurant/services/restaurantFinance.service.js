@@ -79,17 +79,28 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
 
     const nowWindow = getFixedCurrentCycleWindow(new Date());
 
-    // Current cycle: sum ledger payouts in the fixed window.
+    const isDeliveredLike = (orderStatus, txStatus) => {
+        const normalizedOrderStatus = String(orderStatus || '').toLowerCase();
+        const normalizedTxStatus = String(txStatus || '').toLowerCase();
+        return (
+            normalizedOrderStatus === 'delivered' ||
+            normalizedOrderStatus === 'completed' ||
+            ['captured', 'authorized', 'settled'].includes(normalizedTxStatus)
+        );
+    };
+
+    // Current cycle: include unsettled delivered payouts even if tx status is stale.
     const currentTransactions = await FoodTransaction.find({
         restaurantId: rid,
-        status: { $in: ['captured', 'authorized'] },
-        createdAt: { $gte: nowWindow.start, $lte: nowWindow.end }
+        createdAt: { $gte: nowWindow.start, $lte: nowWindow.end },
+        'settlement.isRestaurantSettled': { $ne: true }
     })
         .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
         .sort({ createdAt: -1 })
         .lean();
 
-    const currentCycleOrders = currentTransactions.map((tx) => {
+    const currentCycleOrders = currentTransactions
+        .map((tx) => {
         const order = tx.orderId || {};
         const items = Array.isArray(order.items) ? order.items : [];
         const foodNames = items.map((it) => it?.name).filter(Boolean).join(', ');
@@ -110,7 +121,8 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
             orderStatus: order?.orderStatus || order?.deliveryState?.currentPhase || order?.deliveryState?.status,
             status: tx.status
         };
-    });
+    })
+        .filter((row) => isDeliveredLike(row.orderStatus, row.status));
 
     const currentCycleEstimatedPayout = currentCycleOrders.reduce(
         (sum, o) => sum + (Number(o.payout) || 0),
@@ -120,36 +132,67 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
     // Calculate global estimated payout (all unsettled transactions)
     const allUnsettledTransactions = await FoodTransaction.find({
         restaurantId: rid,
-        status: { $in: ['captured', 'authorized'] },
         'settlement.isRestaurantSettled': { $ne: true }
-    }).select('amounts.restaurantShare').lean();
+    })
+        .populate('orderId', 'orderStatus deliveryState')
+        .select('amounts.restaurantShare status orderId')
+        .lean();
 
     const globalEstimatedPayout = allUnsettledTransactions.reduce(
-        (sum, tx) => sum + (Number(tx.amounts?.restaurantShare) || 0),
+        (sum, tx) => {
+            const order = tx.orderId || {};
+            const orderStatus = order?.orderStatus || order?.deliveryState?.currentPhase || order?.deliveryState?.status;
+            if (!isDeliveredLike(orderStatus, tx.status)) return sum;
+            return sum + (Number(tx.amounts?.restaurantShare) || 0);
+        },
         0
     );
 
-    // Block only pending withdrawals from available balance.
-    // Approved/rejected requests are processed records and should not keep locking payout.
-    const pendingWithdrawalsAgg = await FoodRestaurantWithdrawal.aggregate([
+    // Keep already-approved payouts deducted from available balance as well,
+    // otherwise the same amount becomes withdrawable again after page reload.
+    const withdrawalAgg = await FoodRestaurantWithdrawal.aggregate([
         {
             $match: {
                 restaurantId: rid,
-                $expr: {
-                    $eq: [{ $toLower: { $trim: { input: '$status' } } }, 'pending']
-                }
+                $expr: { $in: [{ $toLower: { $trim: { input: '$status' } } }, ['pending', 'approved']] }
             }
         },
-        { $group: { _id: null, total: { $sum: '$amount' } } }
+        {
+            $group: {
+                _id: null,
+                totalPending: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [{ $toLower: { $trim: { input: '$status' } } }, 'pending'] },
+                            '$amount',
+                            0
+                        ]
+                    }
+                },
+                totalApproved: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [{ $toLower: { $trim: { input: '$status' } } }, 'approved'] },
+                            '$amount',
+                            0
+                        ]
+                    }
+                }
+            }
+        }
     ]);
-    const totalPendingWithdrawals = Number(pendingWithdrawalsAgg?.[0]?.total || 0);
-    const availableBalance = Math.max(0, globalEstimatedPayout - totalPendingWithdrawals);
+    const totalPendingWithdrawals = Number(withdrawalAgg?.[0]?.totalPending || 0);
+    const totalApprovedWithdrawals = Number(withdrawalAgg?.[0]?.totalApproved || 0);
+    const totalConsumedWithdrawals = totalPendingWithdrawals + totalApprovedWithdrawals;
+    const availableBalance = Math.max(0, globalEstimatedPayout - totalConsumedWithdrawals);
 
     const currentCycle = {
         start: { ...nowWindow.startMeta },
         end: { ...nowWindow.endMeta },
         totalEarnings: currentCycleEstimatedPayout, // We still show current cycle earnings label
-        totalWithdrawn: totalPendingWithdrawals,
+        totalWithdrawn: totalApprovedWithdrawals,
+        pendingWithdrawals: totalPendingWithdrawals,
+        consumedWithdrawals: totalConsumedWithdrawals,
         estimatedPayout: availableBalance, // This is what UI shows as "Estimated Payout" (Available Balance)
         totalOrders: currentCycleOrders.length,
         payoutDate: null,

@@ -2,11 +2,13 @@ import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import { logger } from '../../../../utils/logger.js';
 import { config } from '../../../../config/env.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
+import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import {
   buildDeliverySocketPayload,
   buildOrderIdentityFilter,
@@ -91,6 +93,83 @@ async function listNearbyOnlineDeliveryPartners(
     : picked;
 
   return { partners: final };
+}
+
+async function filterPartnersByCashLimit(order, partners = []) {
+  if (!Array.isArray(partners) || partners.length === 0) return [];
+
+  const paymentMethod = String(order?.payment?.method || order?.paymentMethod || '').toLowerCase();
+  const isCashOrder = ['cash', 'cod', 'cash_on_delivery', 'cash on delivery'].includes(paymentMethod);
+  if (!isCashOrder) return partners;
+
+  const orderCashAmount = Number(
+    order?.pricing?.total ??
+    order?.amounts?.totalCustomerPaid ??
+    order?.total ??
+    0
+  ) || 0;
+
+  if (orderCashAmount <= 0) return partners;
+
+  const settings = await getDeliveryCashLimitSettings();
+  const totalCashLimit = Number(settings?.deliveryCashLimit) || 0;
+  if (totalCashLimit <= 0) return [];
+
+  const partnerObjectIds = partners
+    .map((p) => p?.partnerId)
+    .filter(Boolean)
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  const [cashCollectedAgg, depositsAgg] = await Promise.all([
+    FoodOrder.aggregate([
+      {
+        $match: {
+          'dispatch.deliveryPartnerId': { $in: partnerObjectIds },
+          orderStatus: 'delivered',
+          'payment.method': 'cash',
+        },
+      },
+      {
+        $group: {
+          _id: '$dispatch.deliveryPartnerId',
+          cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } },
+        },
+      },
+    ]),
+    FoodDeliveryCashDeposit.aggregate([
+      {
+        $match: {
+          deliveryPartnerId: { $in: partnerObjectIds },
+          status: 'Completed',
+        },
+      },
+      {
+        $group: {
+          _id: '$deliveryPartnerId',
+          depositedCash: { $sum: { $ifNull: ['$amount', 0] } },
+        },
+      },
+    ]),
+  ]);
+
+  const collectedMap = new Map(
+    (cashCollectedAgg || []).map((row) => [String(row._id), Number(row.cashCollected) || 0])
+  );
+  const depositsMap = new Map(
+    (depositsAgg || []).map((row) => [String(row._id), Number(row.depositedCash) || 0])
+  );
+
+  return partners.filter((partner) => {
+    const partnerId = String(partner?.partnerId || '');
+    if (!partnerId) return false;
+
+    const cashCollected = collectedMap.get(partnerId) || 0;
+    const depositedCash = depositsMap.get(partnerId) || 0;
+    const cashInHand = Math.max(0, cashCollected - depositedCash);
+    const availableCashLimit = Math.max(0, totalCashLimit - cashInHand);
+
+    return availableCashLimit >= orderCashAmount;
+  });
 }
 
 export async function getDispatchSettings() {
@@ -181,16 +260,18 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
     }
 
-    const eligible = partners.filter(p => !offeredIds.includes(p.partnerId.toString()));
+    const prelimEligible = partners.filter(p => !offeredIds.includes(p.partnerId.toString()));
+    const eligible = await filterPartnersByCashLimit(order, prelimEligible);
 
     if (eligible.length === 0) {
-      logger.info(`tryAutoAssign: No NEW eligible partners in ${maxKm}km for order ${order._id}. Restarting hunt...`);
+      logger.info(`tryAutoAssign: No NEW eligible partners in ${maxKm}km for order ${order._id} after cash-limit filter. Restarting hunt...`);
       
       // If we ran out of new eligible partners, we might want to re-offer to everyone (Phase 2 style)
       const io = getIO();
-      if (io && partners.length > 0) {
+      if (io && prelimEligible.length > 0) {
+        const fallbackEligible = await filterPartnersByCashLimit(order, prelimEligible);
         const payload = buildDeliverySocketPayload(order, order.restaurantId);
-        for (const p of partners) {
+        for (const p of fallbackEligible) {
           const roomName = rooms.delivery(p.partnerId);
           io.to(roomName).emit('new_order_available', { ...payload, pickupDistanceKm: p.distanceKm });
         }
@@ -218,23 +299,23 @@ export async function tryAutoAssign(orderId, options = {}) {
         if (io) io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
       }
     } else {
-      // PHASE 1: Target best rider only
-      const p = eligible[0];
-      const roomName = rooms.delivery(p.partnerId);
-      logger.info(`[Phase 1] Offering order ${order._id} to best rider ${p.partnerId} (${p.distanceKm}km)`);
-      if (io) io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
-      
-      try {
-        await notifyOwnerSafely(
-          { ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId },
-          {
-            title: 'New order assigned!',
-            body: `You have 60 seconds to accept Order #${order.order_id || order._id}.`,
-            data: { type: 'new_order', orderId: order._id.toString() },
-          },
-        );
-      } catch (err) {
-        logger.warn(`Push notification failed for partner ${p.partnerId}: ${err.message}`);
+      // PHASE 1: Broadcast to ALL eligible (not just best)
+      logger.info(`[Phase 1] Broadcasting order ${order._id} to ${eligible.length} eligible riders.`);
+      for (const p of eligible) {
+        const roomName = rooms.delivery(p.partnerId);
+        if (io) io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
+        try {
+          await notifyOwnerSafely(
+            { ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId },
+            {
+              title: 'New order assigned!',
+              body: `You have 60 seconds to accept Order #${order.order_id || order._id}.`,
+              data: { type: 'new_order', orderId: order._id.toString() },
+            },
+          );
+        } catch (err) {
+          logger.warn(`Push notification failed for partner ${p.partnerId}: ${err.message}`);
+        }
       }
     }
 

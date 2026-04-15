@@ -426,19 +426,8 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  if (
-    dispatchMode === "auto" &&
-    !isTakeAway &&
-    (isCash ||
-      order.payment.status === "paid" ||
-      order.payment.status === "cod_pending")
-  ) {
-    try {
-      await tryAutoAssign(order._id);
-    } catch {
-      // leave unassigned
-    }
-  }
+  // Delivery partner dispatch must start only after restaurant accepts the order.
+  // updateOrderStatusRestaurant() already triggers tryAutoAssign on confirmed/preparing.
 
   const saved = normalizeOrderForClient(order);
   return { order: saved, razorpay: razorpayPayload };
@@ -499,12 +488,8 @@ export async function verifyPayment(userId, dto) {
     },
   });
 
-  const settings = await getDispatchSettings();
-  if (settings.dispatchMode === "auto") {
-    try {
-      await tryAutoAssign(order._id);
-    } catch {}
-  }
+  // Do not dispatch riders right after payment verification.
+  // Riders should be alerted only after restaurant accepts the order.
 
   return { order: normalizeOrderForClient(order), payment: order.payment };
 }
@@ -864,10 +849,7 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
     : "";
   
   await notifyOwnersSafely(
-    [
-      { ownerType: "USER", ownerId: userId },
-      { ownerType: "RESTAURANT", ownerId: order.restaurantId },
-    ],
+    [{ ownerType: "USER", ownerId: userId }],
     {
       title: "Order Cancelled ❌",
       body: `Order #${order.order_id || order._id} has been cancelled successfully.${refundDetail}`,
@@ -880,6 +862,21 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
     },
   );
 
+  await notifyOwnersSafely(
+    [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
+    {
+      title: "Order Cancelled ❌",
+      body: `Customer cancelled order #${order.order_id || order._id}.`,
+      image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+      data: {
+        type: "order_cancelled",
+        orderId: String(order._id.toString()),
+        orderMongoId: String(order._id),
+        cancelledBy: "user",
+      },
+    },
+  );
+
   // Real-time: status update via socket
   try {
     const io = getIO();
@@ -888,7 +885,9 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
         orderMongoId: order._id?.toString?.(),
         orderId: order._id.toString(),
         orderStatus: order.orderStatus,
-        message: `Order #${order.order_id || order._id} has been cancelled successfully.${refundDetail}`
+        cancelledBy: "user",
+        cancelReason: reason || "",
+        message: `Customer cancelled order #${order.order_id || order._id}.`
       };
       io.to(rooms.user(userId)).emit("order_status_update", payload);
       io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", payload);
@@ -1026,6 +1025,11 @@ export async function updateOrderStatusRestaurant(
   if (!isStatusAdvance(from, orderStatus)) {
       throw new ValidationError(`Current order status '${from}' is further ahead than '${orderStatus}'. Order cannot be moved backwards.`);
   }
+
+  const previousAssignedRiderId = order.dispatch?.deliveryPartnerId;
+  const isCancelledUpdate = String(orderStatus).includes("cancel");
+  const previousDispatchStatus = String(order.dispatch?.status || "");
+
   order.orderStatus = orderStatus;
   pushStatusHistory(order, {
     byRole: "RESTAURANT",
@@ -1033,6 +1037,21 @@ export async function updateOrderStatusRestaurant(
     from,
     to: orderStatus,
   });
+
+  if (isCancelledUpdate && previousDispatchStatus && previousDispatchStatus !== "cancelled") {
+    order.dispatch.status = "cancelled";
+    order.dispatch.deliveryPartnerId = undefined;
+    order.dispatch.acceptedAt = undefined;
+
+    pushStatusHistory(order, {
+      byRole: "RESTAURANT",
+      byId: restaurantId,
+      from: previousDispatchStatus,
+      to: "cancelled",
+      note: "Dispatch cancelled because order was cancelled by restaurant",
+    });
+  }
+
   await order.save();
 
   // Custom messages / titles for status updates
@@ -1067,6 +1086,7 @@ export async function updateOrderStatusRestaurant(
         orderMongoId: order._id?.toString?.(),
         orderId: order._id.toString(),
         orderStatus: order.orderStatus,
+        dispatchStatus: order.dispatch?.status,
         title,
         message: body,
       };
@@ -1079,7 +1099,7 @@ export async function updateOrderStatusRestaurant(
       io.to(userRoom).emit("order_status_update", payload);
       
       // Notify assigned rider via socket if they exist
-      const assignedRiderId = order.dispatch?.deliveryPartnerId;
+        const assignedRiderId = order.dispatch?.deliveryPartnerId || (isCancelledUpdate ? previousAssignedRiderId : null);
       if (assignedRiderId) {
           const riderRoom = rooms.delivery(assignedRiderId);
           console.log(`[DEBUG] Emitting order_status_update to rider room: ${riderRoom}`);
@@ -1092,7 +1112,7 @@ export async function updateOrderStatusRestaurant(
       { ownerType: "RESTAURANT", ownerId: restaurantId },
     ];
 
-    const assignedRiderId = order.dispatch?.deliveryPartnerId;
+    const assignedRiderId = order.dispatch?.deliveryPartnerId || (isCancelledUpdate ? previousAssignedRiderId : null);
     if (assignedRiderId) {
       notifyList.push({ ownerType: "DELIVERY_PARTNER", ownerId: assignedRiderId });
     }
@@ -1129,6 +1149,7 @@ export async function updateOrderStatusRestaurant(
           orderId: order._id.toString(),
           orderMongoId: order._id?.toString?.() || "",
           orderStatus: String(orderStatus || ""),
+          dispatchStatus: String(order.dispatch?.status || ""),
           link: `/food/user/orders/${order._id?.toString?.() || ""}`,
         },
       },

@@ -9,6 +9,16 @@ import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { createRazorpayOrder, getRazorpayKeyId, isRazorpayConfigured, verifyPaymentSignature } from '../../orders/helpers/razorpay.helper.js';
 
+const COD_PAYMENT_METHODS = ['cash', 'cod', 'cash_on_delivery', 'cash on delivery'];
+const COD_COLLECTION_AMOUNT_EXPR = {
+    $max: [
+        { $ifNull: ['$payment.amountDue', 0] },
+        { $ifNull: ['$pricing.total', 0] },
+        { $ifNull: ['$amounts.totalCustomerPaid', 0] },
+        { $ifNull: ['$totalAmount', 0] }
+    ]
+};
+
 /**
  * Enhanced wallet fetch for delivery partners.
  * Integrates:
@@ -39,10 +49,13 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
                 $match: { 
                     'dispatch.deliveryPartnerId': partnerId, 
                     orderStatus: 'delivered', 
-                    'payment.method': 'cash'
+                    $or: [
+                        { 'payment.method': { $in: COD_PAYMENT_METHODS } },
+                        { paymentMethod: { $in: COD_PAYMENT_METHODS } }
+                    ]
                 } 
             },
-            { $group: { _id: null, cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } } } }
+            { $group: { _id: null, cashCollected: { $sum: COD_COLLECTION_AMOUNT_EXPR } } }
         ]),
         // 3. Cash deposits (deduct from cash-in-hand)
         FoodDeliveryCashDeposit.aggregate([
@@ -112,7 +125,9 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
             amount: o.riderEarning || 0,
             status: 'Completed',
             date: o.createdAt,
-            description: o.payment?.method === 'cash' ? 'COD delivery earning' : 'Online delivery earning',
+            description: COD_PAYMENT_METHODS.includes(String(o.payment?.method || o.paymentMethod || '').toLowerCase())
+                ? 'COD delivery earning'
+                : 'Online delivery earning',
             orderId: o.orderId
         })),
         ...(withdrawalsList || []).map(w => ({

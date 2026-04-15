@@ -255,6 +255,7 @@ export default function Wallet() {
 
               {filteredTransactions.length > 0 ? (
                 <div className="space-y-3 md:space-y-4">
+
                   {filteredTransactions.map((transaction) => (
                     <Card
                       key={transaction.id}
@@ -270,9 +271,22 @@ export default function Wallet() {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-gray-900 dark:text-white font-semibold text-sm md:text-base lg:text-lg truncate mb-1">
-                                {transaction.description}
-                              </p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-gray-900 dark:text-white font-semibold text-sm md:text-base lg:text-lg truncate">
+                                  {transaction.description}
+                                </p>
+                                {transaction.type === "withdrawal" && transaction.status && (
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-xs font-semibold 
+                                      ${transaction.status === "Pending" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : ""}
+                                      ${transaction.status === "Completed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : ""}
+                                      ${transaction.status === "Rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : ""}
+                                    `}
+                                  >
+                                    {transaction.status}
+                                  </span>
+                                )}
+                              </div>
                               {(transaction?.metadata?.source === "referral_signup" ||
                                 String(transaction.description || "").toLowerCase().startsWith("referral reward")) && (
                                 <p className="text-[11px] md:text-xs text-green-600 dark:text-green-400 font-medium mb-1">

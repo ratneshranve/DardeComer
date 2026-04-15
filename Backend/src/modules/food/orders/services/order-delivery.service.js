@@ -30,6 +30,7 @@ import {
   sanitizeOrderForExternal,
   isStatusAdvance,
 } from './order.helpers.js';
+import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
 
 const HOME_DELIVERY_FILTER = {
   $or: [
@@ -39,6 +40,39 @@ const HOME_DELIVERY_FILTER = {
     { deliveryType: 'Home Delivery' },
   ],
 };
+
+const CANCELLED_ORDER_STATUSES = [
+  'cancelled_by_user',
+  'cancelled_by_restaurant',
+  'cancelled_by_admin',
+];
+
+function isCashOnDelivery(orderLike = {}) {
+  const method = String(
+    orderLike?.paymentMethod ||
+      orderLike?.payment?.method ||
+      ''
+  ).toLowerCase();
+
+  return ['cash', 'cod', 'cash_on_delivery', 'cash on delivery'].includes(method);
+}
+
+function getOrderCashAmount(orderLike = {}) {
+  return Math.max(
+    Number(orderLike?.payment?.amountDue) || 0,
+    Number(orderLike?.pricing?.total) || 0,
+    Number(orderLike?.amounts?.totalCustomerPaid) || 0,
+    Number(orderLike?.totalAmount) || 0,
+    Number(orderLike?.total) || 0
+  );
+}
+
+function assertOrderNotCancelled(orderDoc, actionLabel = 'process this order') {
+  const status = String(orderDoc?.orderStatus || '').toLowerCase();
+  if (CANCELLED_ORDER_STATUSES.includes(status)) {
+    throw new ValidationError(`Order was cancelled by restaurant/admin/user. Cannot ${actionLabel}.`);
+  }
+}
 
 function emitOrderUpdate(order, deliveryPartnerId) {
   try {
@@ -221,6 +255,9 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
 
 export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
+  const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId).catch(() => null);
+  const availableCashLimit = Number(wallet?.availableCashLimit) || 0;
+
   const filter = {
     $and: [
       HOME_DELIVERY_FILTER,
@@ -279,12 +316,40 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     };
   });
 
-  return buildPaginatedResult({ docs: enriched, total, page, limit });
+  const eligible = enriched.filter((doc) => {
+    if (!isCashOnDelivery(doc)) return true;
+
+    const dispatchStatus = String(doc?.dispatch?.status || '').toLowerCase();
+    if (dispatchStatus === 'accepted') return true;
+
+    const orderCashAmount = getOrderCashAmount(doc);
+    if (orderCashAmount <= 0) return true;
+
+    return availableCashLimit >= orderCashAmount;
+  });
+
+  return buildPaginatedResult({ docs: eligible, total: eligible.length, page, limit });
 }
 
 export async function acceptOrderDelivery(orderId, deliveryPartnerId) {
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError('Order id required');
+
+  const precheckOrder = await FoodOrder.findOne(identity)
+    .select('payment paymentMethod pricing amounts orderStatus')
+    .lean();
+  if (precheckOrder) {
+    assertOrderNotCancelled(precheckOrder, 'accept this order');
+
+    if (isCashOnDelivery(precheckOrder)) {
+      const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
+      const availableCashLimit = Number(wallet?.availableCashLimit) || 0;
+      const orderCashAmount = getOrderCashAmount(precheckOrder);
+      if (orderCashAmount > 0 && availableCashLimit < orderCashAmount) {
+        throw new ValidationError('Cash limit exceeded. Deposit collected cash before accepting this COD order.');
+      }
+    }
+  }
 
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
   const now = new Date();
@@ -536,6 +601,7 @@ export async function confirmReachedPickupDelivery(orderId, deliveryPartnerId) {
 
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
+  assertOrderNotCancelled(order, 'confirm pickup arrival');
   if (
     order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
   ) {
@@ -615,6 +681,7 @@ export async function confirmPickupDelivery(orderId, deliveryPartnerId, billImag
   const identity = buildOrderIdentityFilter(orderId);
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
+  assertOrderNotCancelled(order, 'pick up this order');
   if (
     order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
   ) {
@@ -672,6 +739,7 @@ export async function confirmReachedDropDelivery(orderId, deliveryPartnerId) {
 
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
+  assertOrderNotCancelled(order, 'confirm drop arrival');
   if (
     order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
   ) {
@@ -738,6 +806,7 @@ export async function verifyDropOtpDelivery(orderId, deliveryPartnerId, otp) {
   const identity = buildOrderIdentityFilter(orderId);
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
+  assertOrderNotCancelled(order, 'verify drop OTP');
   if (
     order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
   ) {
@@ -781,6 +850,7 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const identity = buildOrderIdentityFilter(orderId);
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
+  assertOrderNotCancelled(order, 'complete delivery');
   if (
     order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
   ) {
@@ -823,6 +893,7 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const tx = await FoodTransaction.findOne({ orderId: order._id }).lean();
   const prevPayStatus = String(tx?.payment?.status || order?.payment?.status || '');
   const payMethod = String(tx?.payment?.method || order?.payment?.method || order?.paymentMethod || '');
+  const txAmountDue = Number(tx?.payment?.amountDue || 0);
 
   if (payMethod === 'razorpay_qr') {
     const syncedPayment = await syncRazorpayQrPayment(order);
@@ -832,6 +903,13 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   }
 
   order.orderStatus = 'delivered';
+  if (Number.isFinite(txAmountDue) && txAmountDue > 0) {
+    order.payment = {
+      ...(order.payment?.toObject?.() || order.payment || {}),
+      amountDue: txAmountDue,
+    };
+    order.markModified('payment');
+  }
   order.deliveryState = {
     ...(order.deliveryState?.toObject?.() || order.deliveryState || {}),
     currentPhase: 'delivered',
@@ -886,6 +964,7 @@ export async function updateOrderStatusDelivery(orderId, deliveryPartnerId, orde
 
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
+  assertOrderNotCancelled(order, 'update delivery status');
   if (order.dispatch.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()) {
     throw new ForbiddenError('Not your order');
   }

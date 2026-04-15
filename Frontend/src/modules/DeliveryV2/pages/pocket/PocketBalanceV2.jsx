@@ -24,11 +24,13 @@ export const PocketBalanceV2 = () => {
      weeklyEarnings: 0,
      totalBonus: 0,
      totalWithdrawn: 0,
+     pendingWithdrawals: 0,
      cashCollected: 0,
      deductions: 0,
      withdrawalLimit: 100,
      withdrawableAmount: 0,
-     canWithdraw: false
+     canWithdraw: false,
+     payoutRequestStatus: 'No request'
   });
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
 
@@ -36,31 +38,37 @@ export const PocketBalanceV2 = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [profileRes, earningsRes, walletRes] = await Promise.all([
+        const [profileRes, earningsRes, walletRes, withdrawalsRes] = await Promise.all([
           deliveryAPI.getProfile(),
           deliveryAPI.getEarnings({ period: 'week' }),
-          deliveryAPI.getWallet()
+          deliveryAPI.getWallet(),
+          deliveryAPI.getWalletTransactions({ type: 'withdrawal', limit: 1 })
         ]);
         
         const profile = profileRes?.data?.data?.profile || {};
         const summary = earningsRes?.data?.data?.summary || {};
         const wallet = walletRes?.data?.data?.wallet || {};
+        const latestWithdrawal = withdrawalsRes?.data?.data?.transactions?.[0] || null;
         
         // Use wallet data from backend instead of non-existent profile.walletBalance
         const pocketBalance = Number(wallet.pocketBalance) || 0;
         const withdrawalLimit = Number(wallet.deliveryWithdrawalLimit) || 100;
+        const pendingWithdrawals = Number(wallet.pendingWithdrawals) || 0;
         const withdrawableAmount = pocketBalance; // Backend pocketBalance is already the withdrawable amount
+        const payoutRequestStatus = latestWithdrawal?.status || (pendingWithdrawals > 0 ? 'Pending' : 'No request');
 
         setWalletState({
            pocketBalance: pocketBalance,
            weeklyEarnings: Number(summary.totalEarnings) || 0,
            totalBonus: Number(wallet.totalBonus) || 0,
            totalWithdrawn: Number(wallet.totalWithdrawn) || 0,
+           pendingWithdrawals,
            cashCollected: Number(wallet.cashInHand) || 0,
            deductions: 0, // Mocked
            withdrawalLimit,
            withdrawableAmount,
-           canWithdraw: withdrawableAmount >= withdrawalLimit
+           canWithdraw: withdrawableAmount >= withdrawalLimit,
+           payoutRequestStatus
         });
       } catch (err) {
         toast.error('Failed to load pocket details');
@@ -168,6 +176,7 @@ export const PocketBalanceV2 = () => {
                 <DetailRow label="Earnings" value={formatCurrency(walletState.weeklyEarnings)} />
                 <DetailRow label="Bonus" value={formatCurrency(walletState.totalBonus)} />
                 <DetailRow label="Amount withdrawn" value={formatCurrency(walletState.totalWithdrawn)} />
+                <DetailRow label="P/R status" value={walletState.payoutRequestStatus} />
                 <DetailRow label="Cash collected" value={formatCurrency(walletState.cashCollected)} />
                 <DetailRow label="Deductions" value={formatCurrency(walletState.deductions)} />
                 <DetailRow label="Pocket balance" value={formatCurrency(walletState.pocketBalance)} />

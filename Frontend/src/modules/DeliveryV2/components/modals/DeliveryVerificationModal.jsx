@@ -163,7 +163,13 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
   const pollingRef = useRef(null);
 
   const orderId = order.orderId || order._id || 'ORD';
-  const amountToCollect = order.pricing?.total || order.amountToCollect || 0;
+  const amountToCollect = Math.max(
+    Number(order?.payment?.amountDue) || 0,
+    Number(order?.pricing?.total) || 0,
+    Number(order?.amounts?.totalCustomerPaid) || 0,
+    Number(order?.totalAmount) || 0,
+    Number(order?.amountToCollect) || 0
+  );
 
   const checkPaymentSync = useCallback(async () => {
     try {
