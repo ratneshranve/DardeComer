@@ -21,6 +21,7 @@ import {
   Clock,
   Users,
   MessageSquare,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders";
@@ -82,6 +83,18 @@ const getOrderTypeLabel = (order) => {
   return order?.deliveryFleet === 'standard' ? 'Home Delivery' : 'Express Delivery';
 };
 
+const isHomeKitchenOrder = (orderLike = {}) => {
+  const vendorType = String(orderLike?.vendorType || "").trim().toLowerCase();
+  const sourceLabel = String(orderLike?.sourceLabel || "").trim().toLowerCase();
+  const businessModel = String(orderLike?.businessModel || "").trim().toLowerCase();
+  return (
+    vendorType === "home_kitchen" ||
+    sourceLabel === "home kitchen" ||
+    businessModel.includes("home kitchen") ||
+    businessModel.includes("home_kitchen")
+  );
+};
+
 const transformOrderForList = (order) => ({
   orderId: order.orderId || order._id,
   mongoId: order._id,
@@ -112,6 +125,9 @@ const transformOrderForList = (order) => ({
     : new Date(order.createdAt || Date.now()),
   initialETA: order.estimatedDeliveryTime || 30,
   sortTimestamp: new Date(getAllOrdersTimestamp(order)).getTime(),
+  vendorType: order.vendorType || null,
+  sourceLabel: order.sourceLabel || null,
+  businessModel: order.businessModel || null,
 });
 
 // Completed Orders List Component
@@ -678,6 +694,7 @@ function AllOrders({ onSelectOrder, onCancel }) {
   const [markingReadyOrderIds, setMarkingReadyOrderIds] = useState({});
   const [completingTakeAwayOrderIds, setCompletingTakeAwayOrderIds] =
     useState({});
+  const [takeAwayOtpDraft, setTakeAwayOtpDraft] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -769,13 +786,13 @@ function AllOrders({ onSelectOrder, onCancel }) {
     }
   };
 
-  const handleCompleteTakeAway = async ({ orderId, mongoId, customerName }) => {
-    const orderKey = mongoId || orderId;
-    if (!orderKey || completingTakeAwayOrderIds[orderKey]) return;
-
+  const executeCompleteTakeAway = async (orderKey, orderId, customerName, otp = undefined) => {
     try {
       setCompletingTakeAwayOrderIds((prev) => ({ ...prev, [orderKey]: true }));
-      await restaurantAPI.updateOrderStatus(orderKey, { orderStatus: "delivered" });
+      await restaurantAPI.updateOrderStatus(orderKey, {
+        orderStatus: "delivered",
+        ...(otp ? { otp } : {}),
+      });
       setOrders((prev) =>
         prev
           .map((order) =>
@@ -799,13 +816,28 @@ function AllOrders({ onSelectOrder, onCancel }) {
       toast.success(
         `Take Away order ${orderId} completed${customerName ? ` for ${customerName}` : ""}`,
       );
+      setTakeAwayOtpDraft(null);
     } catch (error) {
       debugError("Error completing takeaway order from All orders:", error);
       toast.error(
-        error.response?.data?.message || "Failed to complete takeaway order",
+        error.response?.data?.error || error.response?.data?.message || "Failed to complete takeaway order",
       );
+      throw error;
     } finally {
       setCompletingTakeAwayOrderIds((prev) => ({ ...prev, [orderKey]: false }));
+    }
+  };
+
+  const handleCompleteTakeAway = async ({ orderId, mongoId, customerName, vendorType, sourceLabel, businessModel }) => {
+    const orderKey = mongoId || orderId;
+    if (!orderKey || completingTakeAwayOrderIds[orderKey]) return;
+
+    const shouldVerifyOtp = isHomeKitchenOrder({ vendorType, sourceLabel, businessModel });
+    
+    if (shouldVerifyOtp) {
+      setTakeAwayOtpDraft({ orderKey, orderId, customerName });
+    } else {
+      executeCompleteTakeAway(orderKey, orderId, customerName);
     }
   };
 
@@ -885,6 +917,22 @@ function AllOrders({ onSelectOrder, onCancel }) {
           })}
         </div>
       )}
+      
+      <AnimatePresence>
+        {takeAwayOtpDraft && (
+          <TakeAwayOtpModal
+            onVerify={(otp) =>
+              executeCompleteTakeAway(
+                takeAwayOtpDraft.orderKey,
+                takeAwayOtpDraft.orderId,
+                takeAwayOtpDraft.customerName,
+                otp
+              )
+            }
+            onClose={() => setTakeAwayOtpDraft(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1547,7 +1595,7 @@ export default function OrdersMain() {
         toast.success("Order accepted successfully");
         requestOrdersRefresh();
       } catch (error) {
-        debugError("? Error accepting order:", error);
+        debugError("? Error accepting order:", orderId);
         const errorMessage =
           error.response?.data?.message ||
           error.message ||
@@ -1600,7 +1648,7 @@ export default function OrdersMain() {
         debugLog("? Order rejected:", orderId);
         requestOrdersRefresh();
       } catch (error) {
-        debugError("? Error rejecting order:", error);
+        debugError("? Error rejecting order:", orderId);
         alert("Failed to reject order. Please try again.");
         return;
       }
@@ -1674,7 +1722,8 @@ export default function OrdersMain() {
 
   // Handle PDF download
   const handlePrint = async () => {
-    if (!newOrder) {
+    const orderToPrint = popupOrder || newOrder;
+    if (!orderToPrint) {
       debugWarn("No order data available for PDF generation");
       return;
     }
@@ -2913,6 +2962,9 @@ function OrderCard({
   paymentMethod,
   photoUrl,
   photoAlt,
+  vendorType,
+  sourceLabel,
+  businessModel,
   deliveryPartnerId,
   dispatchStatus,
   onSelect,
@@ -3064,7 +3116,14 @@ function OrderCard({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onCompleteTakeAway({ orderId, mongoId, customerName });
+                    onCompleteTakeAway({
+                      orderId,
+                      mongoId,
+                      customerName,
+                      vendorType,
+                      sourceLabel,
+                      businessModel,
+                    });
                   }}
                   disabled={isCompletingTakeAway}
                   className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
@@ -3145,6 +3204,9 @@ function PreparingOrders({
               dispatchStatus: order.dispatch?.status || null,
               paymentMethod:
                 order.paymentMethod || order.payment?.method || null,
+              vendorType: order.vendorType || null,
+              sourceLabel: order.sourceLabel || null,
+              businessModel: order.businessModel || null,
             };
           });
 
@@ -3406,11 +3468,104 @@ function PreparingOrders({
   );
 }
 
+const TakeAwayOtpModal = ({ onVerify, onClose }) => {
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const inputRefs = [useRef(), useRef(), useRef(), useRef()];
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      inputRefs[0].current?.focus();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleOtpChange = (index, value) => {
+    if (value && !/^\d+$/.test(value)) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+    if (value && index < 3) inputRefs[index + 1].current?.focus();
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) inputRefs[index - 1].current?.focus();
+  };
+
+  const verifyOtp = async () => {
+    const otpString = otp.join('');
+    if (otpString.length < 4) return;
+    setIsVerifying(true);
+    try {
+      await onVerify(otpString);
+    } catch (err) {
+      setOtp(['', '', '', '']);
+      inputRefs[0].current?.focus();
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-[120] p-0 sm:p-4 h-[100dvh] flex items-end justify-center pointer-events-none">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/40 pointer-events-auto" 
+        onClick={onClose}
+      />
+      <motion.div 
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        className="relative w-full bg-white rounded-t-[2.5rem] shadow-[0_-20px_60px_rgba(0,0,0,0.3)] p-6 pb-12 pointer-events-auto max-w-lg z-10"
+      >
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+        <div className="flex justify-between items-center mb-6">
+           <div className="flex items-center gap-3">
+             <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-gray-100 text-gray-500">
+               <ShieldCheck className="w-7 h-7" />
+             </div>
+             <div>
+               <h2 className="text-xl font-bold text-gray-900">Pickup Code</h2>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Enter OTP from customer</p>
+             </div>
+           </div>
+           <button onClick={onClose} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
+        </div>
+
+        <div className="flex justify-center gap-3 mb-8">
+          {otp.map((digit, i) => (
+            <input
+              key={i}
+              ref={inputRefs[i]}
+              type="number"
+              disabled={isVerifying}
+              value={digit}
+              onChange={(e) => handleOtpChange(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              className="w-14 h-18 bg-gray-50 border-2 rounded-2xl text-center text-3xl font-bold transition-all border-gray-200 focus:border-green-600 text-gray-700"
+            />
+          ))}
+        </div>
+
+        <button 
+          onClick={verifyOtp}
+          disabled={otp.some(d => !d) || isVerifying}
+          className="w-full bg-black text-white py-4 rounded-xl font-bold text-base disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Complete"}
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
 // Ready Orders List
 function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completingTakeAwayOrderIds, setCompletingTakeAwayOrderIds] = useState({});
+  const [takeAwayOtpDraft, setTakeAwayOtpDraft] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -3449,6 +3604,9 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            vendorType: order.vendorType || null,
+            sourceLabel: order.sourceLabel || null,
+            businessModel: order.businessModel || null,
           }));
 
           if (isMounted) {
@@ -3483,29 +3641,36 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
     };
   }, [refreshToken]); // Re-fetch only when parent requests it
 
-  const handleCompleteTakeAway = async ({ orderId, mongoId, customerName }) => {
-    const orderKey = mongoId || orderId;
-    if (!orderKey || completingTakeAwayOrderIds[orderKey]) return;
-
+  const executeCompleteTakeAway = async (orderKey, orderId, customerName, otp = undefined) => {
     try {
       setCompletingTakeAwayOrderIds((prev) => ({ ...prev, [orderKey]: true }));
-      await restaurantAPI.updateOrderStatus(orderKey, { orderStatus: 'delivered' });
-      setOrders((prev) =>
-        prev.filter((order) => (order.mongoId || order.orderId) !== orderKey),
-      );
-      toast.success(
-        `Take Away order ${orderId} completed${customerName ? ` for ${customerName}` : ''}`,
-      );
+      await restaurantAPI.updateOrderStatus(orderKey, {
+        orderStatus: 'delivered',
+        ...(otp ? { otp } : {})
+      });
+      toast.success(`Order #${orderId} marked as picked up`);
+      setOrders(prev => prev.filter(o => (o.mongoId || o.orderId) !== orderKey));
+      setTakeAwayOtpDraft(null);
     } catch (error) {
-      const message =
-        error?.response?.data?.message || 'Failed to complete takeaway order';
-      toast.error(message);
+      toast.error(error.response?.data?.error || error.response?.data?.message || "Failed to complete pickup");
+      throw error;
     } finally {
       setCompletingTakeAwayOrderIds((prev) => {
         const next = { ...prev };
         delete next[orderKey];
         return next;
       });
+    }
+  };
+
+  const handleCompleteTakeAway = ({ orderId, mongoId, customerName, vendorType, sourceLabel, businessModel }) => {
+    const orderKey = mongoId || orderId;
+    const shouldVerifyOtp = isHomeKitchenOrder({ vendorType, sourceLabel, businessModel });
+    
+    if (shouldVerifyOtp) {
+      setTakeAwayOtpDraft({ orderKey, orderId, customerName });
+    } else {
+      executeCompleteTakeAway(orderKey, orderId, customerName);
     }
   };
 
@@ -3548,6 +3713,22 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
           ))}
         </div>
       )}
+      
+      <AnimatePresence>
+        {takeAwayOtpDraft && (
+          <TakeAwayOtpModal
+            onVerify={(otp) =>
+              executeCompleteTakeAway(
+                takeAwayOtpDraft.orderKey,
+                takeAwayOtpDraft.orderId,
+                takeAwayOtpDraft.customerName,
+                otp
+              )
+            }
+            onClose={() => setTakeAwayOtpDraft(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -3594,6 +3775,9 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            vendorType: order.vendorType || null,
+            sourceLabel: order.sourceLabel || null,
+            businessModel: order.businessModel || null,
           }));
 
           if (isMounted) {

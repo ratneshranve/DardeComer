@@ -140,7 +140,8 @@ export function validateOrderStatusDto(body) {
             'picked_up',
             'delivered',
             'cancelled_by_restaurant'
-        ])
+        ]),
+        otp: z.string().trim().optional()
     });
     const result = schema.safeParse(body);
     if (!result.success) {

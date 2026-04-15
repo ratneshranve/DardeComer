@@ -1485,16 +1485,25 @@ export default function OrderTracking() {
           </motion.div>
         )}
 
-        {!isTakeAwayOrder && isRiderAtDrop && customerDeliveryOtp && orderStatus !== 'delivered' && orderStatus !== 'cancelled' && (
+        {customerDeliveryOtp &&
+          orderStatus !== 'delivered' &&
+          orderStatus !== 'cancelled' &&
+          ((!isTakeAwayOrder && isRiderAtDrop) || isTakeAwayOrder) && (
           <motion.div
             className="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28 }}
           >
-            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Delivery OTP</p>
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+              {isTakeAwayOrder ? 'Pickup OTP' : 'Delivery OTP'}
+            </p>
             <p className="text-2xl font-extrabold text-blue-900 mt-1 tracking-widest">{customerDeliveryOtp}</p>
-            <p className="text-xs text-blue-700 mt-1">Share this 4-digit OTP with your delivery partner at drop-off.</p>
+            <p className="text-xs text-blue-700 mt-1">
+              {isTakeAwayOrder
+                ? 'Share this 4-digit OTP with the Home Kitchen while collecting your order.'
+                : 'Share this 4-digit OTP with your delivery partner at drop-off.'}
+            </p>
           </motion.div>
         )}
 

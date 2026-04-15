@@ -59,6 +59,12 @@ function normalizeDeliveryType(value) {
   return 'Home Delivery';
 }
 
+function isHomeKitchenBusinessModel(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  const compact = raw.replace(/[_\-\s]+/g, '');
+  return compact === 'homekitchen' || compact === 'cloudkitchen' || compact === 'kitchen';
+}
+
 function buildTakeAwayAddressFallback(dto, restaurant) {
   const restLocation = restaurant?.location || {};
   const coords = Array.isArray(restLocation.coordinates)
@@ -181,6 +187,11 @@ export async function createOrder(userId, dto) {
   const dispatchMode = settings.dispatchMode;
   const deliveryType = normalizeDeliveryType(dto?.deliveryType);
   const isTakeAway = deliveryType === 'Take Away';
+  const isHomeKitchen = isHomeKitchenBusinessModel(restaurant?.businessModel);
+
+  if (isTakeAway && !isHomeKitchen) {
+    throw new ValidationError('Take Away is available only for Home Kitchen orders');
+  }
 
   const deliveryAddress = isTakeAway
     ? buildTakeAwayAddressFallback(dto, restaurant)
@@ -201,6 +212,11 @@ export async function createOrder(userId, dto) {
 
   const paymentMethod =
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+
+  if (isTakeAway && paymentMethod === "cash") {
+    throw new ValidationError('Cash on Delivery is not available for Take Away orders');
+  }
+
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
 
@@ -1001,6 +1017,7 @@ export async function listOrdersRestaurant(restaurantId, query) {
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)
       .populate("userId", "name phone email profileImage")
+      .populate("restaurantId", "businessModel")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -1014,16 +1031,57 @@ export async function updateOrderStatusRestaurant(
   orderId,
   restaurantId,
   orderStatus,
+  options = {},
 ) {
   const identity = buildOrderIdentityFilter(orderId);
   let order = await FoodOrder.findOne({
     ...identity,
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
-  });
+  }).select('+deliveryOtp');
   if (!order) throw new NotFoundError("Order not found");
+
+  const restaurantProfile = await FoodRestaurant.findById(order.restaurantId)
+    .select('businessModel')
+    .lean();
+  const isHomeKitchenOrder = isHomeKitchenBusinessModel(restaurantProfile?.businessModel);
+  const isTakeAwayOrder = normalizeDeliveryType(order?.deliveryType) === 'Take Away';
+
   const from = order.orderStatus;
   if (!isStatusAdvance(from, orderStatus)) {
       throw new ValidationError(`Current order status '${from}' is further ahead than '${orderStatus}'. Order cannot be moved backwards.`);
+  }
+
+  if (isTakeAwayOrder && isHomeKitchenOrder && orderStatus === 'ready_for_pickup') {
+    const existingOtp = String(order.deliveryOtp || '').trim();
+    if (!existingOtp) {
+      order.deliveryOtp = generateFourDigitDeliveryOtp();
+    }
+    order.deliveryVerification = {
+      ...(order.deliveryVerification?.toObject?.() || order.deliveryVerification || {}),
+      dropOtp: { required: true, verified: false },
+    };
+  }
+
+  if (isTakeAwayOrder && isHomeKitchenOrder && orderStatus === 'delivered') {
+    const inputOtp = String(options?.otp || '').trim();
+    const expectedOtp = String(order.deliveryOtp || '').trim();
+    const alreadyVerified = Boolean(order.deliveryVerification?.dropOtp?.verified);
+
+    if (!alreadyVerified) {
+      if (!inputOtp) {
+        throw new ValidationError('Pickup OTP is required to complete Home Kitchen Take Away orders');
+      }
+      if (!expectedOtp) {
+        throw new ValidationError('Pickup OTP is not generated yet. Mark the order ready first.');
+      }
+      if (inputOtp !== expectedOtp) {
+        throw new ValidationError('Invalid pickup OTP');
+      }
+      order.deliveryVerification = {
+        ...(order.deliveryVerification?.toObject?.() || order.deliveryVerification || {}),
+        dropOtp: { required: true, verified: true },
+      };
+    }
   }
 
   const previousAssignedRiderId = order.dispatch?.deliveryPartnerId;

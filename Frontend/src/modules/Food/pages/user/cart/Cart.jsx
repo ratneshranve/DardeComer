@@ -389,6 +389,7 @@ export default function Cart() {
       // ignore persistence errors
     }
   }, [selectedDeliveryType])
+
   const recipientName = String(recipientDetails.name || "").trim() || userProfile?.name || "Your Name"
   const recipientPhone = sanitizeRecipientPhone(recipientDetails.phone || "") || userProfile?.phone || ""
   const selectedAddressCoordinates = defaultAddress?.location?.coordinates
@@ -400,6 +401,27 @@ export default function Cart() {
     : currentLocation
   const { zoneId } = useZone(zoneLocation) // Prefer selected/saved address zone
   const defaultPayment = getDefaultPaymentMethod()
+  const restaurantSource = getSourceMeta(restaurantData || {})
+  const isHomeKitchenRestaurant =
+    String(restaurantSource?.vendorType || "").toLowerCase() === "home_kitchen" ||
+    String(restaurantData?.vendorType || "").toLowerCase() === "home_kitchen" ||
+    String(restaurantData?.businessModel || "").toLowerCase().includes("home kitchen") ||
+    String(restaurantData?.businessModel || "").toLowerCase().includes("home_kitchen")
+  const availableOrderTypes = isHomeKitchenRestaurant
+    ? [DELIVERY_TYPE_HOME, DELIVERY_TYPE_TAKE_AWAY]
+    : [DELIVERY_TYPE_HOME]
+
+  useEffect(() => {
+    if (!isHomeKitchenRestaurant && selectedDeliveryType === DELIVERY_TYPE_TAKE_AWAY) {
+      setSelectedDeliveryType(DELIVERY_TYPE_HOME)
+    }
+  }, [isHomeKitchenRestaurant, selectedDeliveryType])
+
+  useEffect(() => {
+    if (selectedDeliveryType === DELIVERY_TYPE_TAKE_AWAY && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("razorpay")
+    }
+  }, [selectedDeliveryType, selectedPaymentMethod])
 
   useEffect(() => {
     // Sync delivery mode from overlay/localStorage changes.
@@ -1062,7 +1084,7 @@ export default function Cart() {
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"
-  const restaurantSourceLabel = getSourceMeta(restaurantData || {}).sourceLabel
+  const restaurantSourceLabel = restaurantSource.sourceLabel
 
   const handleShare = async () => {
     const restaurantNameStr = restaurantName || companyName || "this restaurant"
@@ -1449,6 +1471,12 @@ export default function Cart() {
 
     if (cart.length === 0) {
       alert("Your cart is empty")
+      return
+    }
+
+    if (isTakeAwayOrder && selectedPaymentMethod === "cash") {
+      toast.error("Cash on Delivery is not available for Take Away")
+      setShowPaymentSheet(true)
       return
     }
 
@@ -2316,7 +2344,7 @@ export default function Cart() {
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <p className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Order Type</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  {[DELIVERY_TYPE_HOME, DELIVERY_TYPE_TAKE_AWAY].map((type) => {
+                  {availableOrderTypes.map((type) => {
                     const active = selectedDeliveryType === type
                     return (
                       <button
@@ -3009,7 +3037,7 @@ export default function Cart() {
                           color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
                           selectedColor: 'bg-[#001A94] text-white'
                         }
-                      ].map((option) => (
+                      ].filter((option) => !(isTakeAwayOrder && option.id === 'cash')).map((option) => (
                         <button
                           key={option.id}
                           onClick={() => {
