@@ -87,7 +87,7 @@ const getRestaurantContext = async (restaurantId) => {
     }
 
     const restaurant = await FoodRestaurant.findById(restaurantId)
-        .select('pureVegRestaurant')
+        .select('pureVegRestaurant businessModel')
         .lean();
     if (!restaurant?._id) {
         throw new ValidationError('Restaurant not found');
@@ -95,7 +95,8 @@ const getRestaurantContext = async (restaurantId) => {
 
     return {
         restaurantId: new mongoose.Types.ObjectId(String(restaurantId)),
-        pureVegRestaurant: restaurant.pureVegRestaurant === true
+        pureVegRestaurant: restaurant.pureVegRestaurant === true,
+        businessModel: restaurant.businessModel
     };
 };
 
@@ -192,6 +193,9 @@ export async function createRestaurantFood(restaurantId, body = {}) {
     const preparationTime = toStr(body.preparationTime);
     const { categoryObjectId, categoryName } = await resolveCategoryForRestaurant(context, { ...body, foodType });
 
+    const isHomeKitchen = context.businessModel && (String(context.businessModel).toLowerCase().replace(/\s+/g, '_') === 'home_kitchen');
+    const menuDate = isHomeKitchen ? toStr(body.menuDate) || new Date().toISOString().split('T')[0] : '';
+
     const doc = await FoodItem.create({
         restaurantId,
         categoryId: categoryObjectId,
@@ -204,24 +208,28 @@ export async function createRestaurantFood(restaurantId, body = {}) {
         foodType,
         isAvailable,
         preparationTime,
-        approvalStatus: 'pending',
-        requestedAt: new Date()
+        approvalStatus: isHomeKitchen ? 'approved' : 'pending',
+        requestedAt: new Date(),
+        menuDate,
+        ...(isHomeKitchen ? { approvedAt: new Date() } : {})
     });
 
-    try {
-        const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
-        void notifyAdminsSafely({
-            title: 'New Product Approval Request ðŸ”',
-            body: `Restaurant has submitted a new item "${doc.name}" for approval.`,
-            data: {
-                type: 'approval_request',
-                subType: 'food',
-                id: String(doc._id)
-            }
-        });
-    } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to notify admins of new food approval request:', e);
+    if (!isHomeKitchen) {
+        try {
+            const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
+            void notifyAdminsSafely({
+                title: 'New Product Approval Request \uD83C\uDF54',
+                body: `Restaurant has submitted a new item "${doc.name}" for approval.`,
+                data: {
+                    type: 'approval_request',
+                    subType: 'food',
+                    id: String(doc._id)
+                }
+            });
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Failed to notify admins of new food approval request:', e);
+        }
     }
 
     return doc.toObject();

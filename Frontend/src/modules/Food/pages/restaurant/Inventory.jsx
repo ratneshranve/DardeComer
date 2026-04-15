@@ -2713,7 +2713,7 @@ export default function Inventory() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="sticky top-0 bg-white px-4 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-bold text-gray-900 text-center">Add item</h2>
+                <h2 className="text-lg font-bold text-gray-900 text-center">{String(restaurantProfile?.businessModel || '').trim().toLowerCase().replace(/\s+/g, '_') === 'home_kitchen' ? "Add Today's Menu" : "Add item"}</h2>
               </div>
               <div className="px-4 py-4 space-y-2">
                 <button
@@ -2727,7 +2727,7 @@ export default function Inventory() {
                   }}
                   className="w-full py-3 px-4 text-left rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-sm font-medium text-gray-900">Add item</span>
+                  <span className="text-sm font-medium text-gray-900">{String(restaurantProfile?.businessModel || '').trim().toLowerCase().replace(/\s+/g, '_') === 'home_kitchen' ? "Add Today's Menu" : "Add item"}</span>
                 </button>
               </div>
             </motion.div>
@@ -2743,7 +2743,7 @@ export default function Inventory() {
             onClick={() => setIsAddPopupOpen(true)}
             className="rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(15,23,42,0.85)]"
           >
-            + Add item
+            {String(restaurantProfile?.businessModel || '').trim().toLowerCase().replace(/\s+/g, '_') === 'home_kitchen' ? "+ Add Today's Menu" : "+ Add item"}
           </motion.button>
           <motion.button
             type="button"

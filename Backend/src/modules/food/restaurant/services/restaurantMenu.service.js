@@ -103,7 +103,24 @@ export async function getRestaurantMenu(restaurantId) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
         throw new ValidationError('Invalid restaurant id');
     }
-    const foods = await FoodItem.find({ restaurantId })
+
+    const restaurant = await FoodRestaurant.findById(restaurantId)
+        .select('businessModel')
+        .lean();
+
+    const isHomeKitchen = restaurant?.businessModel && (String(restaurant.businessModel).toLowerCase().replace(/\s+/g, '_') === 'home_kitchen');
+    const query = { restaurantId };
+
+    if (isHomeKitchen) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        query.$or = [
+            { menuDate: todayStr },
+            { menuDate: '' },
+            { menuDate: { $exists: false } }
+        ];
+    }
+
+    const foods = await FoodItem.find(query)
         .sort({ createdAt: -1 })
         .limit(5000)
         .lean();
@@ -123,19 +140,32 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     let restaurant = null;
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
         restaurant = await FoodRestaurant.findOne({ _id: value, status: 'approved' })
-            .select('_id status')
+            .select('_id status businessModel')
             .lean();
     } else {
         const normalized = value.trim().toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ');
         restaurant = await FoodRestaurant.findOne({ restaurantNameNormalized: normalized, status: 'approved' })
-            .select('_id status')
+            .select('_id status businessModel')
             .lean();
     }
 
     if (!restaurant?._id) {
         return null;
     }
-    const foods = await FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved' })
+
+    const isHomeKitchen = restaurant.businessModel && (String(restaurant.businessModel).toLowerCase().replace(/\s+/g, '_') === 'home_kitchen');
+    const query = { restaurantId: restaurant._id, approvalStatus: 'approved' };
+
+    if (isHomeKitchen) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        query.$or = [
+            { menuDate: todayStr },
+            { menuDate: '' },
+            { menuDate: { $exists: false } }
+        ];
+    }
+
+    const foods = await FoodItem.find(query)
         .sort({ createdAt: -1 })
         .limit(2000)
         .lean();

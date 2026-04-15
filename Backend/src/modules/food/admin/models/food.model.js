@@ -25,7 +25,8 @@ const foodSchema = new mongoose.Schema(
         rejectionReason: { type: String, trim: true, default: '' },
         requestedAt: { type: Date },
         approvedAt: { type: Date },
-        rejectedAt: { type: Date }
+        rejectedAt: { type: Date },
+        menuDate: { type: String, trim: true, default: '' } // For Home Kitchen daily menus
     },
     {
         collection: 'food_items',

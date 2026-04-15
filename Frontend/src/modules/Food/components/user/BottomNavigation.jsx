@@ -99,7 +99,7 @@ export default function BottomNavigation() {
         >
           <House className={`h-5 w-5 ${isHomeKitchen ? "text-primary dark:text-primary" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
           <span className={`text-[11px] leading-none whitespace-nowrap font-medium ${isHomeKitchen ? "text-primary dark:text-primary font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Kitchen
+            Home Kitchen
           </span>
           {isHomeKitchen && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary dark:bg-primary rounded-b-full" />
