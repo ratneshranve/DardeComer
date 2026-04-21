@@ -32,7 +32,12 @@ const resolveRestaurantBackPath = ({ pathname, state }) => {
     if (normalizedPath === "/orders/all") {
       return explicitBackPath || "/food/restaurant/explore"
     }
-    return explicitBackPath || "/food/restaurant/orders"
+    return explicitBackPath || "/food/restaurant/orders/all"
+  }
+
+  // If we're on the reservations page, send back to explore by default
+  if (normalizedPath === "/reservations") {
+    return explicitBackPath || "/food/restaurant/explore"
   }
 
   if (

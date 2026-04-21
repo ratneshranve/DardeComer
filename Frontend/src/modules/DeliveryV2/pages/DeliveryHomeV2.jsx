@@ -292,9 +292,21 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
           setActiveOrder(syncedOrder);
           
-          const backendStatus = serverData.deliveryStatus || serverData.orderState?.status || serverData.orderStatus || serverData.status;
+          const backendStatus = String(serverData.deliveryStatus || serverData.orderState?.status || serverData.orderStatus || serverData.status || "").toLowerCase();
+          const dispatchStatus = String(serverData.dispatch?.status || serverData.dispatchStatus || "").toLowerCase();
           const currentPhase = serverData.deliveryState?.currentPhase;
 
+          // CRITICAL: If the order is only 'assigned' or 'unassigned', it means the rider hasn't accepted it yet.
+          // In this case, we should NOT set it as activeOrder in the store. 
+          // Setting it as activeOrder would cause the Home page to hide the 'New Order' popup.
+          if (['assigned', 'unassigned'].includes(dispatchStatus) && !['picked_up', 'delivering', 'reached_drop'].includes(backendStatus)) {
+            debugLog('Skipping setActiveOrder on mount because order is pending acceptance', { dispatchStatus, backendStatus });
+            clearActiveOrder();
+            return;
+          }
+
+          setActiveOrder(syncedOrder);
+          
           if (['delivered', 'completed', 'DELIVERED'].includes(backendStatus)) {
             updateTripStatus('COMPLETED');
           } else if (currentPhase === 'at_drop' || ['reached_drop', 'REACHED_DROP'].includes(backendStatus)) {
@@ -457,6 +469,24 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   }, [isOnline]);
 
   useEffect(() => { if (newOrder) setIncomingOrder(newOrder); }, [newOrder]);
+
+  // On mount: restore any order that was persisted to localStorage while the app was killed.
+  // This covers the scenario where a FCM push arrived, app was closed, and the user taps the
+  // notification to relaunch — document.visibilityState is already 'visible' so the
+  // visibilitychange event inside the socket hook never fires.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const stored = localStorage.getItem('delivery_pending_bg_order');
+        if (!stored) return;
+        const { order, receivedAt } = JSON.parse(stored);
+        localStorage.removeItem('delivery_pending_bg_order');
+        if (!order || Date.now() - receivedAt > 300000) return; // discard after 5 min
+        setIncomingOrder(order);
+      } catch {}
+    }, 1800); // slight delay to let socket + initial sync settle first
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeOrder && incomingOrder) {

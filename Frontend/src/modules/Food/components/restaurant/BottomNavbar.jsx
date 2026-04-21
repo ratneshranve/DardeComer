@@ -24,9 +24,9 @@ export default function BottomNavbar({ onMenuClick }) {
           <Home className="w-6 h-6" />
         </button>
         <button
-          onClick={() => navigate("/restaurant/orders")}
+          onClick={() => navigate("/restaurant/orders/all")}
           className={`flex flex-col items-center gap-1 p-2 transition-colors ${
-            isActive("/restaurant/orders") ? "text-[#ff8100]" : "text-gray-600"
+            isActive("/restaurant/orders/all") ? "text-[#ff8100]" : "text-gray-600"
           }`}
         >
           <ShoppingBag className="w-6 h-6" />

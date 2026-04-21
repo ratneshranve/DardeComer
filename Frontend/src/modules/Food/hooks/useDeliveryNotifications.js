@@ -513,10 +513,11 @@ export const useDeliveryNotifications = () => {
             : [];
 
       const recoverableOrder = availableOrders.find((order) => {
-        const dispatchStatus = order?.dispatch?.status;
+        const dispatchStatus = String(order?.dispatch?.status || '').toLowerCase();
+        const orderStatus = String(order?.orderStatus || order?.status || '').toLowerCase();
         return (
           ['unassigned', 'assigned'].includes(dispatchStatus) &&
-          ['preparing', 'ready_for_pickup'].includes(order?.orderStatus)
+          ['confirmed', 'preparing', 'ready_for_pickup'].includes(orderStatus)
         );
       });
 
@@ -1009,6 +1010,8 @@ export const useDeliveryNotifications = () => {
           orderId: orderData?.orderId || orderData?.orderMongoId || orderData?._id,
           dispatchStatus: orderData?.dispatch?.status,
         });
+        // Persist order so it can be restored if app is killed and relaunched from notification
+        try { localStorage.setItem('delivery_pending_bg_order', JSON.stringify({ order: orderData, receivedAt: Date.now() })); } catch {}
         setNewOrder(orderData);
         handleIncomingOrderAlert(orderData);
       })();
@@ -1031,6 +1034,8 @@ export const useDeliveryNotifications = () => {
           phase: orderData?.phase || 'unknown',
           dispatchStatus: orderData?.dispatch?.status,
         });
+        // Persist order so it can be restored if app is killed and relaunched from notification
+        try { localStorage.setItem('delivery_pending_bg_order', JSON.stringify({ order: orderData, receivedAt: Date.now() })); } catch {}
         // Treat it the same as new_order for now - delivery boy can accept it
         setNewOrder(orderData);
         handleIncomingOrderAlert(orderData);
@@ -1135,29 +1140,84 @@ export const useDeliveryNotifications = () => {
       }
     };
 
+    // Restore any order that was received while the app was backgrounded or killed.
+    // Called on focus and visibility-change so the alert shows as soon as the user returns.
+    const restorePendingBgOrder = () => {
+      try {
+        const stored = localStorage.getItem('delivery_pending_bg_order');
+        if (!stored) return;
+        const { order, receivedAt } = JSON.parse(stored);
+        localStorage.removeItem('delivery_pending_bg_order');
+        if (!order || Date.now() - receivedAt > 300000) return; // discard if older than 5 min
+        void (async () => {
+          const suppress = await shouldSuppressIncomingCodAlert(order);
+          if (!suppress) {
+            setNewOrder(order);
+            handleIncomingOrderAlert(order);
+          }
+        })();
+      } catch {}
+    };
+
     const handleWindowFocus = () => {
       void recoverDeliveryState();
+      restorePendingBgOrder();
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void recoverDeliveryState();
+        restorePendingBgOrder();
       }
     };
+
+    const handleNativePushNotification = useCallback((payload) => {
+      if (!payload) return;
+      const data = payload.data || payload;
+      const orderId = data.orderId || data.order_id || data.orderMongoId;
+      
+      if (orderId && !activeOrderRef.current) {
+        debugLog('Native push notification received, triggering alert', data);
+        setNewOrder(data);
+        handleIncomingOrderAlert(data);
+      }
+    }, [handleIncomingOrderAlert]);
 
     window.addEventListener('deliveryAuthChanged', handleAuthChange);
     window.addEventListener('authRefreshed', handleAuthRefreshed);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Native Bridge / FCM Tab-sync
+    const nativePushWrapper = (e) => handleNativePushNotification(e.detail);
+    const postMessageWrapper = (e) => {
+      if (e.data?.type === 'native-push-notification') {
+        handleNativePushNotification(e.data.payload);
+      }
+    };
+    
+    window.addEventListener('native-push-notification', nativePushWrapper);
+    window.addEventListener('message', postMessageWrapper);
+
+    // Initial check on mount after a short delay to let sync settle
+    const mountTimer = setTimeout(() => {
+      restorePendingBgOrder();
+      if (document.visibilityState === 'visible') {
+        void recoverDeliveryState();
+      }
+    }, 1500);
 
     return () => {
       debugLog('? Cleaning up socket connection...');
+      clearTimeout(mountTimer);
       stopNotificationSound();
       joinedDeliveryRoomRef.current = null;
       window.removeEventListener('deliveryAuthChanged', handleAuthChange);
       window.removeEventListener('authRefreshed', handleAuthRefreshed);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('native-push-notification', nativePushWrapper);
+      window.removeEventListener('message', postMessageWrapper);
       if (socketRef.current) {
         socketRef.current.removeAllListeners();
         socketRef.current.disconnect();

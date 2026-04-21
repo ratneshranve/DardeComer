@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X } from "lucide-react"
+import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X, ArrowLeft } from "lucide-react"
+import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { diningAPI, restaurantAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
@@ -70,6 +71,7 @@ const getBookerPhone = (booking) =>
 
 
 export default function DiningReservations() {
+    const goBack = useRestaurantBackNavigation()
     const [bookings, setBookings] = useState([])
     const [loading, setLoading] = useState(true)
     const [restaurant, setRestaurant] = useState(null)
@@ -370,11 +372,22 @@ export default function DiningReservations() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                     >
-                        <h1 className="text-2xl font-black text-primary tracking-tight flex items-center gap-2">
-                            Table Reservations
-                            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        </h1>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Live Queue Management</p>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={goBack}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                                aria-label="Go back"
+                            >
+                                <ArrowLeft className="w-6 h-6 text-gray-900" />
+                            </button>
+                            <div>
+                                <h1 className="text-2xl font-black text-primary tracking-tight flex items-center gap-2">
+                                    Table Reservations
+                                    <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                </h1>
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Live Queue Management</p>
+                            </div>
+                        </div>
                     </motion.div>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
