@@ -1,7 +1,12 @@
 import AppRoutes from './routes'
+import SplashScreen from '../shared/components/SplashScreen'
 
 function App() {
-  return <AppRoutes />
+  return (
+    <SplashScreen>
+      <AppRoutes />
+    </SplashScreen>
+  )
 }
 
 export default App
