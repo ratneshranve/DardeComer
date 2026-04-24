@@ -6,16 +6,18 @@ const SplashScreen = ({ children }) => {
   const [exit, setExit] = useState(false);
 
   useEffect(() => {
-    const seen = sessionStorage.getItem("seenSplash");
+    // Check if this is a page reload using Performance Navigation API
+    // type 'reload' means user refreshed, 'navigate' means fresh open
+    const navigation = performance.getEntriesByType('navigation')[0];
+    const isReload = navigation && navigation.type === 'reload';
 
-    if (seen) {
+    if (isReload) {
       setShowSplash(false);
       return;
     }
 
     // Lock scroll
     document.body.style.overflow = "hidden";
-    sessionStorage.setItem("seenSplash", "true");
 
     // Sequence: Wait for text animation -> Trigger Exit -> Unmount
     const exitSequence = setTimeout(() => {
