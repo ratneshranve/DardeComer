@@ -44,6 +44,7 @@ app.use(helmet({
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json({
+    limit: '50mb',
     verify: (req, res, buf) => {
         // ✅ Store rawBody for signature verification (Razorpay Webhooks)
         if (req.originalUrl && req.originalUrl.includes('/webhook/razorpay')) {
@@ -51,7 +52,7 @@ app.use(express.json({
         }
     }
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Protect against NoSQL injection and XSS
 app.use((req, _res, next) => {

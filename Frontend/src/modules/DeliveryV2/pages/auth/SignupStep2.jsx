@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Upload, X, Check, Camera, Image as ImageIcon } from "lucide-react"
 import { deliveryAPI } from "@food/api"
 import { toast } from "sonner"
-import { isFlutterBridgeAvailable, openCamera } from "@food/utils/imageUploadUtils"
+import { isFlutterBridgeAvailable, openCamera, convertBase64ToFile } from "@food/utils/imageUploadUtils"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -108,20 +108,77 @@ export default function SignupStep2() {
   const [uploading, setUploading] = useState({})
 
   // Separate ref map for blob preview URLs — keyed by docType.
-  // Managed manually so we ONLY revoke a specific URL when it's replaced or removed,
-  // NOT on every state change (which was causing earlier previews to disappear).
   const previewUrlsRef = useRef({})
 
+  // PERSISTENCE: Restore documents from sessionStorage on mount
   useEffect(() => {
+    const restoreDocs = async () => {
+      const savedDocs = sessionStorage.getItem("deliverySignupDocsBase64")
+      if (savedDocs) {
+        try {
+          const parsed = JSON.parse(savedDocs)
+          const restoredDocuments = { ...documents }
+          
+          for (const docType of Object.keys(parsed)) {
+            const base64 = parsed[docType]
+            if (base64 && typeof base64 === "string" && base64.startsWith("data:image")) {
+              try {
+                const file = convertBase64ToFile(base64, "image/jpeg", `signup-${docType}`)
+                restoredDocuments[docType] = file
+              } catch (e) {
+                debugError(`Failed to restore ${docType}:`, e)
+              }
+            }
+          }
+          setDocuments(restoredDocuments)
+        } catch (e) {
+          debugError("Error restoring docs from storage:", e)
+        }
+      }
+    }
+    restoreDocs()
+    
     window.scrollTo({ top: 0, left: 0, behavior: "auto" })
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
   }, [])
 
-  // Save uploaded docs to session storage whenever they change
+  // Save uploaded docs (Base64) to session storage whenever they change
   useEffect(() => {
     sessionStorage.setItem("deliverySignupDocs", JSON.stringify(uploadedDocs))
-  }, [uploadedDocs])
+    
+    // Also save the actual file data as base64 for persistence across reloads
+    const saveDocsBase64 = async () => {
+      const base64Map = {}
+      let hasData = false
+      
+      for (const [docType, file] of Object.entries(documents)) {
+        if (file instanceof File) {
+          try {
+            const base64 = await new Promise((resolve) => {
+              const reader = new FileReader()
+              reader.onloadend = () => resolve(reader.result)
+              reader.readAsDataURL(file)
+            })
+            base64Map[docType] = base64
+            hasData = true
+          } catch (e) {
+            debugError(`Failed to encode ${docType}:`, e)
+          }
+        }
+      }
+      
+      if (hasData) {
+        try {
+          sessionStorage.setItem("deliverySignupDocsBase64", JSON.stringify(base64Map))
+        } catch (e) {
+          // If sessionStorage is full (QuotaExceededError), we can't do much
+          debugWarn("sessionStorage full, could not persist all doc data")
+        }
+      }
+    }
+    saveDocsBase64()
+  }, [uploadedDocs, documents])
 
   // Cleanup ALL blob URLs only on component unmount
   useEffect(() => {
