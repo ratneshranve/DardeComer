@@ -118,8 +118,8 @@
   left: 50%;
   transform: translateX(-50%);
   width: 0;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.4);
+  height: 4px;
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 2px;
   animation: lineGrow 1.2s cubic-bezier(0.4, 0, 0.2, 1) 0.8s forwards;
 }

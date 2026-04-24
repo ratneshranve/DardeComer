@@ -252,8 +252,47 @@ export function useLocation() {
   // Google Places API removed - using OLA Maps only
 
   /* Removed Google Geocoding/Places (maps.googleapis.com). Uses BigDataCloud reverse-geocode only. */
-  const reverseGeocodeWithGoogleMaps = async (latitude, longitude, _options = {}) =>
-    reverseGeocodeDirect(latitude, longitude)
+  const reverseGeocodeWithGoogleMaps = async (latitude, longitude, _options = {}) => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (!apiKey || apiKey.includes('AIzaSy')) { // Check if key exists and isn't a placeholder (though AIzaSy is the prefix)
+      // If we have a key, try to use it
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status === "OK" && data.results && data.results.length > 0) {
+          const result = data.results[0];
+          const comps = result.address_components;
+          
+          const findComp = (types) => {
+            const found = comps.find(c => types.some(t => c.types.includes(t)));
+            return found ? found.long_name : "";
+          };
+
+          // Priority for Indian addresses: sublocality_level_1 is usually the area
+          const area = findComp(["sublocality_level_1", "sublocality", "neighborhood"]);
+          const city = findComp(["locality", "administrative_area_level_2"]);
+          const street = findComp(["route", "street_address"]);
+
+          return {
+            city: city || "Unknown City",
+            state: findComp(["administrative_area_level_1"]),
+            country: findComp(["country"]),
+            area: area || "",
+            street: street || "",
+            address: result.formatted_address,
+            formattedAddress: result.formatted_address,
+          };
+        }
+      } catch (err) {
+        console.error("Google Maps Geocoding failed, falling back:", err);
+      }
+    }
+    
+    // Fallback to BigDataCloud
+    return reverseGeocodeDirect(latitude, longitude);
+  }
 
 
   /* ===================== OLA MAPS REVERSE GEOCODE (DEPRECATED - KEPT FOR FALLBACK) ===================== */

@@ -105,13 +105,44 @@ export default function HomeHeader({
               <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Your Location</span>
               <ChevronDown className="h-3 w-3 text-white/40 group-hover/loc:text-white transition-colors" />
             </div>
-            <h1 className="text-sm font-bold text-white truncate leading-tight group-hover/loc:text-blue-100 transition-colors">
+            <h1 className="text-base font-bold text-white truncate leading-tight group-hover/loc:text-blue-100 transition-colors">
               {(() => {
                 const mode = localStorage.getItem("deliveryAddressMode") || "current";
-                if (mode === "saved" && defaultAddress) {
-                  return defaultAddress.city || defaultAddress.area || defaultAddress.address || 'Set your location';
+                const addr = mode === "saved" && defaultAddress ? defaultAddress : location;
+
+                if (!addr || (!addr.area && !addr.address && !addr.city && !addr.street)) {
+                  return 'Set your location';
                 }
-                return location?.city || location?.area || location?.address || 'Set your location';
+
+                const rawParts = [
+                  addr.area,
+                  addr.street,
+                  addr.address,
+                  addr.city
+                ].filter(Boolean).map(s => String(s).trim());
+
+                // Filter out components that are entirely contained within other components
+                // or are identical case-insensitively.
+                const finalComponents = rawParts.filter((comp, index) => {
+                  return !rawParts.some((other, otherIndex) => {
+                    if (index === otherIndex) return false;
+                    // If 'other' includes 'comp', and 'other' is longer, 'comp' is redundant
+                    return other.toLowerCase().includes(comp.toLowerCase()) && other.length > comp.length;
+                  });
+                });
+                
+                // Deduplicate identical ones (case-insensitive)
+                const unique = [];
+                const seen = new Set();
+                finalComponents.forEach(c => {
+                  const low = c.toLowerCase();
+                  if (!seen.has(low)) {
+                    seen.add(low);
+                    unique.push(c);
+                  }
+                });
+
+                return unique.length > 0 ? unique.join(', ') : 'Set your location';
               })()}
             </h1>
           </div>

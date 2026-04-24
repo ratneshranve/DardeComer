@@ -68,10 +68,10 @@ export default function DesktopNavbar({ showLogo = true }) {
     const stateName = activeLocationData.state || null
     // Main location name: Show area if available, otherwise show city, otherwise "Select"
     const mainLocationName = areaName || cityName || activeLocationData.address || "Select"
-    // Secondary location: Show only city when area is available (as per design image)
+    // Secondary location: Show city only if it's different from area
     const secondaryLocation = areaName
-        ? (cityName || "")  // Show only city when area is available
-        : (cityName && stateName ? `${cityName}, ${stateName}` : cityName || stateName || "")
+        ? (cityName && cityName.toLowerCase() !== areaName.toLowerCase() ? cityName : "")
+        : (cityName && stateName && cityName.toLowerCase() !== stateName.toLowerCase() ? `${cityName}, ${stateName}` : cityName || stateName || "")
 
     const handleLocationClick = () => {
         // Open location selector overlay
