@@ -815,6 +815,18 @@ export const useDeliveryNotifications = () => {
     fetchDeliveryPartnerId();
   }, []);
 
+  const handleNativePushNotification = useCallback((payload) => {
+    if (!payload) return;
+    const data = payload.data || payload;
+    const orderId = data.orderId || data.order_id || data.orderMongoId;
+    
+    if (orderId && !activeOrderRef.current) {
+      debugLog('Native push notification received, triggering alert', data);
+      setNewOrder(data);
+      handleIncomingOrderAlert(data);
+    }
+  }, [handleIncomingOrderAlert]);
+
   // Socket connection effect (no backend when API_BASE_URL is empty)
   useEffect(() => {
     if (!API_BASE_URL || !String(API_BASE_URL).trim()) {
@@ -1171,18 +1183,6 @@ export const useDeliveryNotifications = () => {
       }
     };
 
-    const handleNativePushNotification = useCallback((payload) => {
-      if (!payload) return;
-      const data = payload.data || payload;
-      const orderId = data.orderId || data.order_id || data.orderMongoId;
-      
-      if (orderId && !activeOrderRef.current) {
-        debugLog('Native push notification received, triggering alert', data);
-        setNewOrder(data);
-        handleIncomingOrderAlert(data);
-      }
-    }, [handleIncomingOrderAlert]);
-
     window.addEventListener('deliveryAuthChanged', handleAuthChange);
     window.addEventListener('authRefreshed', handleAuthRefreshed);
     window.addEventListener('focus', handleWindowFocus);
@@ -1224,7 +1224,7 @@ export const useDeliveryNotifications = () => {
         socketRef.current = null;
       }
     };
-  }, [deliveryPartnerId, handleIncomingOrderAlert, joinDeliveryRoomIfPossible, playNotificationSound, recoverDeliveryState, shouldSuppressIncomingCodAlert, showBackgroundOrderNotification, startAlertLoop, stopAlertLoop]);
+  }, [deliveryPartnerId, handleIncomingOrderAlert, handleNativePushNotification, joinDeliveryRoomIfPossible, playNotificationSound, recoverDeliveryState, shouldSuppressIncomingCodAlert, showBackgroundOrderNotification, startAlertLoop, stopAlertLoop]);
 
   useEffect(() => {
     if (!deliveryPartnerId) {
