@@ -105,10 +105,12 @@ export const convertBase64ToFile = (
 export const openBrowserCameraFallback = (onSelectFile) => {
   try {
     // Detect Android WebView (Flutter InAppWebView sets "wv" in UA)
+    // Robust check for Android WebView to prevent "capture" attribute 
+    // from causing page reloads on camera return in some APKs.
+    const ua = navigator.userAgent || ""
     const isAndroidWebView =
-      typeof navigator !== "undefined" &&
-      /android/i.test(navigator.userAgent) &&
-      /wv|; wv\)/i.test(navigator.userAgent)
+      /Android/i.test(ua) && 
+      (/Version\/[\d.]+/i.test(ua) || /wv/i.test(ua) || /InAppWebView/i.test(ua))
 
     openTransientImageInput({
       onSelectFile,
@@ -198,4 +200,49 @@ export const openGallery = async ({ onSelectFile, fileNamePrefix = "gallery-phot
     console.error("Gallery pick failed:", error)
     toast.error("Failed to open gallery")
   }
+}
+/**
+ * Compresses an image file using canvas.
+ * Returns a compressed File object.
+ */
+export const compressImage = async (file, { maxWidth = 1200, quality = 0.7 } = {}) => {
+  if (!file || !file.type.startsWith("image/")) return file
+
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+        let width = img.width
+        let height = img.height
+
+        // Calculate aspect ratio
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height
+          width = maxWidth
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext("2d")
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(
+          (blob) => {
+            const compressedFile = new File([blob], file.name, {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            })
+            resolve(compressedFile)
+          },
+          "image/jpeg",
+          quality
+        )
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
 }

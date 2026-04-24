@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Upload, X, Check, Camera, Image as ImageIcon } from "lucide-react"
 import { deliveryAPI } from "@food/api"
 import { toast } from "sonner"
-import { isFlutterBridgeAvailable, openCamera, convertBase64ToFile } from "@food/utils/imageUploadUtils"
+import { isFlutterBridgeAvailable, openCamera, convertBase64ToFile, compressImage } from "@food/utils/imageUploadUtils"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -217,20 +217,30 @@ export default function SignupStep2() {
       toast.error("Please select an image file")
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB")
+    
+    // Size check BEFORE compression to avoid large canvas operations
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Original image is too large (max 15MB)")
       return
     }
 
-    // Revoke the old blob URL for this slot only, then create a fresh one
-    if (previewUrlsRef.current[docType]) {
-      URL.revokeObjectURL(previewUrlsRef.current[docType])
-    }
-    previewUrlsRef.current[docType] = URL.createObjectURL(file)
+    try {
+      // Show "compressing" state if possible, or just do it
+      const compressedFile = await compressImage(file, { maxWidth: 1200, quality: 0.7 })
+      
+      // Revoke the old blob URL for this slot only, then create a fresh one
+      if (previewUrlsRef.current[docType]) {
+        URL.revokeObjectURL(previewUrlsRef.current[docType])
+      }
+      previewUrlsRef.current[docType] = URL.createObjectURL(compressedFile)
 
-    setDocuments((prev) => ({ ...prev, [docType]: file }))
-    setUploadedDocs((prev) => ({ ...prev, [docType]: { file: true } }))
-    toast.success(`${docType.replace(/([A-Z])/g, " $1").trim()} selected`)
+      setDocuments((prev) => ({ ...prev, [docType]: compressedFile }))
+      setUploadedDocs((prev) => ({ ...prev, [docType]: { file: true } }))
+      toast.success(`${docType.replace(/([A-Z])/g, " $1").trim()} selected`)
+    } catch (error) {
+      debugError("Compression failed:", error)
+      toast.error("Failed to process image")
+    }
   }
 
   const handleTakeCameraPhoto = (docType, label) => {
