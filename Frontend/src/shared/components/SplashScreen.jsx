@@ -6,12 +6,15 @@ const SplashScreen = ({ children }) => {
   const [exit, setExit] = useState(false);
 
   useEffect(() => {
-    // Check if this is a page reload using Performance Navigation API
-    // type 'reload' means user refreshed, 'navigate' means fresh open
+    // Strategy: use Performance Navigation API to detect page reload (skip splash).
+    // For WebView camera returns, Android often fires a new 'navigate' entry,
+    // so we also use a short-lived sessionStorage flag set AFTER splash finishes
+    // to prevent re-showing on camera/gallery returns within the same session.
     const navigation = performance.getEntriesByType('navigation')[0];
-    const isReload = navigation && navigation.type === 'reload';
+    const isPageReload = navigation && navigation.type === 'reload';
+    const alreadyShown = sessionStorage.getItem('_splashDone') === '1';
 
-    if (isReload) {
+    if (isPageReload || alreadyShown) {
       setShowSplash(false);
       return;
     }
@@ -24,6 +27,8 @@ const SplashScreen = ({ children }) => {
       setExit(true);
 
       const unmountTimer = setTimeout(() => {
+        // Mark splash as done for this session so camera returns don't re-trigger
+        sessionStorage.setItem('_splashDone', '1');
         setShowSplash(false);
         document.body.style.overflow = "auto";
       }, 600); // Sync with CSS transition duration

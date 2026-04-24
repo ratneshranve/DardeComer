@@ -97,14 +97,23 @@ export const convertBase64ToFile = (
 }
 
 /**
- * Standard browser camera fallback
+ * Standard browser camera fallback.
+ * On Android WebView, `capture="environment"` causes the page to appear to
+ * reload/navigate when returning from the camera, which destroys React state
+ * and can trigger auth redirects. We detect the WebView and skip the attribute.
  */
 export const openBrowserCameraFallback = (onSelectFile) => {
   try {
+    // Detect Android WebView (Flutter InAppWebView sets "wv" in UA)
+    const isAndroidWebView =
+      typeof navigator !== "undefined" &&
+      /android/i.test(navigator.userAgent) &&
+      /wv|; wv\)/i.test(navigator.userAgent)
+
     openTransientImageInput({
       onSelectFile,
       accept: "image/*",
-      capture: "environment",
+      capture: isAndroidWebView ? undefined : "environment",
     })
   } catch (error) {
     console.error("Browser camera fallback failed:", error)
