@@ -57,74 +57,9 @@ export const verifyUserOtpAndLogin = async (
     throw new AuthError(result.reason || "OTP verification failed");
   }
 
-  // 1. Try to find a Delivery Partner first (priority role for "Unified" login)
-  const deliveryPartner = await FoodDeliveryPartner.findOne({
-    $or: [{ phone: normalized }, { phone: { $regex: new RegExp(normalized + "$") } }],
-  });
-
-  if (deliveryPartner) {
-    if (deliveryPartner.status === "rejected") {
-       throw new AuthError("Your delivery partner account was rejected. Please contact support.");
-    }
-    // Note: pending partners can still login to see status
-    
-    const payload = { userId: deliveryPartner._id.toString(), role: ROLES.DELIVERY_PARTNER };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
-    const ttlMs = ms(config.jwtRefreshExpiresIn || "7d");
-    const expiresAt = new Date(Date.now() + ttlMs);
-
-    await FoodRefreshToken.create({
-      userId: deliveryPartner._id,
-      token: refreshToken,
-      expiresAt,
-    });
-
-    return { 
-      accessToken, 
-      refreshToken, 
-      user: { ...deliveryPartner.toObject(), role: ROLES.DELIVERY_PARTNER }, 
-      role: ROLES.DELIVERY_PARTNER,
-      isNewUser: false 
-    };
-  }
-
-  // 2. Try Restaurant Owner
-  const restaurant = await FoodRestaurant.findOne({
-    $or: [
-      { ownerPhone: normalized },
-      { ownerPhone: { $regex: new RegExp(normalized + "$") } },
-      { primaryContactNumber: normalized },
-      { primaryContactNumber: { $regex: new RegExp(normalized + "$") } }
-    ],
-  });
-
-  if (restaurant) {
-    if (restaurant.status === "rejected") {
-       throw new AuthError("Your restaurant account was rejected.");
-    }
-    const payload = { userId: restaurant._id.toString(), role: ROLES.RESTAURANT };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
-    const ttlMs = ms(config.jwtRefreshExpiresIn || "7d");
-    const expiresAt = new Date(Date.now() + ttlMs);
-
-    await FoodRefreshToken.create({
-      userId: restaurant._id,
-      token: refreshToken,
-      expiresAt,
-    });
-
-    return { 
-      accessToken, 
-      refreshToken, 
-      user: { ...restaurant.toObject(), role: ROLES.RESTAURANT },
-      role: ROLES.RESTAURANT,
-      isNewUser: false 
-    };
-  }
-
-  // 3. Fallback to FoodUser
+  // Directly find or create a FoodUser for this phone.
+  // Each module (user/restaurant/delivery) maintains its own independent account,
+  // so the same phone number can register across all three portals.
   let userDoc = await FoodUser.findOne({ 
     $or: [{ phone: normalized }, { phone: { $regex: new RegExp(normalized + "$") } }] 
   });

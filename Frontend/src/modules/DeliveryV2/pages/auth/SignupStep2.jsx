@@ -84,12 +84,14 @@ export default function SignupStep2() {
     panPhoto: null,
     drivingLicensePhoto: null
   })
+
   const [documents, setDocuments] = useState({
     profilePhoto: null,
     aadharPhoto: null,
     panPhoto: null,
     drivingLicensePhoto: null
   })
+
   const [uploadedDocs, setUploadedDocs] = useState(() => {
     const saved = sessionStorage.getItem("deliverySignupDocs")
     if (saved) {
@@ -101,9 +103,14 @@ export default function SignupStep2() {
     }
     return createEmptyUploadedDocs()
   })
-  const [activePicker, setActivePicker] = useState(null) // { docType: string, title: string, ref: any }
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploading, setUploading] = useState({})
+
+  // Separate ref map for blob preview URLs — keyed by docType.
+  // Managed manually so we ONLY revoke a specific URL when it's replaced or removed,
+  // NOT on every state change (which was causing earlier previews to disappear).
+  const previewUrlsRef = useRef({})
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" })
@@ -116,18 +123,15 @@ export default function SignupStep2() {
     sessionStorage.setItem("deliverySignupDocs", JSON.stringify(uploadedDocs))
   }, [uploadedDocs])
 
+  // Cleanup ALL blob URLs only on component unmount
   useEffect(() => {
     return () => {
-      Object.values(documents).forEach((file) => {
-        if (file instanceof File) {
-          const previewUrl = file.previewUrl || file._previewUrl
-          if (previewUrl) {
-            URL.revokeObjectURL(previewUrl)
-          }
-        }
+      Object.values(previewUrlsRef.current).forEach((url) => {
+        if (url) URL.revokeObjectURL(url)
       })
+      previewUrlsRef.current = {}
     }
-  }, [documents])
+  }, [])
 
   const getPreviewSrc = (docType) => {
     const uploaded = uploadedDocs[docType]
@@ -136,10 +140,11 @@ export default function SignupStep2() {
 
     const localFile = documents[docType]
     if (localFile instanceof File) {
-      if (!localFile._previewUrl) {
-        localFile._previewUrl = URL.createObjectURL(localFile)
+      // Reuse the cached URL for this slot; only create one when missing
+      if (!previewUrlsRef.current[docType]) {
+        previewUrlsRef.current[docType] = URL.createObjectURL(localFile)
       }
-      return localFile._previewUrl
+      return previewUrlsRef.current[docType]
     }
     return null
   }
@@ -160,6 +165,12 @@ export default function SignupStep2() {
       return
     }
 
+    // Revoke the old blob URL for this slot only, then create a fresh one
+    if (previewUrlsRef.current[docType]) {
+      URL.revokeObjectURL(previewUrlsRef.current[docType])
+    }
+    previewUrlsRef.current[docType] = URL.createObjectURL(file)
+
     setDocuments((prev) => ({ ...prev, [docType]: file }))
     setUploadedDocs((prev) => ({ ...prev, [docType]: { file: true } }))
     toast.success(`${docType.replace(/([A-Z])/g, " $1").trim()} selected`)
@@ -177,6 +188,11 @@ export default function SignupStep2() {
   }
 
   const handleRemove = (docType) => {
+    // Revoke and clear only this slot's preview URL
+    if (previewUrlsRef.current[docType]) {
+      URL.revokeObjectURL(previewUrlsRef.current[docType])
+      delete previewUrlsRef.current[docType]
+    }
     setDocuments(prev => ({
       ...prev,
       [docType]: null
@@ -269,8 +285,6 @@ export default function SignupStep2() {
     setIsSubmitting(true)
 
     try {
-      // New number (OTP ke baad pehli baar): DB me abhi partner nahi hai,
-      // is case me register hi call karna hai (no auth token needed).
       const response = isCompleteProfile
         ? await deliveryAPI.register(formData)
         : await deliveryAPI.completeProfile(formData)
@@ -431,4 +445,3 @@ export default function SignupStep2() {
     </div>
   )
 }
-
