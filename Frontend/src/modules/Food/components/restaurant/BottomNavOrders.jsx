@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   FileText,
@@ -33,20 +33,38 @@ export default function BottomNavOrders() {
 
   const tabs = useMemo(() => getOrdersTabs(basePath), [basePath])
 
-  const isInternalPage = pathname.includes("/create-offers")
-  if (isInternalPage) {
-    return null
-  }
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleResize = () => {
+      const isVisible = window.innerHeight - viewport.height > 150
+      setKeyboardOpen(isVisible)
+    }
+
+    viewport.addEventListener("resize", handleResize)
+    return () => viewport.removeEventListener("resize", handleResize)
+  }, [])
 
   const activeTab = useMemo(() => {
     const match = findActiveTab(tabs, pathname)
     return match?.id || "orders"
   }, [tabs, pathname])
 
+  const isInternalPage = pathname.includes("/create-offers")
+
   const handleTabClick = (tab) => {
     if (tab.route && tab.route !== pathname) {
       navigate(tab.route)
     }
+  }
+
+  if (isInternalPage || keyboardOpen) {
+    return null
   }
 
   return (

@@ -797,7 +797,7 @@ export default function ItemDetailsPage() {
 
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: `${96 + keyboardInset}px` }}>
+      <div className="flex-1 overflow-y-auto">
         {!isNewItem && currentApprovalStatus === "rejected" && currentRejectionReason ? (
           <div className="px-4 pt-4">
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
@@ -1339,38 +1339,37 @@ export default function ItemDetailsPage() {
 
 
       {/* Bottom Sticky Buttons */}
-      <div
-        className="fixed left-0 right-0 bg-white border-t border-gray-200 z-40"
-        style={{ bottom: `${keyboardInset}px` }}
-      >
-        <div className={`flex gap-3 px-4 py-4 ${isNewItem ? 'justify-end' : ''}`}>
-          {!isNewItem && (
-            <button
-              onClick={handleDelete}
-              className="flex-1 py-3 px-4 border border-black rounded-lg text-sm font-semibold text-gray-900 bg-white hover:bg-gray-50 transition-colors"
-            >
-              Delete
-            </button>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={uploadingImages}
-            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!uploadingImages
-              ? "bg-primary text-white hover:bg-primary"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
-          >
-            {uploadingImages ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Uploading...</span>
-              </>
-            ) : (
-              "Save"
+      {!keyboardInset && (
+        <div className="fixed left-0 right-0 bottom-0 bg-white border-t border-gray-200 z-40">
+          <div className={`flex gap-3 px-4 py-4 ${isNewItem ? 'justify-end' : ''}`}>
+            {!isNewItem && (
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-3 px-4 border border-black rounded-lg text-sm font-semibold text-gray-900 bg-white hover:bg-gray-50 transition-colors"
+              >
+                Delete
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleSave}
+              disabled={uploadingImages}
+              className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!uploadingImages
+                ? "bg-primary text-white hover:bg-primary"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+            >
+              {uploadingImages ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                "Save"
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       {/* Photo Picker */}
       <ImageSourcePicker
         isOpen={isPhotoPickerOpen}

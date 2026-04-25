@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { Home, ShoppingBag, Store, Wallet, Menu } from "lucide-react"
 
@@ -5,12 +6,32 @@ export default function BottomNavbar({ onMenuClick }) {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // State to track if keyboard is open
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleResize = () => {
+      const isVisible = window.innerHeight - viewport.height > 150
+      setKeyboardOpen(isVisible)
+    }
+
+    viewport.addEventListener("resize", handleResize)
+    return () => viewport.removeEventListener("resize", handleResize)
+  }, [])
+
   const isActive = (path) => {
     if (path === "/restaurant") {
       return location.pathname === "/restaurant"
     }
     return location.pathname.startsWith(path)
   }
+
+  if (keyboardOpen) return null
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
