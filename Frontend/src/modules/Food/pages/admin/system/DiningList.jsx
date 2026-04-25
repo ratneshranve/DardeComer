@@ -347,29 +347,15 @@ export default function DiningList() {
                                                         <span className="text-sm text-slate-700">{restaurant.zone}</span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <button
-                                                            onClick={() => handleDiningToggle(restaurant)}
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${restaurant.diningSettings?.isEnabled ? 'bg-blue-600' : 'bg-slate-200'}`}
-                                                        >
-                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${restaurant.diningSettings?.isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                        </button>
+                                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${restaurant.diningSettings?.isEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${restaurant.diningSettings?.isEnabled ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                                            {restaurant.diningSettings?.isEnabled ? "ENABLED" : "PAUSED"}
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="number"
-                                                                min="1"
-                                                                max="100"
-                                                                defaultValue={restaurant.diningSettings?.maxGuests || 6}
-                                                                onBlur={(e) => handleMaxGuestsUpdate(restaurant, e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.currentTarget.blur()
-                                                                    }
-                                                                }}
-                                                                className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-center"
-                                                            />
-                                                        </div>
+                                                        <span className="text-sm font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-md">
+                                                            {restaurant.diningSettings?.maxGuests || 6} Guests
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="text-sm text-yellow-500 font-medium">{renderStars(restaurant.rating)}</span>
@@ -385,7 +371,8 @@ export default function DiningList() {
                                                                 setEditingRestaurant({ ...restaurant })
                                                                 setIsEditModalOpen(true)
                                                             }}
-                                                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                                                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 rounded-lg border border-slate-100"
+                                                            title="Dining Settings"
                                                         >
                                                             <Settings className="w-4 h-4" />
                                                         </button>
@@ -403,61 +390,19 @@ export default function DiningList() {
 
             {/* Edit Modal */}
             {isEditModalOpen && editingRestaurant && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-slate-900">Edit Restaurant & Dining Settings</h3>
-                            <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                                <Plus className="w-5 h-5 rotate-45 text-slate-500" />
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-200">
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900">Dining Settings</h3>
+                                <p className="text-xs text-slate-500 font-medium">{editingRestaurant.name}</p>
+                            </div>
+                            <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                <Plus className="w-5 h-5 rotate-45 text-slate-400" />
                             </button>
                         </div>
 
                         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                            {/* Basic Info Section */}
-                            <div className="space-y-4">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Basic Information</h4>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-900">Restaurant Name</label>
-                                    <input
-                                        type="text"
-                                        value={editingRestaurant.name}
-                                        onChange={(e) => setEditingRestaurant(prev => ({ ...prev, name: e.target.value }))}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-900">Owner Name</label>
-                                        <input
-                                            type="text"
-                                            value={editingRestaurant.ownerName}
-                                            onChange={(e) => setEditingRestaurant(prev => ({ ...prev, ownerName: e.target.value }))}
-                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-900">Owner Phone</label>
-                                        <input
-                                            type="text"
-                                            value={editingRestaurant.ownerPhone}
-                                            onChange={(e) => setEditingRestaurant(prev => ({ ...prev, ownerPhone: e.target.value }))}
-                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-900">Zone</label>
-                                    <input
-                                        type="text"
-                                        value={editingRestaurant.zone}
-                                        onChange={(e) => setEditingRestaurant(prev => ({ ...prev, zone: e.target.value }))}
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="h-px bg-slate-100" />
-
                             {/* Dining Section */}
                             <div className="space-y-4">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dining Settings</h4>
@@ -530,13 +475,6 @@ export default function DiningList() {
                                 onClick={async () => {
                                     try {
                                         setLoading(true)
-                                        // Update general restaurant details
-                                        await adminAPI.updateRestaurant(editingRestaurant._id, {
-                                            name: editingRestaurant.name,
-                                            ownerName: editingRestaurant.ownerName,
-                                            ownerPhone: editingRestaurant.ownerPhone,
-                                            zone: editingRestaurant.zone
-                                        })
 
                                         // Update dining settings
                                         await adminAPI.updateRestaurantDiningSettings(editingRestaurant._id, {

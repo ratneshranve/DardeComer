@@ -212,6 +212,7 @@ const toRestaurantProfile = (doc) => {
         status: doc.status || null,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
+        pendingDiningSettings: doc.pendingDiningSettings || null,
         rating: normalizeRatingValue(doc.rating),
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
     };
@@ -486,6 +487,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'estimatedDeliveryTime',
                 'estimatedDeliveryTimeMinutes',
                 'diningSettings',
+                'pendingDiningSettings',
                 'isAcceptingOrders',
                 'status',
                 'createdAt',
@@ -537,6 +539,7 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
                 'closingTime',
                 'openDays',
                 'diningSettings',
+                'pendingDiningSettings',
                 'isAcceptingOrders',
                 'status',
                 'createdAt',
@@ -582,16 +585,20 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
         String(body.diningType ?? currentDiningSettings.diningType ?? 'family-dining').trim() ||
         'family-dining';
 
+    const isEnabled = parseBoolean(body.isEnabled, currentDiningSettings.isEnabled);
+
+    // Update FoodRestaurant
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
         {
             $set: {
                 diningSettings: {
-                    isEnabled: parseBoolean(body.isEnabled, currentDiningSettings.isEnabled),
+                    isEnabled,
                     maxGuests,
                     diningType
                 }
-            }
+            },
+            $unset: { pendingDiningSettings: 1 }
         },
         {
             new: true,
@@ -627,6 +634,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
                 'estimatedDeliveryTime',
                 'estimatedDeliveryTimeMinutes',
                 'diningSettings',
+                'pendingDiningSettings',
                 'isAcceptingOrders',
                 'status',
                 'createdAt',
@@ -634,6 +642,57 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
             ].join(' ')
         }
     ).lean();
+
+    // Sync with FoodDiningRestaurant (single source of truth for dining features)
+    try {
+        const { FoodDiningRestaurant } = await import('../../dining/models/diningRestaurant.model.js');
+        const { FoodDiningCategory } = await import('../../dining/models/diningCategory.model.js');
+
+        // Find category case-insensitively, normalizing spaces/hyphens for slug matching
+        const normalizedType = String(diningType || '').trim().toLowerCase();
+        const slugLikeType = normalizedType.replace(/\s+/g, '-');
+        
+        const category = await FoodDiningCategory.findOne({
+            $or: [
+                { slug: { $regex: new RegExp(`^${slugLikeType}$`, 'i') } },
+                { slug: { $regex: new RegExp(`^${normalizedType}$`, 'i') } },
+                { name: { $regex: new RegExp(`^${normalizedType}$`, 'i') } }
+            ]
+        }).lean();
+
+        const syncUpdate = {
+            isEnabled,
+            maxGuests,
+        };
+
+        if (category) {
+            syncUpdate.primaryCategoryId = category._id;
+            
+            await FoodDiningRestaurant.findOneAndUpdate(
+                { restaurantId },
+                {
+                    $set: syncUpdate,
+                    $addToSet: { categoryIds: category._id }
+                },
+                { upsert: true }
+            );
+
+            // Also ensure the category knows about the restaurant
+            await FoodDiningCategory.findByIdAndUpdate(category._id, {
+                $addToSet: { restaurantIds: restaurantId }
+            });
+        } else {
+            // Even if category is not found, update guest limits and status
+            await FoodDiningRestaurant.findOneAndUpdate(
+                { restaurantId },
+                { $set: syncUpdate },
+                { upsert: true }
+            );
+        }
+    } catch (syncError) {
+        // Log but don't fail the primary request
+        console.error('Dining settings sync error:', syncError);
+    }
 
     return toRestaurantProfile(doc);
 };
@@ -996,6 +1055,8 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
                     'openingTime',
                     'closingTime',
                     'openDays',
+                    'diningSettings',
+                    'pendingDiningSettings',
                     'status',
                     'createdAt',
                     'updatedAt',

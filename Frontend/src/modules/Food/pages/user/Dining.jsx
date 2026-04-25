@@ -286,8 +286,8 @@ export default function Dining() {
   }, [normalizedRestaurantList])
 
   const filteredCategories = useMemo(() => {
-    return safeCategories.filter((category) => categoryRestaurantKeys.has(category.slug))
-  }, [safeCategories, categoryRestaurantKeys])
+    return safeCategories
+  }, [safeCategories])
 
   const nearbyPopularRestaurants = useMemo(() => {
     const within10Km = normalizedRestaurantList

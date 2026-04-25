@@ -1683,9 +1683,8 @@ export default function RestaurantsList() {
                     </div>
                   </div>
 
-                  {/* Timings */}
-                  <div className="grid grid-cols-1 gap-6">
-
+                  {/* Timings & Dining */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10 pt-6 border-t border-slate-100">
                     <div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Timings & Status</h4>
                       <div className="space-y-3">
@@ -1725,6 +1724,65 @@ export default function RestaurantsList() {
                             Outlet: {(r?.isActive !== false) ? "Active" : "Inactive"}
                           </p>
                         </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Dining Information</h4>
+                      
+                      {r?.pendingDiningSettings && (
+                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-amber-800 font-semibold mb-2 text-sm">
+                            <Clock className="w-4 h-4" />
+                            Pending Dining Update Request
+                          </div>
+                          <div className="space-y-1 text-xs text-amber-700">
+                            <p>• Status: <span className="font-bold">{r.pendingDiningSettings.isEnabled ? "Enabled" : "Disabled"}</span></p>
+                            <p>• Max Guests: <span className="font-bold">{r.pendingDiningSettings.maxGuests}</span></p>
+                            <p>• Type: <span className="font-bold uppercase">{r.pendingDiningSettings.diningType}</span></p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              // Navigate to Edit with a hint to fill pending values
+                              // We can pass state or just let the admin handle it.
+                              // For now, just navigating is good, but let's make it better.
+                              navigate(`/admin/food/restaurants/edit/${r._id}?fillPendingDining=true`);
+                            }}
+                            className="mt-3 w-full py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold rounded border border-amber-300 transition-colors"
+                          >
+                            Fill Requested Values in Edit
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Users className="w-5 h-5 text-slate-400" />
+                          <div>
+                            <p className="text-xs text-slate-500">Dining Status</p>
+                            <p className={`text-sm font-bold ${diningSettingsVal?.isEnabled ? "text-green-600" : "text-slate-400"}`}>
+                              {diningSettingsVal?.isEnabled ? "Enabled" : "Disabled"}
+                            </p>
+                          </div>
+                        </div>
+                        {diningSettingsVal?.isEnabled && (
+                          <>
+                            <div className="flex items-center gap-3">
+                              <UserPlus className="w-5 h-5 text-slate-400" />
+                              <div>
+                                <p className="text-xs text-slate-500">Max Guests</p>
+                                <p className="text-sm font-bold text-slate-900">{diningSettingsVal?.maxGuests || 0}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <LayoutGrid className="w-5 h-5 text-slate-400" />
+                              <div>
+                                <p className="text-xs text-slate-500">Dining Category</p>
+                                <p className="text-sm font-bold text-slate-900 uppercase">{diningSettingsVal?.diningType || "N/A"}</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

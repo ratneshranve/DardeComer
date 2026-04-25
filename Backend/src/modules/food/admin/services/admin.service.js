@@ -44,6 +44,7 @@ import {
     normalizeFoodVariantsInput,
     serializeFoodVariants
 } from './foodVariant.service.js';
+import { updateCurrentRestaurantDiningSettings } from '../../restaurant/services/restaurant.service.js';
 
 const parseBooleanLike = (value, fieldName) => {
     if (typeof value === 'boolean') return value;
@@ -2343,7 +2344,6 @@ export async function updateRestaurantById(id, body = {}) {
     if (body.diningSettings !== undefined) doc.diningSettings = body.diningSettings;
     if (body.pendingDiningSettings !== undefined) doc.pendingDiningSettings = body.pendingDiningSettings;
     
-    // Support dot-notation keys for nested updates (e.g. "diningSettings.isEnabled")
     Object.keys(body).forEach(key => {
         if (key.includes('.')) {
             doc.set(key, body[key]);
@@ -2351,6 +2351,21 @@ export async function updateRestaurantById(id, body = {}) {
     });
 
     await doc.save();
+
+    // Sync dining settings if updated (either via direct object or dot notation)
+    const hasDiningUpdates = Object.keys(body).some(key => 
+        key === 'diningSettings' || 
+        key.startsWith('diningSettings.') || 
+        key === 'pendingDiningSettings'
+    );
+    if (hasDiningUpdates) {
+        try {
+            await updateCurrentRestaurantDiningSettings(id, doc.diningSettings);
+        } catch (e) {
+            console.error('Failed to sync dining settings during admin update:', e);
+        }
+    }
+
     return FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
 }
 

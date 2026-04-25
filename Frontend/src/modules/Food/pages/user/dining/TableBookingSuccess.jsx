@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom"
-import { CheckCircle2, Calendar, Clock, Users, MapPin, Share2, Home, List } from "lucide-react"
+import { CheckCircle2, Calendar, Clock, Users, MapPin, Share2, Home, List, Utensils, ChevronRight, Info } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { motion } from "framer-motion"
@@ -139,6 +139,36 @@ export default function TableBookingSuccess() {
                         </div>
                         <Share2 className="w-5 h-5 cursor-pointer hover:scale-110 transition-transform" />
                     </div>
+                </div>
+            </motion.div>
+
+            {/* Preferences Section */}
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="w-full max-w-sm mt-6 space-y-2"
+            >
+                <div 
+                    onClick={() => navigate(`/food/user/dining/book/${booking.restaurant?.slug || ""}`)}
+                    className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-center gap-3 text-slate-700">
+                        <Utensils className="w-4 h-4 text-[#001A94]" />
+                        <span className="text-xs font-bold">Modification available</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                </div>
+
+                <div 
+                    onClick={() => navigate("/food/user/profile/cancellation")}
+                    className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-center gap-3 text-slate-700">
+                        <Info className="w-4 h-4 text-[#001A94]" />
+                        <span className="text-xs font-bold">Cancellation available</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300" />
                 </div>
             </motion.div>
 

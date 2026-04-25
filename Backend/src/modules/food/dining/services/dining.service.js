@@ -34,7 +34,8 @@ async function syncRestaurantDiningSettings(restaurantId, diningDoc) {
                     maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || 6),
                     diningType: primaryCategory?.slug || 'family-dining'
                 }
-            }
+            },
+            $unset: { pendingDiningSettings: 1 }
         },
         { new: false }
     );
@@ -132,8 +133,8 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
         categoryIds,
         primaryCategoryId: primaryCategory?._id || null,
         diningSettings: {
-            isEnabled: Boolean(diningDoc?.isEnabled),
-            maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || 6),
+            isEnabled: Boolean(diningDoc?.isEnabled || restaurant?.diningSettings?.isEnabled),
+            maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || Number(restaurant?.diningSettings?.maxGuests) || 6),
             pureVegRestaurant: diningDoc?.pureVegRestaurant === true || restaurant?.pureVegRestaurant === true,
             diningType: primaryCategory?.slug || restaurant?.diningSettings?.diningType || ''
         }

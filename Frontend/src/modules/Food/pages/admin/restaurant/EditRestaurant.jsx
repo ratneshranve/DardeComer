@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { adminAPI } from "@food/api"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
@@ -85,6 +85,10 @@ const normalizeDetailsFormFromRestaurant = (restaurant) => {
     openingTime: restaurant?.openingTime || restaurant?.deliveryTimings?.openingTime || "",
     closingTime: restaurant?.closingTime || restaurant?.deliveryTimings?.closingTime || "",
     isActive: restaurant?.isActive !== false,
+    // Dining Settings
+    diningEnabled: restaurant?.diningSettings?.isEnabled || false,
+    maxGuests: restaurant?.diningSettings?.maxGuests || 6,
+    diningType: restaurant?.diningSettings?.diningType || "family-dining",
   }
 }
 
@@ -125,6 +129,8 @@ async function loadGooglePlaces() {
 export default function EditRestaurant() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const fillPendingDining = searchParams.get("fillPendingDining") === "true"
 
   const [loading, setLoading] = useState(true)
   const [savingDetails, setSavingDetails] = useState(false)
@@ -165,7 +171,15 @@ export default function EditRestaurant() {
         }
 
         setRestaurant(data)
-        setDetailsForm(normalizeDetailsFormFromRestaurant(data))
+        const initialDetails = normalizeDetailsFormFromRestaurant(data)
+        
+        if (fillPendingDining && data?.pendingDiningSettings) {
+          initialDetails.diningEnabled = data.pendingDiningSettings.isEnabled
+          initialDetails.maxGuests = data.pendingDiningSettings.maxGuests
+          initialDetails.diningType = data.pendingDiningSettings.diningType
+        }
+
+        setDetailsForm(initialDetails)
         setLocationForm(normalizeLocationFormFromRestaurant(data))
       } catch (e) {
         debugError(e)
@@ -317,6 +331,11 @@ export default function EditRestaurant() {
         openingTime: detailsForm.openingTime,
         closingTime: detailsForm.closingTime,
         isActive: detailsForm.isActive !== false,
+        diningSettings: {
+          isEnabled: detailsForm.diningEnabled,
+          maxGuests: Number(detailsForm.maxGuests) || 6,
+          diningType: detailsForm.diningType || "family-dining",
+        },
       }
 
       const res = await adminAPI.updateRestaurant(restaurantId, payload)
@@ -494,6 +513,64 @@ export default function EditRestaurant() {
                 <div>
                   <Label>Offer</Label>
                   <Input value={detailsForm.offer} onChange={(e) => setDetailsForm((p) => ({ ...p, offer: e.target.value }))} />
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">Dining Settings</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Dining Enabled</Label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDetailsForm((p) => ({ ...p, diningEnabled: true }))}
+                      className={`px-3 py-1.5 text-xs rounded-full border ${
+                        detailsForm.diningEnabled === true
+                          ? "bg-green-600 text-white border-green-600"
+                          : "bg-white text-slate-700 border-slate-300"
+                      }`}
+                    >
+                      Enabled
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetailsForm((p) => ({ ...p, diningEnabled: false }))}
+                      className={`px-3 py-1.5 text-xs rounded-full border ${
+                        detailsForm.diningEnabled === false
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-700 border-slate-300"
+                      }`}
+                    >
+                      Disabled
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Label>Max Guests</Label>
+                  <Input
+                    type="number"
+                    value={detailsForm.maxGuests}
+                    onChange={(e) => setDetailsForm((p) => ({ ...p, maxGuests: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label>Dining Category / Type</Label>
+                  <select
+                    value={detailsForm.diningType}
+                    onChange={(e) => setDetailsForm((p) => ({ ...p, diningType: e.target.value }))}
+                    className="mt-1 h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+                  >
+                    <option value="family-dining">Family Dining</option>
+                    <option value="party-hall">Party Hall</option>
+                    <option value="couple-dining">Couple Dining</option>
+                    <option value="rooftop">Rooftop</option>
+                    <option value="buffet">Buffet</option>
+                  </select>
                 </div>
               </div>
             </section>
