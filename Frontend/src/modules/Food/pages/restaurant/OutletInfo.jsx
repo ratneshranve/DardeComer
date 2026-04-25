@@ -453,6 +453,7 @@ export default function OutletInfo() {
         <div className="px-4 py-4"><h2 className="text-base font-bold text-gray-900 text-center">Restaurant Information</h2></div>
 
         <div className="px-4 pb-6 space-y-3">
+          {/* Restaurant Name */}
           <div className="bg-blue-100/50 rounded-lg p-4 border border-blue-300">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
@@ -462,7 +463,118 @@ export default function OutletInfo() {
               <button onClick={handleOpenEditDialog} className="text-blue-600 text-sm font-normal">Edit</button>
             </div>
           </div>
-          {/* ... other info cards ... */}
+
+          {/* Owner Details */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Owner details</p>
+                <p className="text-base font-semibold text-gray-900">{loading ? "Loading..." : (restaurantData?.ownerName || "N/A")}</p>
+                <p className="text-sm text-gray-600 mt-0.5">{restaurantData?.ownerPhone || "N/A"}</p>
+                <p className="text-sm text-gray-600 mt-0.5">{restaurantData?.ownerEmail || "N/A"}</p>
+              </div>
+              <button onClick={() => navigate("/food/restaurant/edit-owner")} className="text-blue-600 text-sm font-normal">Edit</button>
+            </div>
+          </div>
+
+
+          {/* Cuisines */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Cuisines</p>
+                <p className="text-base font-semibold text-gray-900">{loading ? "Loading..." : (cuisineTags || "Not set")}</p>
+              </div>
+              <button onClick={() => navigate("/food/restaurant/edit-cuisines")} className="text-blue-600 text-sm font-normal">Edit</button>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Restaurant address</p>
+                <p className="text-sm font-semibold text-gray-900">{loading ? "Loading..." : (address || "Not set")}</p>
+              </div>
+              <button onClick={() => navigate("/food/restaurant/edit-address")} className="text-blue-600 text-sm font-normal">Edit</button>
+            </div>
+          </div>
+
+          {/* Timings */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Opening hours</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {loading ? "Loading..." : (
+                    restaurantData?.openingTime && restaurantData?.closingTime
+                      ? `${restaurantData.openingTime} – ${restaurantData.closingTime}`
+                      : "Not set"
+                  )}
+                </p>
+                {restaurantData?.openDays && restaurantData.openDays.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-1">{restaurantData.openDays.join(", ")}</p>
+                )}
+              </div>
+              <button onClick={() => navigate("/food/restaurant/outlet-timings")} className="text-blue-600 text-sm font-normal">Edit</button>
+            </div>
+          </div>
+
+
+          {/* Pure Veg */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Food type</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {loading ? "Loading..." : (restaurantData?.pureVegRestaurant ? "Pure Veg" : "Veg & Non-Veg")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* FSSAI */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">FSSAI license</p>
+                <p className="text-base font-semibold text-gray-900">{loading ? "Loading..." : (restaurantData?.fssaiNumber || "Not provided")}</p>
+                {restaurantData?.fssaiExpiry && (
+                  <p className="text-sm text-gray-600 mt-0.5">Expires: {new Date(restaurantData.fssaiExpiry).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                )}
+              </div>
+              <button onClick={() => navigate("/food/restaurant/fssai")} className="text-blue-600 text-sm font-normal">View</button>
+            </div>
+          </div>
+
+          {/* Bank Details */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Bank details</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {loading ? "Loading..." : (restaurantData?.accountNumber ? `A/c: ****${restaurantData.accountNumber.slice(-4)}` : "Not provided")}
+                </p>
+                {restaurantData?.ifscCode && (
+                  <p className="text-sm text-gray-600 mt-0.5">IFSC: {restaurantData.ifscCode}</p>
+                )}
+              </div>
+              <button onClick={() => navigate("/food/restaurant/update-bank-details")} className="text-blue-600 text-sm font-normal">Edit</button>
+            </div>
+          </div>
+
+          {/* GST */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">GST details</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {loading ? "Loading..." : (restaurantData?.gstRegistered ? (restaurantData?.gstNumber || "Registered") : "Not registered")}
+                </p>
+              </div>
+              <button onClick={() => navigate("/food/restaurant/edit-gst")} className="text-blue-600 text-sm font-normal">Edit</button>
+            </div>
+          </div>
         </div>
       </div>
 
