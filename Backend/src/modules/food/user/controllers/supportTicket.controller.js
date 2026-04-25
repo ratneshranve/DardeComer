@@ -5,6 +5,9 @@ import { sendResponse, sendError } from '../../../../utils/response.js';
 export async function createSupportTicketController(req, res, next) {
     try {
         const userId = req.user?.userId;
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+            return sendError(res, 401, 'Authentication required');
+        }
         const body = req.body || {};
         const type = String(body.type || '').trim();
         const issueType = String(body.issueType || '').trim();
@@ -26,7 +29,7 @@ export async function createSupportTicketController(req, res, next) {
             const orderMongoId = new mongoose.Types.ObjectId(body.orderId);
             doc.orderId = orderMongoId;
             // Also try to link restaurantId automatically if possible
-            const { FoodOrder } = await import('../../orders/order.model.js');
+            const { FoodOrder } = await import('../../orders/models/order.model.js');
             const order = await FoodOrder.findById(orderMongoId).select('restaurantId').lean();
             if (order?.restaurantId) {
                 doc.restaurantId = order.restaurantId;
@@ -48,6 +51,9 @@ export async function createSupportTicketController(req, res, next) {
 export async function listMySupportTicketsController(req, res, next) {
     try {
         const userId = req.user?.userId;
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+            return sendError(res, 401, 'Authentication required');
+        }
         const limit = Math.min(Math.max(parseInt(req.query?.limit, 10) || 20, 1), 50);
         const page = Math.max(parseInt(req.query?.page, 10) || 1, 1);
         const skip = (page - 1) * limit;

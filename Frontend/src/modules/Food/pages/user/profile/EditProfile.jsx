@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, X, Pencil, Loader2, Camera, Upload } from "lucide-react"
+import { ArrowLeft, X, Pencil, Loader2, Camera, Upload, Trash2 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
@@ -345,6 +345,43 @@ export default function EditProfile() {
     fileInputRef.current?.click()
   }
 
+  const handleDeletePhoto = async () => {
+    try {
+      setIsUploadingImage(true)
+      // Call updateProfile with empty string to remove the image
+      const response = await userAPI.updateProfile({ profileImage: "" })
+      
+      if (response?.data?.success) {
+        setProfileImage("")
+        setImagePreview("")
+        
+        // Update context and local storage
+        const updatedProfile = {
+          ...(userProfile || {}),
+          profileImage: "",
+        }
+        
+        updateUserProfile(updatedProfile)
+        saveProfileToStorage(updatedProfile)
+        
+        // Update draft if it exists
+        const draft = loadEditProfileDraft()
+        if (draft) {
+          saveEditProfileDraft({ ...draft, profileImage: "" })
+        }
+
+        // Dispatch event to refresh profile across app
+        window.dispatchEvent(new Event("userAuthChanged"))
+        toast.success('Profile photo removed')
+      }
+    } catch (error) {
+      debugError('Error deleting photo:', error)
+      toast.error(error?.response?.data?.message || 'Failed to remove profile photo')
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
   const validateForm = () => {
     const nextErrors = {
       mobile: validateMobile(formData.mobile),
@@ -470,6 +507,17 @@ export default function EditProfile() {
                 <Pencil className="h-4 w-4 text-white" />
               )}
             </button>
+            {/* Delete Icon */}
+            {imagePreview && (
+              <button
+                onClick={handleDeletePhoto}
+                disabled={isUploadingImage}
+                className="absolute -top-1 -right-1 w-8 h-8 bg-white dark:bg-[#1a1a1a] rounded-full flex items-center justify-center shadow-md border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete photo"
+              >
+                <Trash2 className="h-4 w-4 text-red-500" />
+              </button>
+            )}
             <input
               ref={fileInputRef}
               type="file"

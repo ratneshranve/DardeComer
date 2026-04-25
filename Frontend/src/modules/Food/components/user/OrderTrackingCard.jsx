@@ -32,6 +32,17 @@ const CookingAnimation = memo(() => (
   </div>
 ));
 
+const haversineDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 import { useOrders } from "@food/context/OrdersContext";
 import { orderAPI } from "@food/api";
 
@@ -84,16 +95,49 @@ const isActiveOrder = (order) => {
 const getTimeRemaining = (order) => {
   if (!order) return null;
 
+  const status = getOrderStatus(order);
+  
+  // 1. Distance-based for en-route orders
+  if (
+    (status === "picked_up" || status === "reached_drop" || status === "out_for_delivery") &&
+    order.deliveryState?.currentLocation?.lat &&
+    order.deliveryAddress?.location?.coordinates
+  ) {
+    const [userLng, userLat] = order.deliveryAddress.location.coordinates;
+    const dist = haversineDistance(
+      order.deliveryState.currentLocation.lat,
+      order.deliveryState.currentLocation.lng,
+      userLat,
+      userLng
+    );
+    // 3 mins per km is a safe estimate for urban delivery
+    return Math.ceil(dist * 3) || 1;
+  }
+
+  // 2. Countdown-based for earlier phases
   const orderTime = new Date(
     order.createdAt || order.orderDate || order.created_at || order.date || Date.now(),
   );
+  
+  const restaurant = order.restaurantId || {};
   const estimatedMinutes =
     order.estimatedDeliveryTime ||
     order.estimatedTime ||
-    order.estimated_delivery_time ||
+    restaurant.estimatedDeliveryTimeMinutes ||
+    (typeof restaurant.estimatedDeliveryTime === 'string' ? parseInt(restaurant.estimatedDeliveryTime) : 0) ||
     35;
+
   const deliveryTime = new Date(orderTime.getTime() + estimatedMinutes * 60000);
-  return Math.max(0, Math.floor((deliveryTime - new Date()) / 60000));
+  const diffMs = deliveryTime - new Date();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins > 0) return diffMins;
+  
+  // If order is late, show a "buffer" time based on status
+  if (status === "confirmed" || status === "preparing" || status === "created") return 5;
+  if (status === "ready_for_pickup" || status === "reached_pickup") return 3;
+  
+  return 1; // Default for late orders
 };
 
 /** Cheap fingerprint so we skip setState when list content is unchanged (fewer re-renders). */
@@ -267,7 +311,7 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     };
 
     tick();
-    const interval = setInterval(tick, 60000);
+    const interval = setInterval(tick, 10000); // Update every 10 seconds for more dynamic feel
 
     return () => clearInterval(interval);
   }, [activeOrder]);
@@ -377,7 +421,7 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
               </p>
               <p className="text-white text-base md:text-[17px] font-black leading-tight drop-shadow-sm">
                 {timeRemaining !== null
-                  ? `${Math.max(1, timeRemaining)} min`
+                  ? (timeRemaining <= 1 ? "Arriving soon" : `${timeRemaining} min`)
                   : "--"}
               </p>
             </div>

@@ -536,7 +536,7 @@ export async function listOrdersUser(userId, query) {
     FoodOrder.find(filter)
       .populate(
         "restaurantId",
-        "restaurantName businessModel profileImage area city location rating totalRatings",
+        "restaurantName businessModel profileImage area city location rating totalRatings estimatedDeliveryTime estimatedDeliveryTimeMinutes",
       )
       .populate("dispatch.deliveryPartnerId", "name phone rating totalRatings")
       .sort({ createdAt: -1 })
@@ -562,7 +562,7 @@ export async function getOrderById(
   const order = await FoodOrder.findOne(identity)
     .populate(
       "restaurantId",
-      "restaurantName businessModel ownerPhone profileImage area city location rating totalRatings primaryContactNumber",
+      "restaurantName businessModel ownerPhone profileImage area city location rating totalRatings primaryContactNumber estimatedDeliveryTime estimatedDeliveryTimeMinutes",
     )
     .populate("dispatch.deliveryPartnerId", "name fullName phone phoneNumber rating totalRatings profileImage avatar")
     .populate("userId", "name fullName phone email")
