@@ -31,7 +31,7 @@ function normalizePhone(phone) {
 
 /** User phone: exactly 10 digits, numeric only. */
 const USER_PHONE_LENGTH = 10;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
 /**
  * Request OTP for user login.
@@ -114,6 +114,12 @@ export function adminLogin(email, password) {
   }
   if (!EMAIL_REGEX.test(trimmedEmail)) {
     return Promise.reject(new Error("Please enter a valid email address"));
+  }
+  
+  const [, domain = ""] = trimmedEmail.split("@");
+  const normalizedDomain = domain.toLowerCase();
+  if (normalizedDomain.startsWith("gmail.") && normalizedDomain !== "gmail.com") {
+    return Promise.reject(new Error("Enter a valid email address. Gmail must be gmail.com"));
   }
   const passwordStr = String(password ?? "");
   if (!passwordStr) {

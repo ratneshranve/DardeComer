@@ -57,10 +57,26 @@ export default function MenuCategoriesPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false)
   const fileInputRef = useRef(null)
+  const [restaurantProfile, setRestaurantProfile] = useState(null)
 
   useEffect(() => {
     fetchCategories()
+    fetchRestaurantProfile()
   }, [])
+
+  const fetchRestaurantProfile = async () => {
+    try {
+      const response = await restaurantAPI.getCurrentRestaurant()
+      const profile =
+        response?.data?.data?.restaurant ||
+        response?.data?.restaurant ||
+        response?.data?.data ||
+        null
+      setRestaurantProfile(profile)
+    } catch (error) {
+      console.error("Failed to load restaurant profile:", error)
+    }
+  }
 
   useEffect(() => {
     const draftCategoryName = String(location.state?.draftCategoryName || "").trim()
@@ -408,8 +424,12 @@ export default function MenuCategoriesPage() {
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-primary"
                   >
                     <option value="Veg">Veg</option>
-                    <option value="Non-Veg">Non-Veg</option>
-                    <option value="Both">Both</option>
+                    {!restaurantProfile?.pureVegRestaurant && (
+                      <>
+                        <option value="Non-Veg">Non-Veg</option>
+                        <option value="Both">Both</option>
+                      </>
+                    )}
                   </select>
                 </div>
 

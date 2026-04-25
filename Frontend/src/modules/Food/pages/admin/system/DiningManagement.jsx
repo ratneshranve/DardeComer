@@ -34,6 +34,11 @@ export default function DiningManagement() {
     const [bannerTagline, setBannerTagline] = useState("")
     const bannerFileInputRef = useRef(null)
 
+    // Approval Requests
+    const [pendingRequests, setPendingRequests] = useState([])
+    const [requestsLoading, setRequestsLoading] = useState(false)
+    const [processingRequestId, setProcessingRequestId] = useState(null)
+
     // Common
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(null)
@@ -60,6 +65,8 @@ export default function DiningManagement() {
 
         if (activeTab === 'banners') {
             fetchBanners()
+        } else if (activeTab === 'approvals') {
+            fetchPendingRequests()
         }
     }, [activeTab])
 
@@ -197,9 +204,68 @@ export default function DiningManagement() {
         finally { setBannersDeleting(null) }
     }
 
+    // ==================== APPROVAL REQUESTS ====================
+    const fetchPendingRequests = async () => {
+        try {
+            setRequestsLoading(true)
+            const response = await adminAPI.getRestaurants({ limit: 1000 })
+            if (response.data.success) {
+                const allRestaurants = response.data.data.restaurants || response.data.data || []
+                // Filter for restaurants that have pending dining settings
+                const pending = allRestaurants.filter(r => r.pendingDiningSettings)
+                setPendingRequests(pending)
+            }
+        } catch (err) {
+            debugError(err)
+            setError("Failed to fetch approval requests")
+        } finally {
+            setRequestsLoading(false)
+        }
+    }
+
+    const handleApproveRequest = async (restaurant) => {
+        try {
+            setProcessingRequestId(restaurant._id)
+            const settings = restaurant.pendingDiningSettings
+            
+            const payload = {
+                status: 'approved',
+                "diningSettings.isEnabled": settings.isEnabled,
+                "diningSettings.maxGuests": settings.maxGuests,
+                "diningSettings.diningType": settings.diningType,
+                pendingDiningSettings: null
+            }
+
+            const response = await adminAPI.updateRestaurant(restaurant._id, payload)
+            if (response.data.success) {
+                setSuccess(`Approved dining settings for ${restaurant.restaurantName || 'Restaurant'}`)
+                fetchPendingRequests()
+            }
+        } catch (err) {
+            setError("Failed to approve request")
+        } finally {
+            setProcessingRequestId(null)
+        }
+    }
+
+    const handleRejectRequest = async (restaurantId) => {
+        if (!window.confirm("Reject this update request?")) return
+        try {
+            setProcessingRequestId(restaurantId)
+            await adminAPI.updateRestaurant(restaurantId, { pendingDiningSettings: null })
+            setSuccess("Update request rejected")
+            fetchPendingRequests()
+        } catch (err) {
+            setError("Failed to reject request")
+        } finally {
+            setProcessingRequestId(null)
+        }
+    }
+
     const tabs = [
         { id: 'categories', label: 'Dining Categories', icon: Layout },
         { id: 'banners', label: 'Dining Banners', icon: ImageIcon },
+        { id: 'approvals', label: 'Approval Requests', icon: CheckCircle2 },
     ]
 
     return (
@@ -369,8 +435,92 @@ export default function DiningManagement() {
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'approvals' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100">
+                            <h2 className="text-lg font-bold text-slate-900">Pending Dining Settings Approvals</h2>
+                            <p className="text-sm text-slate-500 mt-1">Review and approve changes to restaurant dining availability and limits.</p>
+                        </div>
+                        
+                        {requestsLoading ? (
+                            <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Restaurant</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Current Settings</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Requested Changes</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {pendingRequests.map((req) => (
+                                            <tr key={req._id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                                                            <ImageIcon className="w-5 h-5 text-slate-400" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-900">{req.restaurantName}</p>
+                                                            <p className="text-xs text-slate-500">{req._id}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-600">
+                                                    <div className="space-y-1">
+                                                        <p>Status: <span className="font-semibold">{req.diningSettings?.isEnabled ? 'Enabled' : 'Disabled'}</span></p>
+                                                        <p>Limit: <span className="font-semibold">{req.diningSettings?.maxGuests || 'N/A'}</span></p>
+                                                        <p>Type: <span className="font-semibold">{req.diningSettings?.diningType || 'N/A'}</span></p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    <div className="space-y-1 p-2 bg-blue-50 rounded-lg border border-blue-100 text-blue-800">
+                                                        <p>Status: <span className="font-bold">{req.pendingDiningSettings.isEnabled ? 'Enabled' : 'Disabled'}</span></p>
+                                                        <p>Limit: <span className="font-bold">{req.pendingDiningSettings.maxGuests}</span></p>
+                                                        <p>Type: <span className="font-bold uppercase">{req.pendingDiningSettings.diningType}</span></p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button 
+                                                            size="sm" 
+                                                            onClick={() => handleApproveRequest(req)} 
+                                                            disabled={processingRequestId === req._id}
+                                                            className="bg-green-600 hover:bg-green-700"
+                                                        >
+                                                            {processingRequestId === req._id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Approve"}
+                                                        </Button>
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="outline" 
+                                                            onClick={() => handleRejectRequest(req._id)}
+                                                            disabled={processingRequestId === req._id}
+                                                            className="text-red-600 border-red-200 hover:bg-red-50"
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {pendingRequests.length === 0 && (
+                                            <tr>
+                                                <td colSpan="4" className="px-6 py-12 text-center text-slate-500">
+                                                    No pending approval requests found.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )
 }
-

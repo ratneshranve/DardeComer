@@ -604,6 +604,21 @@ function TableBookings() {
     };
   }, []);
 
+  const handleStatusUpdate = async (bookingId, newStatus) => {
+    try {
+      const response = await diningAPI.updateBookingStatusRestaurant(bookingId, newStatus);
+      if (response.data.success) {
+        setBookings((prev) =>
+          prev.map((b) => (b._id === bookingId ? { ...b, status: newStatus } : b))
+        );
+        toast.success(`Booking status updated to ${newStatus}`);
+      }
+    } catch (error) {
+      debugError("Error updating status:", error);
+      toast.error("Failed to update booking status");
+    }
+  };
+
   if (loading)
     return (
       <div className="text-center py-10 text-gray-400">Loading bookings...</div>
@@ -637,13 +652,15 @@ function TableBookings() {
                 </div>
                 <span
                   className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                    booking.status === "confirmed"
-                      ? "bg-green-100 text-green-700"
-                      : booking.status === "checked-in"
-                        ? "bg-orange-100 text-orange-700"
-                        : booking.status === "completed"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-600"
+                    booking.status === "pending"
+                      ? "bg-amber-100 text-amber-700"
+                      : booking.status === "confirmed" || booking.status === "accepted"
+                        ? "bg-green-100 text-green-700"
+                        : booking.status === "checked-in"
+                          ? "bg-orange-100 text-orange-700"
+                          : booking.status === "completed"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-100 text-gray-600"
                   }`}>
                   {booking.status}
                 </span>
@@ -679,6 +696,38 @@ function TableBookings() {
                   </p>
                 </div>
               )}
+
+              {/* Action Buttons */}
+              <div className="mt-4 flex items-center gap-2">
+                {booking.status === "pending" && (
+                  <>
+                    <button
+                      onClick={() => handleStatusUpdate(booking._id, "confirmed")}
+                      className="flex-1 py-2 bg-emerald-600 text-white text-[11px] font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm uppercase tracking-wider">
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(booking._id, "cancelled")}
+                      className="flex-1 py-2 bg-white border border-rose-200 text-rose-600 text-[11px] font-bold rounded-xl hover:bg-rose-50 transition-colors uppercase tracking-wider">
+                      Decline
+                    </button>
+                  </>
+                )}
+                {(booking.status === "confirmed" || booking.status === "accepted") && (
+                  <button
+                    onClick={() => handleStatusUpdate(booking._id, "checked-in")}
+                    className="flex-1 py-2 bg-orange-600 text-white text-[11px] font-bold rounded-xl hover:bg-orange-700 transition-colors shadow-sm uppercase tracking-wider">
+                    Check-in
+                  </button>
+                )}
+                {booking.status === "checked-in" && (
+                  <button
+                    onClick={() => handleStatusUpdate(booking._id, "completed")}
+                    className="flex-1 py-2 bg-blue-600 text-white text-[11px] font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm uppercase tracking-wider">
+                    Check-out
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

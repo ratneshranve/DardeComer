@@ -10,6 +10,8 @@ import loginBg from "@food/assets/loginbanner.png"
 import { restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
 export default function RestaurantSignupEmail() {
   const companyName = useCompanyName()
   const navigate = useNavigate()
@@ -39,6 +41,17 @@ export default function RestaurantSignupEmail() {
 
     if (!formData.email.trim()) {
       setError("Email is required")
+      return
+    }
+
+    if (!EMAIL_REGEX.test(formData.email)) {
+      setError("Please enter a valid email address")
+      return
+    }
+
+    const [, domain = ""] = formData.email.split("@")
+    if (domain.toLowerCase().startsWith("gmail.") && domain.toLowerCase() !== "gmail.com") {
+      setError("Enter a valid email address. Gmail must be gmail.com")
       return
     }
 

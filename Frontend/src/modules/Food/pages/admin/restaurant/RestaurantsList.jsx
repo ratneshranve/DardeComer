@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus } from "lucide-react"
 import { adminAPI, restaurantAPI, uploadAPI } from "@food/api"
@@ -14,6 +14,8 @@ import inactiveIcon from "@food/assets/Dashboard-icons/image3.png"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
 // Inline placeholder (no external request, avoids referrer policy / 500 from via.placeholder)
 const PLACEHOLDER_40 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23e2e8f0' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='12' font-family='sans-serif'%3E?%3C/text%3E%3C/svg%3E"
@@ -815,14 +817,41 @@ export default function RestaurantsList() {
         }
       }
 
+      const ownerEmail = detailsForm.ownerEmail.trim()
+      const email = detailsForm.email.trim()
+
+      if (ownerEmail) {
+        if (!EMAIL_REGEX.test(ownerEmail)) {
+          alert("Please enter a valid owner email address")
+          return
+        }
+        const [, domain = ""] = ownerEmail.split("@")
+        if (domain.toLowerCase().startsWith("gmail.") && domain.toLowerCase() !== "gmail.com") {
+          alert("Enter a valid owner email address. Gmail must be gmail.com")
+          return
+        }
+      }
+
+      if (email) {
+        if (!EMAIL_REGEX.test(email)) {
+          alert("Please enter a valid restaurant email address")
+          return
+        }
+        const [, domain = ""] = email.split("@")
+        if (domain.toLowerCase().startsWith("gmail.") && domain.toLowerCase() !== "gmail.com") {
+          alert("Enter a valid restaurant email address. Gmail must be gmail.com")
+          return
+        }
+      }
+
       const payload = {
         name: detailsForm.name.trim(),
         pureVegRestaurant: detailsForm.pureVegRestaurant === true,
         ownerName: detailsForm.ownerName.trim(),
-        ownerEmail: detailsForm.ownerEmail.trim(),
+        ownerEmail: ownerEmail,
         ownerPhone: detailsForm.ownerPhone.trim(),
         primaryContactNumber: detailsForm.primaryContactNumber.trim(),
-        email: detailsForm.email.trim(),
+        email: email,
         estimatedDeliveryTime: detailsForm.estimatedDeliveryTime.trim(),
         openingTime: normalizedOpeningTime,
         closingTime: normalizedClosingTime,

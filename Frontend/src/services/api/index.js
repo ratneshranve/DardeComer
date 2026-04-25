@@ -258,6 +258,10 @@ export const adminAPI = {
       { reason },
       { contextModule: "admin" },
     ),
+  updateRestaurant: (id, body) =>
+    apiClient.patch(`/food/admin/restaurants/${String(id)}`, body ?? {}, {
+      contextModule: "admin",
+    }),
   /** Delivery partner join requests - uses /food/admin/delivery/* (new backend API) */
   getDeliveryPartnerJoinRequests: (params) =>
     apiClient.get("/food/admin/delivery/join-requests", {
@@ -957,6 +961,16 @@ export const restaurantAPI = {
   updateDiningSettings: (body) =>
     apiClient
       .patch("/food/restaurant/dining-settings", body ?? {}, {
+        contextModule: "restaurant",
+      })
+      .then((res) => {
+        restaurantCurrentCached = res;
+        restaurantCurrentCacheTime = Date.now();
+        return res;
+      }),
+  requestDiningUpdate: (body) =>
+    apiClient
+      .patch("/food/restaurant/profile", { pendingDiningSettings: body }, {
         contextModule: "restaurant",
       })
       .then((res) => {
@@ -2667,7 +2681,7 @@ export const diningAPI = {
       date: new Date(payload?.date || nowIso).toISOString(),
       timeSlot: String(payload?.timeSlot || "").trim(),
       specialRequest: String(payload?.specialRequest || "").trim(),
-      status: "confirmed",
+      status: "pending",
       createdAt: nowIso,
       updatedAt: nowIso,
     };

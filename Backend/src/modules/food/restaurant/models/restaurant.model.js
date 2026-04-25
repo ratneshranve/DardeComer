@@ -253,6 +253,12 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    pendingDiningSettings: {
+      isEnabled: { type: Boolean },
+      maxGuests: { type: Number },
+      diningType: { type: String },
+      updatedAt: { type: Date }
+    },
   },
   {
     collection: "food_restaurants",

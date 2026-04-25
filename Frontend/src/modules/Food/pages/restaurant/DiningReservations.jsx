@@ -93,6 +93,9 @@ export default function DiningReservations() {
     const [savingDiningSettings, setSavingDiningSettings] = useState(false)
     const [diningSettingsMessage, setDiningSettingsMessage] = useState("")
     const [diningSettingsError, setDiningSettingsError] = useState("")
+    const [diningCategories, setDiningCategories] = useState([])
+    const [selectedCategory, setSelectedCategory] = useState("")
+    const [pendingSettings, setPendingSettings] = useState(null)
 
     const syncRestaurantMediaState = (restaurantData) => {
         setRestaurant(restaurantData || null)
@@ -103,6 +106,8 @@ export default function DiningReservations() {
         setMenuPhotos(getMenuImages(restaurantData))
         setDiningEnabled(Boolean(restaurantData?.diningSettings?.isEnabled))
         setMaxGuestsLimit(Math.max(1, parseInt(restaurantData?.diningSettings?.maxGuests, 10) || 6))
+        setSelectedCategory(restaurantData?.diningSettings?.diningType || "")
+        setPendingSettings(restaurantData?.pendingDiningSettings || null)
     }
 
     useEffect(() => {
@@ -121,6 +126,18 @@ export default function DiningReservations() {
                         const bookingsResponse = await diningAPI.getRestaurantBookings(resData)
                         if (bookingsResponse.data.success) {
                             setBookings(Array.isArray(bookingsResponse.data.data) ? bookingsResponse.data.data : [])
+                        }
+
+                        // Fetch dining categories
+                        try {
+                            const catResponse = await diningAPI.getCategories()
+                            if (catResponse.data.success) {
+                                // Fallback: if data.categories is missing, check if data.data is the array
+                                const cats = catResponse.data.data.categories || (Array.isArray(catResponse.data.data) ? catResponse.data.data : [])
+                                setDiningCategories(cats)
+                            }
+                        } catch (catError) {
+                            debugError("Error fetching dining categories:", catError)
                         }
                     } else {
                         debugError("Restaurant ID not found in response:", resData)
@@ -256,10 +273,9 @@ export default function DiningReservations() {
 
         const nextMaxGuests = Math.max(1, parseInt(maxGuestsLimit, 10) || 1)
         const nextDiningSettings = {
-            ...(restaurant?.diningSettings || {}),
             isEnabled: Boolean(diningEnabled),
             maxGuests: nextMaxGuests,
-            diningType: restaurant?.diningSettings?.diningType || "family-dining",
+            diningType: selectedCategory || "family-dining",
         }
 
         setDiningSettingsError("")
@@ -267,19 +283,19 @@ export default function DiningReservations() {
         setSavingDiningSettings(true)
 
         try {
-            const response = await restaurantAPI.updateDiningSettings(nextDiningSettings)
+            const response = await restaurantAPI.requestDiningUpdate(nextDiningSettings)
 
             const updatedRestaurant = getRestaurantFromResponse(response)
             if (updatedRestaurant) {
                 syncRestaurantMediaState(updatedRestaurant)
             }
 
-            setDiningSettingsMessage("Dining settings saved successfully.")
-            toast.success("Dining settings updated")
+            setDiningSettingsMessage("Update request sent to admin. Pending approval.")
+            toast.success("Update request sent")
         } catch (error) {
-            debugError("Error saving dining settings:", error)
-            setDiningSettingsError(error?.response?.data?.message || "Failed to save dining settings.")
-            toast.error(error?.response?.data?.message || "Failed to save dining settings")
+            debugError("Error requesting dining update:", error)
+            setDiningSettingsError(error?.response?.data?.message || "Failed to send update request.")
+            toast.error(error?.response?.data?.message || "Failed to send update request")
         } finally {
             setSavingDiningSettings(false)
         }
@@ -301,8 +317,8 @@ export default function DiningReservations() {
 
     const getStatusPriority = (status) => {
         const key = String(status || "").toLowerCase()
-        if (key === "confirmed") return 0
-        if (key === "accepted") return 1
+        if (key === "pending") return 0
+        if (key === "confirmed" || key === "accepted") return 1
         if (key === "checked-in") return 2
         if (key === "completed") return 3
         if (key === "cancelled") return 4
@@ -324,7 +340,7 @@ export default function DiningReservations() {
     }
 
     const isNewRequest = (booking) => {
-        if (String(booking?.status || "").toLowerCase() !== "confirmed") return false
+        if (String(booking?.status || "").toLowerCase() !== "pending") return false
         const createdAt = new Date(booking?.createdAt || booking?.date || "").getTime()
         if (Number.isNaN(createdAt)) return true
         return Date.now() - createdAt <= 2 * 60 * 60 * 1000
@@ -456,7 +472,7 @@ export default function DiningReservations() {
                             <div>
                                 <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Active</p>
                                 <p className="text-3xl font-black text-primary leading-none mt-1">
-                                    {bookings.filter(b => ['confirmed', 'accepted', 'checked-in'].includes(String(b.status || '').toLowerCase())).length}
+                                    {bookings.filter(b => ['pending', 'confirmed', 'accepted', 'checked-in'].includes(String(b.status || '').toLowerCase())).length}
                                 </p>
                             </div>
                         </div>
@@ -671,6 +687,20 @@ export default function DiningReservations() {
                                 </div>
 
                                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2">
+                                    <span className="text-sm font-medium text-slate-700">Category</span>
+                                    <select
+                                        value={selectedCategory}
+                                        onChange={(e) => setSelectedCategory(e.target.value)}
+                                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-primary outline-none focus:border-blue-500 appearance-none"
+                                    >
+                                        <option value="">Select Category</option>
+                                        {diningCategories.map(cat => (
+                                            <option key={cat._id || cat.id} value={cat.slug || cat.name}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2">
                                     <span className="text-sm font-medium text-slate-700">Customer limit</span>
                                     <input
                                         type="number"
@@ -688,10 +718,17 @@ export default function DiningReservations() {
                                     disabled={savingDiningSettings}
                                     className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    {savingDiningSettings ? "Saving..." : "Save settings"}
+                                    {savingDiningSettings ? "Sending Request..." : "Request Update"}
                                 </button>
                             </div>
                         </div>
+
+                        {pendingSettings && (
+                            <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 flex items-center gap-2">
+                                <Info className="w-4 h-4" />
+                                <span>You have a pending update request. Admin approval is required.</span>
+                            </div>
+                        )}
 
                         {(diningSettingsMessage || diningSettingsError) && (
                             <div className={`mt-4 rounded-xl border px-4 py-3 text-sm font-medium ${diningSettingsError
@@ -809,8 +846,8 @@ export default function DiningReservations() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-2">
                                                             <Badge className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                                                                booking.status === 'confirmed' ? 'bg-amber-100 text-amber-700' :
-                                                                booking.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                                                                booking.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                                                (booking.status === 'confirmed' || booking.status === 'accepted') ? 'bg-emerald-100 text-emerald-700' :
                                                                 booking.status === 'checked-in' ? 'bg-orange-100 text-orange-700' :
                                                                 booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
                                                                 'bg-rose-100 text-rose-700'
@@ -821,15 +858,15 @@ export default function DiningReservations() {
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            {booking.status === 'confirmed' && (
+                                                            {booking.status === 'pending' && (
                                                                 <button
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'accepted')}
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'confirmed')}
                                                                     className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
                                                                 >
                                                                     Accept
                                                                 </button>
                                                             )}
-                                                            {booking.status === 'confirmed' && (
+                                                            {booking.status === 'pending' && (
                                                                 <button
                                                                     onClick={() => handleStatusUpdate(booking._id, 'cancelled')}
                                                                     className="px-3 py-1.5 bg-white border border-rose-200 text-rose-600 text-xs font-bold rounded-lg hover:bg-rose-50 transition-colors"
@@ -837,7 +874,7 @@ export default function DiningReservations() {
                                                                     Decline
                                                                 </button>
                                                             )}
-                                                            {booking.status === 'accepted' && (
+                                                            {(booking.status === 'confirmed' || booking.status === 'accepted') && (
                                                                 <button
                                                                     onClick={() => handleStatusUpdate(booking._id, 'checked-in')}
                                                                     className="px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-colors shadow-sm"
@@ -893,8 +930,8 @@ export default function DiningReservations() {
                                                     </div>
                                                 </div>
                                                 <Badge className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                                                    booking.status === 'confirmed' ? 'bg-amber-100 text-amber-700' :
-                                                    booking.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
+                                                    booking.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                                    (booking.status === 'confirmed' || booking.status === 'accepted') ? 'bg-emerald-100 text-emerald-700' :
                                                     booking.status === 'checked-in' ? 'bg-orange-100 text-orange-700' :
                                                     booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
                                                     'bg-rose-100 text-rose-700'
@@ -932,15 +969,15 @@ export default function DiningReservations() {
                                             )}
 
                                             <div className="flex items-center gap-2">
-                                                {booking.status === 'confirmed' && (
+                                                {booking.status === 'pending' && (
                                                     <button
-                                                        onClick={() => handleStatusUpdate(booking._id, 'accepted')}
+                                                        onClick={() => handleStatusUpdate(booking._id, 'confirmed')}
                                                         className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-black rounded-xl hover:bg-emerald-700 transition-colors uppercase tracking-widest"
                                                     >
                                                         Accept
                                                     </button>
                                                 )}
-                                                {booking.status === 'confirmed' && (
+                                                {booking.status === 'pending' && (
                                                     <button
                                                         onClick={() => handleStatusUpdate(booking._id, 'cancelled')}
                                                         className="flex-1 py-2.5 bg-slate-100 text-slate-600 text-xs font-black rounded-xl hover:bg-slate-200 transition-colors uppercase tracking-widest"
@@ -948,7 +985,7 @@ export default function DiningReservations() {
                                                         Decline
                                                     </button>
                                                 )}
-                                                {booking.status === 'accepted' && (
+                                                {(booking.status === 'confirmed' || booking.status === 'accepted') && (
                                                     <button
                                                         onClick={() => handleStatusUpdate(booking._id, 'checked-in')}
                                                         className="flex-1 py-2.5 bg-orange-600 text-white text-xs font-black rounded-xl hover:bg-orange-700 transition-colors uppercase tracking-widest"

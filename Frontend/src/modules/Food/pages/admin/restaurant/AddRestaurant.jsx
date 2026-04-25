@@ -24,7 +24,7 @@ const cuisinesOptions = [
 ]
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 const PHONE_REGEX = /^\d{10}$/
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const FSSAI_REGEX = /^\d{14}$/
@@ -419,8 +419,20 @@ export default function AddRestaurant() {
     if (step1.ownerName?.trim() && (!NAME_REGEX.test(step1.ownerName.trim()) || !hasLetters(step1.ownerName))) {
       errors.push("Owner name must contain valid characters")
     }
-    if (!step1.ownerEmail?.trim()) errors.push("Owner email is required")
-    if (step1.ownerEmail?.trim() && !EMAIL_REGEX.test(step1.ownerEmail.trim())) errors.push("Please enter a valid email address")
+    if (!step1.ownerEmail?.trim()) {
+      errors.push("Owner email is required")
+    } else {
+      const email = step1.ownerEmail.trim()
+      if (!EMAIL_REGEX.test(email)) {
+        errors.push("Please enter a valid email address")
+      } else {
+        const [, domain = ""] = email.split("@")
+        const normalizedDomain = domain.toLowerCase()
+        if (normalizedDomain.startsWith("gmail.") && normalizedDomain !== "gmail.com") {
+          errors.push("Enter a valid email address. Gmail must be gmail.com")
+        }
+      }
+    }
     if (!step1.ownerPhone?.trim()) errors.push("Owner phone number is required")
     if (step1.ownerPhone?.trim() && !PHONE_REGEX.test(step1.ownerPhone.trim())) errors.push("Owner phone number must be 10 digits")
     if (!step1.primaryContactNumber?.trim()) errors.push("Primary contact number is required")

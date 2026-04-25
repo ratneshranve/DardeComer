@@ -2,6 +2,8 @@ import { useState } from "react"
 import { Upload, Calendar, Eye, EyeOff, Settings } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
 export default function AddDeliveryman() {
   const [formData, setFormData] = useState({
     firstName: "",
@@ -37,8 +39,13 @@ export default function AddDeliveryman() {
     if (!formData.lastName.trim()) errors.lastName = "Last name is required"
     if (!formData.email.trim()) {
       errors.email = "Email is required"
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!EMAIL_REGEX.test(formData.email)) {
       errors.email = "Invalid email format"
+    } else {
+      const [, domain = ""] = formData.email.split("@")
+      if (domain.toLowerCase().startsWith("gmail.") && domain.toLowerCase() !== "gmail.com") {
+        errors.email = "Gmail must be gmail.com"
+      }
     }
     if (!formData.deliverymanType) errors.deliverymanType = "Deliveryman type is required"
     if (!formData.zone) errors.zone = "Zone is required"

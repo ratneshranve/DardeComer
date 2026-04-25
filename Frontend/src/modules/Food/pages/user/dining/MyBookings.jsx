@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { ArrowLeft, Calendar, Clock, Users, MapPin, ChevronRight, Utensils } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Users, MapPin, ChevronRight, Utensils, Info } from "lucide-react"
 import { diningAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import AnimatedPage from "@food/components/user/AnimatedPage"
@@ -88,8 +88,8 @@ export default function MyBookings() {
 
     const getStatusLabel = (status) => {
         const key = String(status || "").toLowerCase()
-        if (key === "confirmed") return "Pending"
-        if (key === "accepted") return "Accepted"
+        if (key === "pending") return "Pending"
+        if (key === "confirmed" || key === "accepted") return "Accepted"
         if (key === "checked-in") return "Checked-in"
         if (key === "completed") return "Completed"
         if (key === "cancelled") return "Cancelled"
@@ -98,8 +98,8 @@ export default function MyBookings() {
 
     const getStatusBadgeClass = (status) => {
         const key = String(status || "").toLowerCase()
-        if (key === "confirmed") return "bg-amber-100 text-amber-700"
-        if (key === "accepted") return "bg-green-100 text-green-700"
+        if (key === "pending") return "bg-amber-100 text-amber-700"
+        if (key === "confirmed" || key === "accepted") return "bg-green-100 text-green-700"
         if (key === "checked-in") return "bg-[#E6ECFF] text-[#001A94]"
         if (key === "completed") return "bg-[#E6ECFF] text-[#001A94]"
         if (key === "cancelled") return "bg-[#E6ECFF] text-[#001A94]"
@@ -152,52 +152,49 @@ export default function MyBookings() {
             <div className="p-4 space-y-4">
                 {bookings.length > 0 ? (
                     bookings.map((booking) => (
-                        <div key={booking._id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-start gap-4">
-                            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100">
-                                <img
-                                    src={booking.restaurant?.image || booking.restaurant?.profileImage?.url || ""}
-                                    className="w-full h-full object-cover"
-                                    alt={booking.restaurant?.name}
-                                    onError={(e) => {
-                                        e.currentTarget.style.display = 'none'
-                                    }}
-                                />
+                        <div key={booking._id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full flex-shrink-0 bg-slate-100 flex items-center justify-center">
+                                <Utensils className="w-6 h-6 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start">
-                                    <h3 className="font-bold text-gray-900 truncate">{booking.restaurant?.name}</h3>
-                                    <Badge className={getStatusBadgeClass(booking.status)}>
+                                <div className="flex justify-between items-start mb-1">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-gray-900 truncate">
+                                            {booking.restaurant?.name || "Your reservations"}
+                                        </h3>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 font-medium mt-1">
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>{new Date(booking.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>{booking.timeSlot}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                <Users className="w-3.5 h-3.5 text-slate-400" />
+                                                <span>{booking.guests} Guests</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Badge className={`${getStatusBadgeClass(booking.status)} ml-2 text-[10px] whitespace-nowrap`}>
                                         {getStatusLabel(booking.status)}
                                     </Badge>
                                 </div>
-                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                    <MapPin className="w-3 h-3" />
-                                    <span className="truncate">
-                                        {typeof booking.restaurant?.location === 'string'
-                                            ? booking.restaurant.location
-                                            : (booking.restaurant?.location?.formattedAddress || booking.restaurant?.location?.address || `${booking.restaurant?.location?.city || ''}${booking.restaurant?.location?.area ? ', ' + booking.restaurant.location.area : ''}`)}
-                                    </span>
-                                </p>
 
-                                <div className="flex items-center gap-4 mt-3">
-                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-slate-100 px-2 py-0.5 rounded-lg">
-                                        <Calendar className="w-3 h-3" />
-                                        {new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                {booking.specialRequest && (
+                                    <div className="mt-2 bg-slate-50 rounded-lg p-2 border border-slate-100">
+                                        <p className="text-[10px] text-slate-500 italic flex gap-1.5">
+                                            <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                            <span>"{booking.specialRequest}"</span>
+                                        </p>
                                     </div>
-                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-slate-100 px-2 py-0.5 rounded-lg">
-                                        <Clock className="w-3 h-3" />
-                                        {booking.timeSlot}
-                                    </div>
-                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-slate-100 px-2 py-0.5 rounded-lg">
-                                        <Users className="w-3 h-3" />
-                                        {booking.guests} Guests
-                                    </div>
-                                </div>
-
+                                )}
+                                
                                 {booking.status === 'completed' && (
                                     <button
                                         onClick={() => setSelectedBooking(booking)}
-                                        className="mt-3 w-full py-2 bg-[#F0F4FF] text-[#001A94] text-[11px] font-bold rounded-lg border border-[#D6E1FF] hover:bg-[#E6ECFF] transition-colors"
+                                        className="mt-2 w-full py-2 bg-[#F0F4FF] text-[#001A94] text-[10px] font-bold rounded-lg border border-[#D6E1FF] hover:bg-[#E6ECFF] transition-colors"
                                     >
                                         RATE & REVIEW
                                     </button>

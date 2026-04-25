@@ -52,18 +52,23 @@ const getDayName = (date) => date.toLocaleDateString("en-US", { weekday: "long" 
 const buildSlots = (timing) => {
   if (!timing || timing.isOpen === false) return []
   const opening = parseTimeToMinutes(timing.openingTime)
-  const closing = parseTimeToMinutes(timing.closingTime)
+  let closing = parseTimeToMinutes(timing.closingTime)
   if (opening === null || closing === null) return []
+
+  // Handle midnight cross-over (e.g. 10 PM to 2 AM)
+  if (closing <= opening) {
+    closing += 24 * 60
+  }
 
   const slots = []
   let cursor = opening
-  const end = closing > opening ? closing : opening + 240
 
-  while (cursor <= end && slots.length < 16) {
-    const hours = Math.floor((cursor % (24 * 60)) / 60)
+  while (cursor <= closing) {
+    const hours = Math.floor(cursor / 60) % 24
     const minutes = cursor % 60
     slots.push(formatTimeValue(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`))
     cursor += 30
+    if (slots.length >= 48) break // Max 24 hours of slots
   }
 
   return slots
@@ -89,26 +94,17 @@ const buildFallbackTiming = (restaurant) => {
 }
 
 const getMealPeriod = (slot) => {
-  if (!slot) return "all"
-  const normalized = String(slot).toUpperCase()
-  const match = normalized.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/)
-  if (!match) return "all"
-
-  let hour = Number(match[1])
-  const minute = Number(match[2])
-  const meridiem = match[3]
-
-  if (meridiem === "PM" && hour !== 12) hour += 12
-  if (meridiem === "AM" && hour === 12) hour = 0
-
-  const totalMinutes = hour * 60 + minute
-  if (totalMinutes < 17 * 60) return "lunch"
+  const totalMinutes = parseTimeToMinutes(slot)
+  if (totalMinutes === null) return "all"
+  
+  // 5:00 AM to 4:00 PM is Lunch, everything else (including late night) is Dinner
+  if (totalMinutes >= 5 * 60 && totalMinutes < 16 * 60) return "lunch"
   return "dinner"
 }
 
 const getOfferLabel = (slot) => {
   const period = getMealPeriod(slot)
-  return period === "lunch" ? "Lunch" : "Carnival"
+  return period === "lunch" ? "Lunch" : "Dinner"
 }
 
 export default function TableBooking() {
@@ -169,7 +165,21 @@ export default function TableBooking() {
     }
     return buildFallbackTiming(restaurant)
   }, [outletTimings, selectedDate, restaurant])
-  const allSlots = useMemo(() => buildSlots(selectedDayTiming), [selectedDayTiming])
+  const allSlots = useMemo(() => {
+    const rawSlots = buildSlots(selectedDayTiming)
+    const isToday = selectedDate.toDateString() === new Date().toDateString()
+    
+    if (!isToday) return rawSlots
+
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const limitMinutes = currentMinutes + 60 // At least 1 hour ahead
+
+    return rawSlots.filter(slot => {
+      const slotMinutes = parseTimeToMinutes(slot)
+      return slotMinutes !== null && slotMinutes >= limitMinutes
+    })
+  }, [selectedDayTiming, selectedDate])
   const filteredSlots = useMemo(
     () => allSlots.filter((slot) => getMealPeriod(slot) === selectedMealPeriod),
     [allSlots, selectedMealPeriod]

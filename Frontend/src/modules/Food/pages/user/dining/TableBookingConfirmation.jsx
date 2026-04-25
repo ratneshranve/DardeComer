@@ -161,15 +161,20 @@ export default function TableBookingConfirmation() {
                 </div>
 
                 {/* Special Request */}
-                <button className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between group">
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
                     <div className="flex items-center gap-3">
-                        <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-slate-200 transition-colors">
+                        <div className="bg-slate-50 p-2 rounded-xl">
                             <Info className="w-5 h-5 text-slate-600" />
                         </div>
-                        <span className="font-bold text-gray-700">Add special request</span>
+                        <span className="font-bold text-gray-700 text-sm">Add special request</span>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
-                </button>
+                    <textarea 
+                        value={specialRequest}
+                        onChange={(e) => setSpecialRequest(e.target.value)}
+                        placeholder="e.g. Birthday celebration, window seat, allergies..."
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#001A94] transition-all resize-none h-24 outline-none placeholder:text-slate-400"
+                    />
+                </div>
 
                 {/* Preferences Section */}
                 <div className="pt-4">
@@ -180,7 +185,10 @@ export default function TableBookingConfirmation() {
                     </div>
 
                     <div className="space-y-2">
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div 
+                            onClick={() => navigate(`/food/user/dining/book/${restaurant?.slug || ""}`)}
+                            className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:scale-[0.99]"
+                        >
                             <div className="flex items-start gap-3">
                                 <div className="text-[#001A94] mt-1">
                                     <Edit2 className="w-5 h-5" />
@@ -193,7 +201,10 @@ export default function TableBookingConfirmation() {
                             <ChevronRight className="w-4 h-4 text-slate-300" />
                         </div>
 
-                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div 
+                            onClick={() => navigate("/food/user/profile/cancellation")}
+                            className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:scale-[0.99]"
+                        >
                             <div className="flex items-start gap-3">
                                 <div className="text-[#001A94] mt-1">
                                     <ShieldCheck className="w-5 h-5" />

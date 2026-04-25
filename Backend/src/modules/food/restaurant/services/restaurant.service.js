@@ -825,6 +825,15 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         };
     }
 
+    if (body.pendingDiningSettings !== undefined) {
+        update.pendingDiningSettings = {
+            isEnabled: body.pendingDiningSettings.isEnabled !== false,
+            maxGuests: Math.max(1, Number(body.pendingDiningSettings.maxGuests) || 6),
+            diningType: String(body.pendingDiningSettings.diningType || 'family-dining').trim(),
+            updatedAt: new Date()
+        };
+    }
+
     if (body.openingTime !== undefined) {
         update.openingTime = normalizeRestaurantTime(body.openingTime) || '';
     }
@@ -943,7 +952,12 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         return getCurrentRestaurantProfile(restaurantId);
     }
 
-    update.status = 'pending';
+    const keys = Object.keys(update);
+    const isOnlyDiningRequest = keys.length === 1 && keys[0] === 'pendingDiningSettings';
+
+    if (!isOnlyDiningRequest) {
+        update.status = 'pending';
+    }
 
     try {
         const doc = await FoodRestaurant.findByIdAndUpdate(

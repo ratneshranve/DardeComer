@@ -61,6 +61,7 @@ export default function EditFoodPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [menuSections, setMenuSections] = useState([])
   const [availableCategories, setAvailableCategories] = useState([])
+  const [restaurantProfile, setRestaurantProfile] = useState(null)
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -134,6 +135,29 @@ export default function EditFoodPage() {
       isMounted = false
     }
   }, [id, isNewFood])
+
+  // Fetch restaurant profile to check pureVegRestaurant status
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await restaurantAPI.getCurrentRestaurant()
+        const profile =
+          response?.data?.data?.restaurant ||
+          response?.data?.restaurant ||
+          response?.data?.data ||
+          null
+        setRestaurantProfile(profile)
+
+        // If it's a new item and restaurant is pure veg, default to "Veg"
+        if (isNewFood && profile?.pureVegRestaurant) {
+          setFormData((prev) => ({ ...prev, foodType: "Veg" }))
+        }
+      } catch (error) {
+        console.error("Failed to load restaurant profile:", error)
+      }
+    }
+    fetchProfile()
+  }, [isNewFood])
 
   useEffect(() => {
     let isMounted = true
@@ -585,7 +609,9 @@ export default function EditFoodPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
                   >
                     <option value="Veg">Veg</option>
-                    <option value="Non-Veg">Non-Veg</option>
+                    {!restaurantProfile?.pureVegRestaurant && (
+                      <option value="Non-Veg">Non-Veg</option>
+                    )}
                   </select>
                 </div>
               </div>

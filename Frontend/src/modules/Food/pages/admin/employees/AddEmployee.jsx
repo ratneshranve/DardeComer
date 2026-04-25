@@ -4,6 +4,8 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
 
 export default function AddEmployee() {
   const [showPassword, setShowPassword] = useState(false)
@@ -33,6 +35,19 @@ export default function AddEmployee() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    
+    if (formData.email) {
+      if (!EMAIL_REGEX.test(formData.email)) {
+        alert("Please enter a valid email address")
+        return
+      }
+      const [, domain = ""] = formData.email.split("@")
+      if (domain.toLowerCase().startsWith("gmail.") && domain.toLowerCase() !== "gmail.com") {
+        alert("Enter a valid email address. Gmail must be gmail.com")
+        return
+      }
+    }
+
     debugLog("Form submitted:", formData)
     alert("Employee added successfully!")
   }

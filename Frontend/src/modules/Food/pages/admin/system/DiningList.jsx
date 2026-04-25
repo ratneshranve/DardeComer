@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, Star, Building2, User, FileText, Phone, Mail, MapPin, ShieldX, Trash2, ArrowRight } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, Star, Building2, User, FileText, Phone, Mail, MapPin, ShieldX, Trash2, ArrowRight, Plus } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
+import { toast } from "sonner"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -146,9 +148,9 @@ export default function DiningList() {
             <div className="flex items-center gap-0.5">
                 {[...Array(5)].map((_, i) => (
                     <Star 
-                        key={i} 
-                        className={`w-3.5 h-3.5 ${i < fullStars ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} 
-                    />
+                    key={i} 
+                    className={`w-3.5 h-3.5 ${i < fullStars ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} 
+                />
                 ))}
                 <span className="ml-1 text-slate-600">({rating || 0})</span>
             </div>
@@ -171,9 +173,10 @@ export default function DiningList() {
                 categoryIds: restaurant.categoryIds || [],
                 primaryCategoryId: restaurant.primaryCategoryId || restaurant.categoryIds?.[0] || null,
             })
-            // Could show success toast here
+            toast.success(`Dining ${newStatus ? 'enabled' : 'disabled'} for ${restaurant.name}`)
         } catch (error) {
             debugError("Failed to update dining settings", error)
+            toast.error("Failed to update status")
             // Revert on error
             setRestaurants(prev => prev.map(r =>
                 r.id === restaurant.id
@@ -204,9 +207,10 @@ export default function DiningList() {
                 categoryIds: restaurant.categoryIds || [],
                 primaryCategoryId: restaurant.primaryCategoryId || restaurant.categoryIds?.[0] || null,
             })
+            toast.success(`Max guests updated to ${guests} for ${restaurant.name}`)
         } catch (error) {
             debugError("Failed to update max guests", error)
-            // Revert would require tracking previous value better
+            toast.error("Failed to update guest limit")
         }
     }
 
@@ -402,70 +406,116 @@ export default function DiningList() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-slate-900">Edit Dining Settings</h3>
+                            <h3 className="text-lg font-bold text-slate-900">Edit Restaurant & Dining Settings</h3>
                             <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                                 <Plus className="w-5 h-5 rotate-45 text-slate-500" />
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            {/* Status */}
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-900">Dining Status</p>
-                                    <p className="text-xs text-slate-500">Enable or disable dining for this restaurant</p>
+                        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                            {/* Basic Info Section */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Basic Information</h4>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-900">Restaurant Name</label>
+                                    <input
+                                        type="text"
+                                        value={editingRestaurant.name}
+                                        onChange={(e) => setEditingRestaurant(prev => ({ ...prev, name: e.target.value }))}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
                                 </div>
-                                <button
-                                    onClick={() => setEditingRestaurant(prev => ({
-                                        ...prev,
-                                        diningSettings: { ...prev.diningSettings, isEnabled: !prev.diningSettings.isEnabled }
-                                    }))}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editingRestaurant.diningSettings?.isEnabled ? 'bg-blue-600' : 'bg-slate-200'}`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${editingRestaurant.diningSettings?.isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-900">Owner Name</label>
+                                        <input
+                                            type="text"
+                                            value={editingRestaurant.ownerName}
+                                            onChange={(e) => setEditingRestaurant(prev => ({ ...prev, ownerName: e.target.value }))}
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-900">Owner Phone</label>
+                                        <input
+                                            type="text"
+                                            value={editingRestaurant.ownerPhone}
+                                            onChange={(e) => setEditingRestaurant(prev => ({ ...prev, ownerPhone: e.target.value }))}
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-900">Zone</label>
+                                    <input
+                                        type="text"
+                                        value={editingRestaurant.zone}
+                                        onChange={(e) => setEditingRestaurant(prev => ({ ...prev, zone: e.target.value }))}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Max Guests */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-900">Maximum Guests</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="100"
-                                    value={editingRestaurant.diningSettings?.maxGuests}
-                                    onChange={(e) => setEditingRestaurant(prev => ({
-                                        ...prev,
-                                        diningSettings: { ...prev.diningSettings, maxGuests: parseInt(e.target.value) || 1 }
-                                    }))}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
+                            <div className="h-px bg-slate-100" />
 
-                            {/* Category */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-900">Dining Category</label>
-                                <select
-                                    value={editingRestaurant.primaryCategoryId || editingRestaurant.categoryIds?.[0] || ""}
-                                    onChange={(e) => setEditingRestaurant(prev => ({
-                                        ...prev,
-                                        primaryCategoryId: e.target.value || null,
-                                        categoryIds: e.target.value ? [e.target.value] : [],
-                                        categories: e.target.value
-                                            ? categories.filter(cat => cat._id === e.target.value)
-                                            : [],
-                                        diningSettings: {
-                                            ...prev.diningSettings,
-                                            diningType: categories.find(cat => cat._id === e.target.value)?.slug || "",
-                                        }
-                                    }))}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                >
-                                    <option value="">Select a category</option>
-                                    {categories.map(cat => (
-                                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                                    ))}
-                                </select>
+                            {/* Dining Section */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dining Settings</h4>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-900">Dining Status</p>
+                                        <p className="text-xs text-slate-500">Enable or disable dining for this restaurant</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setEditingRestaurant(prev => ({
+                                            ...prev,
+                                            diningSettings: { ...prev.diningSettings, isEnabled: !prev.diningSettings.isEnabled }
+                                        }))}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editingRestaurant.diningSettings?.isEnabled ? 'bg-blue-600' : 'bg-slate-200'}`}
+                                    >
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${editingRestaurant.diningSettings?.isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-900">Maximum Guests</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={editingRestaurant.diningSettings?.maxGuests}
+                                        onChange={(e) => setEditingRestaurant(prev => ({
+                                            ...prev,
+                                            diningSettings: { ...prev.diningSettings, maxGuests: parseInt(e.target.value) || 1 }
+                                        }))}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-900">Dining Category</label>
+                                    <select
+                                        value={editingRestaurant.primaryCategoryId || editingRestaurant.categoryIds?.[0] || ""}
+                                        onChange={(e) => setEditingRestaurant(prev => ({
+                                            ...prev,
+                                            primaryCategoryId: e.target.value || null,
+                                            categoryIds: e.target.value ? [e.target.value] : [],
+                                            categories: e.target.value
+                                                ? categories.filter(cat => cat._id === e.target.value)
+                                                : [],
+                                            diningSettings: {
+                                                ...prev.diningSettings,
+                                                diningType: categories.find(cat => cat._id === e.target.value)?.slug || "",
+                                            }
+                                        }))}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                    >
+                                        <option value="">Select a category</option>
+                                        {categories.map(cat => (
+                                            <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -480,6 +530,15 @@ export default function DiningList() {
                                 onClick={async () => {
                                     try {
                                         setLoading(true)
+                                        // Update general restaurant details
+                                        await adminAPI.updateRestaurant(editingRestaurant._id, {
+                                            name: editingRestaurant.name,
+                                            ownerName: editingRestaurant.ownerName,
+                                            ownerPhone: editingRestaurant.ownerPhone,
+                                            zone: editingRestaurant.zone
+                                        })
+
+                                        // Update dining settings
                                         await adminAPI.updateRestaurantDiningSettings(editingRestaurant._id, {
                                             isEnabled: editingRestaurant.diningSettings?.isEnabled === true,
                                             maxGuests: editingRestaurant.diningSettings?.maxGuests || 6,
@@ -493,16 +552,17 @@ export default function DiningList() {
                                         ))
 
                                         setIsEditModalOpen(false)
-                                        // toast.success("Settings updated")
+                                        toast.success("Restaurant settings updated successfully")
                                     } catch (err) {
                                         debugError("Update failed", err)
+                                        toast.error(err.response?.data?.message || "Failed to update settings")
                                     } finally {
                                         setLoading(false)
                                     }
                                 }}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm min-w-[120px]"
                             >
-                                Save Changes
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Save Changes"}
                             </button>
                         </div>
                     </div>
@@ -511,4 +571,3 @@ export default function DiningList() {
         </div>
     )
 }
-

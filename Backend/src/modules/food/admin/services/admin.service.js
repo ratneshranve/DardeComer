@@ -284,12 +284,15 @@ export async function getRestaurants(query) {
     if (status && ['pending', 'approved', 'rejected'].includes(status)) {
         filter.status = status;
     }
+    if (query.view === 'pending-dining') {
+        filter.pendingDiningSettings = { $exists: true, $ne: null };
+    }
     const [restaurants, total] = await Promise.all([
         FoodRestaurant.find(filter)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId')
+            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId pendingDiningSettings diningSettings')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)
@@ -2245,6 +2248,9 @@ export async function updateRestaurantById(id, body = {}) {
         if (!name) throw new ValidationError('Restaurant name cannot be empty');
         doc.restaurantName = name;
     }
+    if (body.status !== undefined && ['pending', 'approved', 'rejected'].includes(body.status)) {
+        doc.status = body.status;
+    }
 
     if (body.ownerName !== undefined) doc.ownerName = toStr(body.ownerName);
     if (body.ownerEmail !== undefined) doc.ownerEmail = toStr(body.ownerEmail).toLowerCase();
@@ -2316,7 +2322,7 @@ export async function updateRestaurantById(id, body = {}) {
 
     // Featured Info
     if (body.featuredDish !== undefined) doc.featuredDish = toStr(body.featuredDish);
-    if (body.featuredPrice !== undefined) doc.featuredPrice = toFinite(body.featuredPrice);
+    if (body.featuredPrice !== undefined) doc.featuredPrice = toFiniteNumber(body.featuredPrice);
 
     // Images
     const getUrl = (v) => (v && typeof v === 'object' ? v.url : v);
@@ -2332,6 +2338,17 @@ export async function updateRestaurantById(id, body = {}) {
             doc.menuImages = [toStr(getUrl(body.menuImages))].filter(Boolean);
         }
     }
+
+    // Dining Settings & Pending Approvals
+    if (body.diningSettings !== undefined) doc.diningSettings = body.diningSettings;
+    if (body.pendingDiningSettings !== undefined) doc.pendingDiningSettings = body.pendingDiningSettings;
+    
+    // Support dot-notation keys for nested updates (e.g. "diningSettings.isEnabled")
+    Object.keys(body).forEach(key => {
+        if (key.includes('.')) {
+            doc.set(key, body[key]);
+        }
+    });
 
     await doc.save();
     return FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();

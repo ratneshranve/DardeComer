@@ -1335,10 +1335,15 @@ export default function Inventory() {
     [categories]
   )
 
-  const activeFilterOptions = useMemo(
-    () => (activeTab === "add-ons" ? ADDON_FILTER_OPTIONS : MENU_FILTER_OPTIONS),
-    [activeTab]
-  )
+  const activeFilterOptions = useMemo(() => {
+    if (activeTab === "add-ons") return ADDON_FILTER_OPTIONS
+
+    if (restaurantProfile?.pureVegRestaurant) {
+      return MENU_FILTER_OPTIONS.filter((option) => option.value !== "non-veg")
+    }
+
+    return MENU_FILTER_OPTIONS
+  }, [activeTab, restaurantProfile])
 
   useEffect(() => {
     if (!activeFilterOptions.some((option) => option.value === selectedFilter)) {

@@ -38,18 +38,15 @@ export default function DeliverySignIn() {
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
 
-  const validatePhone = (phone, countryCode) => {
+  const validatePhone = (phone) => {
     if (!phone || phone.trim() === "") {
       return "Phone number is required"
     }
 
     const digitsOnly = phone.replace(/\D/g, "")
 
-    if (digitsOnly.length < 8) {
-      return "Phone number must be at least 8 digits"
-    }
-    if (digitsOnly.length > 15) {
-      return "Phone number is too long"
+    if (digitsOnly.length !== 10) {
+      return "Phone number must be exactly 10 digits"
     }
 
     return ""
@@ -58,7 +55,7 @@ export default function DeliverySignIn() {
   const handleSendOTP = async () => {
     setError("")
 
-    const phoneError = validatePhone(formData.phone, formData.countryCode)
+    const phoneError = validatePhone(formData.phone)
     if (phoneError) {
       setError(phoneError)
       return
@@ -108,7 +105,7 @@ export default function DeliverySignIn() {
     })
   }
 
-  const isValid = !validatePhone(formData.phone, formData.countryCode)
+  const isValid = !validatePhone(formData.phone)
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0">

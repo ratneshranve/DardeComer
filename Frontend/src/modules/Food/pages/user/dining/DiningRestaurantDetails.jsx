@@ -320,24 +320,17 @@ export default function DiningRestaurantDetails() {
         </div>
 
           <div className="px-3 pb-1 pt-3">
-            <div className="grid grid-cols-[1.62fr_0.72fr_0.72fr] gap-2.5">
+            <div className="flex">
               <button
                 onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
                 disabled={!isDiningEnabled}
-                className={`flex h-[52px] items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
+                className={`flex h-[52px] w-full items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
                   isDiningEnabled
                     ? "border-[#f1ebee] bg-white text-[#2b2118]"
                     : "cursor-not-allowed border-[#d7dfef] bg-[#f5f8ff] text-[#6078a9] opacity-80"
                 }`}
               >
-              <Ticket className="h-[15px] w-[15px] text-[#001A94]" />
               <span>{isDiningEnabled ? "Book a table" : "Dining paused"}</span>
-              </button>
-              <button className="flex h-[52px] items-center justify-center rounded-full border border-[#d6e1ff] bg-white text-[#001A94] shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-                <Tag className="h-[15px] w-[15px]" />
-              </button>
-              <button className="flex h-[52px] items-center justify-center rounded-full border border-[#d6e1ff] bg-white text-[#001A94] shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
-                <Clock3 className="h-[15px] w-[15px]" />
               </button>
             </div>
 
