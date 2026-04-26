@@ -222,13 +222,16 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
     }
 
     const targetIds = resolvedTargets.map((target) => toObjectId(target.ownerId, 'targetId'));
+    
+    // Deduplicate targets for notification creation to avoid duplicates for the same role/id
+    const uniqueTargets = dedupeTargets(resolvedTargets);
 
     const broadcast = await BroadcastNotification.create({
         title,
         message,
         targetType,
         targetIds: targetType === 'CUSTOM' ? targetIds : [],
-        targets: resolvedTargets.map((target) => ({
+        targets: uniqueTargets.map((target) => ({
             ownerType: target.ownerType,
             ownerId: toObjectId(target.ownerId, 'ownerId'),
             label: target.label || '',
@@ -236,11 +239,11 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
         })),
         link,
         createdBy: toObjectId(adminId, 'createdBy'),
-        targetCount: resolvedTargets.length
+        targetCount: uniqueTargets.length
     });
 
     await createInboxNotifications({
-        notifications: resolvedTargets.map((target) =>
+        notifications: uniqueTargets.map((target) =>
             buildNotificationPayload({
                 title,
                 message,
@@ -251,8 +254,11 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
         )
     });
 
+    // For push notifications, we should deduplicate further by owner identity if possible.
+    // However, since we don't have a shared identity for all roles, we at least 
+    // deduplicate by the role-id pair which uniqueTargets already does.
     await notifyOwnersSafely(
-        resolvedTargets.map((target) => ({
+        uniqueTargets.map((target) => ({
             ownerType: target.ownerType,
             ownerId: target.ownerId
         })),
@@ -267,7 +273,7 @@ export const createBroadcastNotification = async ({ body = {}, adminId } = {}) =
         }
     );
 
-    emitRealtimeNotifications(resolvedTargets, broadcast);
+    emitRealtimeNotifications(uniqueTargets, broadcast);
 
     return {
         broadcast,

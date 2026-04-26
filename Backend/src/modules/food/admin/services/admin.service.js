@@ -3872,19 +3872,21 @@ export async function getDeliveryEarnings(query = {}) {
 
     const search = String(query.search || '').trim();
     if (search) {
-        const regex = new RegExp(search, 'i');
+        // Escape special characters in regex to prevent crash on invalid input (e.g. "[", "(")
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedSearch, 'i');
 
         const [partners, restaurants] = await Promise.all([
             FoodDeliveryPartner.find({
                 $or: [{ name: regex }, { phone: regex }, { email: regex }]
             }).select('_id').lean(),
             FoodRestaurant.find({
-                $or: [{ restaurantName: regex }, { name: regex }]
+                $or: [{ restaurantName: regex }, { ownerName: regex }]
             }).select('_id').lean()
         ]);
 
-        const partnerIds = partners.map((p) => p._id);
-        const restaurantIds = restaurants.map((r) => r._id);
+        const partnerIds = (partners || []).map((p) => p._id);
+        const restaurantIds = (restaurants || []).map((r) => r._id);
 
         filter.$or = [
             { orderId: regex },
@@ -3893,40 +3895,66 @@ export async function getDeliveryEarnings(query = {}) {
         ];
     }
 
-    const [orders, total, earningsAgg, distinctPartners] = await Promise.all([
-        FoodOrder.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .select('orderId orderStatus createdAt pricing riderEarning deliveryPartnerSettlement dispatch.deliveryPartnerId restaurantId')
-            .populate({ path: 'dispatch.deliveryPartnerId', select: 'name phone' })
-            .populate({ path: 'restaurantId', select: 'restaurantName name' })
-            .lean(),
-        FoodOrder.countDocuments(filter),
-        FoodOrder.aggregate([
-            { $match: filter },
-            {
-                $group: {
-                    _id: null,
-                    totalEarnings: {
-                        $sum: {
-                            $ifNull: [
-                                '$riderEarning',
-                                {
-                                    $ifNull: [
-                                        '$deliveryPartnerSettlement',
-                                        { $ifNull: ['$pricing.deliveryFee', 0] }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-                    totalOrders: { $sum: 1 }
+    let orders = [];
+    let total = 0;
+    let earningsAgg = [];
+    let distinctPartners = [];
+
+    try {
+        const results = await Promise.all([
+            FoodOrder.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .select('orderId orderStatus createdAt pricing riderEarning deliveryPartnerSettlement dispatch.deliveryPartnerId restaurantId')
+                .populate({ path: 'dispatch.deliveryPartnerId', select: 'name phone' })
+                .populate({ path: 'restaurantId', select: 'restaurantName name' })
+                .lean(),
+            FoodOrder.countDocuments(filter),
+            FoodOrder.aggregate([
+                { $match: filter },
+                {
+                    $group: {
+                        _id: null,
+                        totalEarnings: {
+                            $sum: {
+                                $ifNull: [
+                                    '$riderEarning',
+                                    {
+                                        $ifNull: [
+                                            '$deliveryPartnerSettlement',
+                                            { $ifNull: ['$pricing.deliveryFee', 0] }
+                                        ]
+                                    }
+                                ]
+                            }
+                        },
+                        totalOrders: { $sum: 1 }
+                    }
                 }
-            }
-        ]),
-        FoodOrder.distinct('dispatch.deliveryPartnerId', filter)
-    ]);
+            ]),
+            FoodOrder.distinct('dispatch.deliveryPartnerId', filter)
+        ]);
+        
+        orders = results[0] || [];
+        total = results[1] || 0;
+        earningsAgg = results[2] || [];
+        distinctPartners = results[3] || [];
+    } catch (err) {
+        console.error('getDeliveryEarnings data fetch error:', err);
+        // If aggregation fails (e.g. due to complex filter or MongoDB version), 
+        // try to at least return the orders without summary to avoid 500 error.
+        if (!orders.length) {
+            orders = await FoodOrder.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate({ path: 'dispatch.deliveryPartnerId', select: 'name phone' })
+                .populate({ path: 'restaurantId', select: 'restaurantName name' })
+                .lean();
+            total = await FoodOrder.countDocuments(filter);
+        }
+    }
 
     const earnings = orders.map((order) => {
         const partner = order?.dispatch?.deliveryPartnerId;

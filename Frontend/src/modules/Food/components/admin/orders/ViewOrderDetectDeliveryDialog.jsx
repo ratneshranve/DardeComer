@@ -113,6 +113,75 @@ export default function ViewOrderDetectDeliveryDialog({ isOpen, onOpenChange, or
                 </div>
               </div>
             )}
+
+            {/* Order Items Summary */}
+            <div className="bg-slate-50 rounded-lg p-4 md:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Order Summary
+              </h3>
+              <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-2">Item</th>
+                      <th className="px-4 py-2 text-center">Qty</th>
+                      <th className="px-4 py-2 text-right">Price</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(order.originalOrder?.items || order.originalOrder?.cart?.items || []).map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-slate-900">{item.name || item.foodName}</p>
+                          {item.variantName && <p className="text-xs text-slate-500">Variant: {item.variantName}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-center text-slate-600">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">Rs. {(item.price || item.variantPrice || 0).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-900">Rs. {((item.quantity || 1) * (item.price || item.variantPrice || 0)).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pricing Breakdown */}
+              <div className="mt-4 flex flex-col items-end space-y-2 px-4">
+                <div className="flex justify-between w-full max-w-[250px] text-sm text-slate-600">
+                  <span>Subtotal</span>
+                  <span>Rs. {(order.originalOrder?.pricing?.subtotal || 0).toFixed(2)}</span>
+                </div>
+                {(order.originalOrder?.pricing?.deliveryFee > 0) && (
+                  <div className="flex justify-between w-full max-w-[250px] text-sm text-slate-600">
+                    <span>Delivery Fee</span>
+                    <span>Rs. {order.originalOrder.pricing.deliveryFee.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.originalOrder?.pricing?.packagingFee > 0) && (
+                  <div className="flex justify-between w-full max-w-[250px] text-sm text-slate-600">
+                    <span>Packaging Fee</span>
+                    <span>Rs. {order.originalOrder.pricing.packagingFee.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.originalOrder?.pricing?.tax > 0) && (
+                  <div className="flex justify-between w-full max-w-[250px] text-sm text-slate-600">
+                    <span>Tax</span>
+                    <span>Rs. {order.originalOrder.pricing.tax.toFixed(2)}</span>
+                  </div>
+                )}
+                {(order.originalOrder?.pricing?.discount > 0) && (
+                  <div className="flex justify-between w-full max-w-[250px] text-sm text-red-600 font-medium">
+                    <span>Discount</span>
+                    <span>- Rs. {order.originalOrder.pricing.discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between w-full max-w-[250px] text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
+                  <span>Grand Total</span>
+                  <span>Rs. {(order.originalOrder?.pricing?.total || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Current Status */}

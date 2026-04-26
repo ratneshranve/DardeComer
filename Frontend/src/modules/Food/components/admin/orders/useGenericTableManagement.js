@@ -176,13 +176,17 @@ export function useGenericTableManagement(data, title, searchFields = []) {
 
       // Items Table
       if (items.length > 0) {
-        const tableData = items.map((item, index) => [
-          index + 1,
-          item.foodName || item.name || 'Item',
-          item.quantity || 1,
-          `Rs. ${(item.price || 0).toFixed(2)}`,
-          `Rs. ${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
-        ])
+        const tableData = items.map((item, index) => {
+          const itemName = item.foodName || item.name || 'Item'
+          const variantSuffix = item.variantName ? ` (${item.variantName})` : ''
+          return [
+            index + 1,
+            itemName + variantSuffix,
+            item.quantity || 1,
+            `Rs. ${(item.price || item.variantPrice || 0).toFixed(2)}`,
+            `Rs. ${((item.quantity || 1) * (item.price || item.variantPrice || 0)).toFixed(2)}`
+          ]
+        })
 
         autoTable(doc, {
           startY: startY,
@@ -219,37 +223,65 @@ export function useGenericTableManagement(data, title, searchFields = []) {
 
       // Summary
       const summaryX = 140
+      const rightAlignX = 196
       doc.setFontSize(10)
       doc.setTextColor(...secondaryColor)
       
-      if (source.itemTotal) {
-        doc.text('Item Total:', summaryX, startY)
-        doc.text(`Rs. ${source.itemTotal.toFixed(2)}`, 196, startY, { align: 'right' })
-        startY += 5
-      }
+      const pricing = source.pricing || {}
+      const subtotal = pricing.subtotal || source.itemTotal || 0
+      const deliveryFee = pricing.deliveryFee || source.deliveryFee || 0
+      const tax = pricing.tax || source.taxAmount || 0
+      const packagingFee = pricing.packagingFee || 0
+      const platformFee = pricing.platformFee || 0
+      const discount = pricing.discount || 0
+      const grandTotal = pricing.total || totalAmount
+
+      doc.text('Subtotal:', summaryX, startY)
+      doc.text(`Rs. ${subtotal.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+      startY += 5
       
-      if (source.deliveryFee) {
+      if (deliveryFee > 0) {
         doc.text('Delivery Fee:', summaryX, startY)
-        doc.text(`Rs. ${source.deliveryFee.toFixed(2)}`, 196, startY, { align: 'right' })
+        doc.text(`Rs. ${deliveryFee.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
         startY += 5
       }
 
-      if (source.taxAmount) {
+      if (packagingFee > 0) {
+        doc.text('Packaging Fee:', summaryX, startY)
+        doc.text(`Rs. ${packagingFee.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        startY += 5
+      }
+
+      if (tax > 0) {
         doc.text('Tax:', summaryX, startY)
-        doc.text(`Rs. ${source.taxAmount.toFixed(2)}`, 196, startY, { align: 'right' })
+        doc.text(`Rs. ${tax.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        startY += 5
+      }
+
+      if (platformFee > 0) {
+        doc.text('Platform Fee:', summaryX, startY)
+        doc.text(`Rs. ${platformFee.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        startY += 5
+      }
+
+      if (discount > 0) {
+        doc.setTextColor(220, 38, 38)
+        doc.text('Discount:', summaryX, startY)
+        doc.text(`- Rs. ${discount.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        doc.setTextColor(...secondaryColor)
         startY += 5
       }
 
       doc.setDrawColor(...primaryColor)
       doc.setLineWidth(0.5)
-      doc.line(summaryX, startY, 196, startY)
+      doc.line(summaryX, startY, rightAlignX, startY)
       startY += 7
 
       doc.setFontSize(14)
       doc.setTextColor(...textColor)
       doc.setFont(undefined, 'bold')
       doc.text('Grand Total:', summaryX, startY)
-      doc.text(`Rs. ${(totalAmount).toFixed(2)}`, 196, startY, { align: 'right' })
+      doc.text(`Rs. ${grandTotal.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
       
       startY += 15
 
@@ -260,12 +292,12 @@ export function useGenericTableManagement(data, title, searchFields = []) {
       startY += 6
       doc.setFont(undefined, 'normal')
       doc.setTextColor(...secondaryColor)
-      doc.text(`Payment: ${paymentStatus.toUpperCase()}`, 14, startY)
+      doc.text(`Payment: ${paymentStatus.toUpperCase()} (${source.payment?.method?.toUpperCase() || 'N/A'})`, 14, startY)
       doc.text(`Status: ${orderStatus.toUpperCase()}`, 14, startY + 5)
 
       // Cancellation Reason
-      const reason = source.cancellationReason || source.rejectionReason
-      if (reason) {
+      const reason = source.cancellationReason || source.rejectionReason || source.note
+      if (reason && (source.orderStatus?.includes('cancel') || source.status?.includes('cancel'))) {
         startY += 12
         doc.setTextColor(220, 38, 38)
         doc.setFont(undefined, 'bold')

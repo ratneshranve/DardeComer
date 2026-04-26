@@ -29,6 +29,7 @@ import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar";
 import notificationSound from "@food/assets/audio/alert.mp3";
 import { restaurantAPI, diningAPI } from "@food/api";
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications";
+import { useRestaurantNotificationContext } from "../../context/RestaurantNotificationContext";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton";
@@ -1086,7 +1087,9 @@ export default function OrdersMain() {
   };
 
   // Restaurant notifications hook for real-time orders
-  const { newOrder, clearNewOrder, isConnected } = useRestaurantNotifications();
+  const restaurantContext = useRestaurantNotificationContext();
+  const restaurantHook = useRestaurantNotifications();
+  const { newOrder, clearNewOrder, isConnected } = restaurantContext || restaurantHook;
 
   const rejectReasons = [
     "Restaurant is too busy",

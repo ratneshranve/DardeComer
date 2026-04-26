@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import io from 'socket.io-client';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@food/api/config';
 import { userAPI } from '@food/api';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
+import { UserNotificationContext } from '../context/UserNotificationContext';
 
 const debugLog = (...args) => {
   if (import.meta.env.DEV) {
@@ -16,6 +17,9 @@ const debugLog = (...args) => {
  * Dispatches 'orderStatusNotification' custom event for OrderTrackingCard.
  */
 export const useUserNotifications = () => {
+  const context = useContext(UserNotificationContext);
+  if (context) return context;
+
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -147,11 +151,33 @@ export const useUserNotifications = () => {
     });
 
     socketRef.current.on('admin_notification', (payload) => {
+      const broadcastId = payload?.id || payload?._id;
+      const toastId = broadcastId || `admin-notify-${payload?.title}-${payload?.message}`;
+      
+      // Cross-tab deduplication using BroadcastChannel
+      const channelName = `notification_dedupe_${broadcastId || 'generic'}`;
+      const channel = new BroadcastChannel(channelName);
+      
+      // Check if this was already handled in another tab recently
+      const storageKey = `handled_notify_${broadcastId}`;
+      if (localStorage.getItem(storageKey)) {
+        channel.close();
+        return;
+      }
+      
+      // Mark as handled and notify other tabs
+      localStorage.setItem(storageKey, 'true');
+      setTimeout(() => localStorage.removeItem(storageKey), 5000); // Clear after 5s
+      
       toast.message(payload?.title || 'Notification', {
+        id: toastId,
         description: payload?.message || 'New broadcast notification received.',
         duration: 8000
       });
+      
       dispatchNotificationInboxRefresh();
+      channel.postMessage({ type: 'HANDLED', id: broadcastId });
+      channel.close();
     });
 
     socketRef.current.on('connect_error', (error) => {

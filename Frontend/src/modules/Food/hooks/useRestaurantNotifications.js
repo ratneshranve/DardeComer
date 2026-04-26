@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useContext } from 'react';
 import io from 'socket.io-client';
 import { API_BASE_URL } from '@food/api/config';
 import { restaurantAPI } from '@food/api';
 import alertSound from '@food/assets/audio/alert.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
+import { RestaurantNotificationContext } from '../context/RestaurantNotificationContext';
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -86,6 +87,9 @@ const isUserCancelledOrderUpdate = (data = {}) => {
  * @returns {object} - { newOrder, playSound, isConnected }
  */
 export const useRestaurantNotifications = () => {
+  const context = useContext(RestaurantNotificationContext);
+  if (context) return context;
+
   const socketRef = useRef(null);
   const [newOrder, setNewOrder] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -661,8 +665,35 @@ export const useRestaurantNotifications = () => {
     });
 
     socketRef.current.on('admin_notification', (payload) => {
-      debugLog('?? Admin broadcast received:', payload);
+      debugLog('📢 Admin broadcast received:', payload);
+      
+      const broadcastId = payload?.id || payload?._id;
+      const toastId = broadcastId || `admin-notify-${payload?.title}-${payload?.message}`;
+      
+      // Cross-tab deduplication using BroadcastChannel
+      const channelName = `notification_dedupe_${broadcastId || 'generic'}`;
+      const channel = new BroadcastChannel(channelName);
+      
+      // Check if this was already handled in another tab recently
+      const storageKey = `handled_notify_${broadcastId}`;
+      if (localStorage.getItem(storageKey)) {
+        channel.close();
+        return;
+      }
+      
+      // Mark as handled and notify other tabs
+      localStorage.setItem(storageKey, 'true');
+      setTimeout(() => localStorage.removeItem(storageKey), 5000); // Clear after 5s
+      
+      toast.message(payload?.title || 'Notification', {
+        id: toastId,
+        description: payload?.message || 'New broadcast notification received.',
+        duration: 8000
+      });
+
       dispatchNotificationInboxRefresh();
+      channel.postMessage({ type: 'HANDLED', id: broadcastId });
+      channel.close();
     });
 
     // Load notification sound

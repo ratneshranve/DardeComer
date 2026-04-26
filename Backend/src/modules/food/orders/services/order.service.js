@@ -1539,7 +1539,7 @@ export async function listOrdersAdmin(query) {
     FoodOrder.find(filter)
       .select("+deliveryOtp")
       .populate("userId", "name phone email")
-      .populate("restaurantId", "restaurantName businessModel area city ownerPhone")
+      .populate("restaurantId", "restaurantName businessModel addressLine1 area city ownerPhone")
       .populate("dispatch.deliveryPartnerId", "name phone")
       .sort({ createdAt: -1 })
       .skip(skip)

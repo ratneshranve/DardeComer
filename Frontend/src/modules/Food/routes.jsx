@@ -7,6 +7,7 @@ import PushSoundEnableButton from "@food/components/PushSoundEnableButton"
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
+import { useRestaurantNotificationContext } from "./context/RestaurantNotificationContext"
 
 // Lazy Loading Components
 const UserRouter = lazy(() => import("@food/components/user/UserRouter"))
@@ -40,8 +41,11 @@ function ScrollToTop() {
 }
 
 function RestaurantGlobalNotificationListenerInner() {
-  useRestaurantNotifications()
-  return null
+  const context = useRestaurantNotificationContext();
+  if (!context) {
+    useRestaurantNotifications();
+  }
+  return null;
 }
 
 function RestaurantGlobalNotificationListener() {

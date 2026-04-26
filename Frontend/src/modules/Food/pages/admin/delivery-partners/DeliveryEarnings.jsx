@@ -109,68 +109,56 @@ export default function DeliveryEarnings() {
     setPagination(prev => ({ ...prev, page: newPage }))
   }
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     if (earnings.length === 0) {
       toast.info("No data to export")
       return
     }
 
-    const headers = [
-      { key: "sl", label: "SI" },
-      { key: "deliveryPartnerName", label: "Delivery Boy" },
-      { key: "deliveryPartnerPhone", label: "Phone" },
-      { key: "orderId", label: "Order ID" },
-      { key: "restaurantName", label: "Restaurant" },
-      { key: "amount", label: "Earning" },
-      { key: "orderTotal", label: "Order Total" },
-      { key: "deliveryFee", label: "Delivery Fee" },
-      { key: "orderStatus", label: "Status" },
-      { key: "createdAt", label: "Date" },
-    ]
+    try {
+      const { exportEarningsToCSV, exportEarningsToExcel, exportEarningsToPDF } = await import("./earningsExportUtils")
 
-    const data = earnings.map((earning, index) => ({
-      sl: (pagination.page - 1) * pagination.limit + index + 1,
-      deliveryPartnerName: earning.deliveryPartnerName || 'N/A',
-      deliveryPartnerPhone: earning.deliveryPartnerPhone || 'N/A',
-      orderId: earning.orderId || 'N/A',
-      restaurantName: earning.restaurantName || 'N/A',
-      amount: formatCurrency(earning.amount),
-      orderTotal: formatCurrency(earning.orderTotal),
-      deliveryFee: formatCurrency(earning.deliveryFee),
-      orderStatus: earning.orderStatus || 'N/A',
-      createdAt: formatDate(earning.createdAt)
-    }))
-
-    switch (format) {
-      case "csv":
-        const csvContent = [
-          headers.map(h => h.label).join(","),
-          ...data.map(row => headers.map(h => `"${row[h.key] || ''}"`).join(","))
-        ].join("\n")
-        const csvBlob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-        const csvLink = document.createElement("a")
-        csvLink.href = URL.createObjectURL(csvBlob)
-        csvLink.download = `delivery_earnings_${new Date().toISOString().split('T')[0]}.csv`
-        csvLink.click()
-        toast.success("CSV exported successfully")
-        break
-      case "excel":
-        toast.info("Excel export coming soon")
-        break
-      case "pdf":
-        toast.info("PDF export coming soon")
-        break
-      case "json":
-        const jsonContent = JSON.stringify(data, null, 2)
-        const jsonBlob = new Blob([jsonContent], { type: "application/json" })
-        const jsonLink = document.createElement("a")
-        jsonLink.href = URL.createObjectURL(jsonBlob)
-        jsonLink.download = `delivery_earnings_${new Date().toISOString().split('T')[0]}.json`
-        jsonLink.click()
-        toast.success("JSON exported successfully")
-        break
-      default:
-        toast.error("Invalid export format")
+      switch (format) {
+        case "csv":
+          exportEarningsToCSV(earnings, pagination)
+          toast.success("CSV exported successfully")
+          break
+        case "excel":
+          exportEarningsToExcel(earnings, pagination)
+          toast.success("Excel exported successfully")
+          break
+        case "pdf":
+          toast.info("Generating PDF...")
+          await exportEarningsToPDF(earnings, pagination)
+          toast.success("PDF exported successfully")
+          break
+        case "json":
+          const data = earnings.map((earning, index) => ({
+            sl: (pagination.page - 1) * pagination.limit + index + 1,
+            deliveryPartnerName: earning.deliveryPartnerName || 'N/A',
+            deliveryPartnerPhone: earning.deliveryPartnerPhone || 'N/A',
+            orderId: earning.orderId || 'N/A',
+            restaurantName: earning.restaurantName || 'N/A',
+            amount: earning.amount,
+            orderTotal: earning.orderTotal,
+            deliveryFee: earning.deliveryFee,
+            orderStatus: earning.orderStatus || 'N/A',
+            createdAt: earning.createdAt
+          }))
+          const jsonContent = JSON.stringify(data, null, 2)
+          const jsonBlob = new Blob([jsonContent], { type: "application/json" })
+          const jsonLink = document.createElement("a")
+          jsonLink.href = URL.createObjectURL(jsonBlob)
+          jsonLink.download = `delivery_earnings_${new Date().toISOString().split('T')[0]}.json`
+          jsonLink.click()
+          toast.success("JSON exported successfully")
+          break
+        default:
+          toast.error("Invalid export format")
+      }
+    } catch (err) {
+      debugError("Export error:", err)
+      toast.error("Failed to export data")
     }
   }
 
@@ -328,6 +316,10 @@ export default function DeliveryEarnings() {
                 <DropdownMenuItem onClick={() => handleExport("json")}>
                   <Code className="w-4 h-4 mr-2" />
                   Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as PDF
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

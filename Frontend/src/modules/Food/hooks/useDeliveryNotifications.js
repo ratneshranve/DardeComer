@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import io from 'socket.io-client';
 import { API_BASE_URL } from '@food/api/config';
 import { deliveryAPI } from '@food/api';
 import alertSound from '@food/assets/audio/alert.mp3';
 import originalSound from '@food/assets/audio/original.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
+import { DeliveryNotificationContext } from '../context/DeliveryNotificationContext';
 
 const shouldLogDeliverySocket = () => {
   if (typeof window === 'undefined') return import.meta.env.DEV;
@@ -168,6 +169,9 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 
 
 export const useDeliveryNotifications = () => {
+  const context = useContext(DeliveryNotificationContext);
+  if (context) return context;
+
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Order: useRef -> useState -> useEffect -> useCallback
   
@@ -1147,8 +1151,35 @@ export const useDeliveryNotifications = () => {
     });
 
     socketRef.current.on('admin_notification', (payload) => {
-      debugLog('Admin broadcast received via socket', payload);
+      debugLog('📢 Admin broadcast received:', payload);
+      
+      const broadcastId = payload?.id || payload?._id;
+      const toastId = broadcastId || `admin-notify-${payload?.title}-${payload?.message}`;
+      
+      // Cross-tab deduplication using BroadcastChannel
+      const channelName = `notification_dedupe_${broadcastId || 'generic'}`;
+      const channel = new BroadcastChannel(channelName);
+      
+      // Check if this was already handled in another tab recently
+      const storageKey = `handled_notify_${broadcastId}`;
+      if (localStorage.getItem(storageKey)) {
+        channel.close();
+        return;
+      }
+      
+      // Mark as handled and notify other tabs
+      localStorage.setItem(storageKey, 'true');
+      setTimeout(() => localStorage.removeItem(storageKey), 5000); // Clear after 5s
+      
+      toast.message(payload?.title || 'Notification', {
+        id: toastId,
+        description: payload?.message || 'New broadcast notification received.',
+        duration: 8000
+      });
+
       dispatchNotificationInboxRefresh();
+      channel.postMessage({ type: 'HANDLED', id: broadcastId });
+      channel.close();
     });
 
     // Auth change/refresh listeners

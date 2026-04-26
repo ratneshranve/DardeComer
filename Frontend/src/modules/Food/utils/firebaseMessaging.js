@@ -568,6 +568,22 @@ function showForegroundNotification(payload = {}) {
 
   // Still show in-app toast for immediate context if we are in focus
   if (typeof document !== "undefined" && document.visibilityState === "visible") {
+    // Cross-tab deduplication using BroadcastChannel and LocalStorage
+    const notificationId = payload?.data?.broadcastId || payload?.data?.orderId || payload?.data?.id || (title + body).replace(/\s+/g, '');
+    const channelName = `notification_dedupe_${notificationId}`;
+    const storageKey = `handled_notify_${notificationId}`;
+
+    if (localStorage.getItem(storageKey)) {
+      return;
+    }
+
+    localStorage.setItem(storageKey, "true");
+    setTimeout(() => localStorage.removeItem(storageKey), 5000);
+
+    const channel = new BroadcastChannel(channelName);
+    channel.postMessage({ type: "HANDLED" });
+    channel.close();
+
     if (body) {
       toast.success(`${title}: ${body}`);
     } else {
