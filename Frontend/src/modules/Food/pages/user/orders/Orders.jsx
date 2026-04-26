@@ -9,6 +9,15 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const getSourceLabel = (businessModel) => {
+  const raw = String(businessModel || "").trim().toLowerCase();
+  const compact = raw.replace(/[_\-\s]+/g, "");
+  if (compact === "homekitchen" || compact === "cloudkitchen" || compact === "kitchen") {
+    return "Home Kitchen";
+  }
+  return "Restaurant";
+};
+
 
 export default function Orders() {
   const navigate = useNavigate()
@@ -575,7 +584,7 @@ Order again from this restaurant in the ${companyName} app.`
 
   const handleViewOrderDetails = (order) => {
     setActiveMenuOrderId(null)
-    navigate(`/user/orders/${order.id}/details`)
+    navigate(`/food/user/orders/${order.id}/details`)
   }
 
   // Open rating modal for an order
@@ -761,7 +770,12 @@ Order again from this restaurant in the ${companyName} app.`
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-800 text-lg leading-tight">{order.restaurant}</h3>
+                      <h3 className="font-semibold text-gray-800 text-lg leading-tight flex items-center gap-2 flex-wrap">
+                        {order.restaurant}
+                        <span className="text-[10px] font-bold uppercase bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded tracking-wider">
+                          {getSourceLabel(order.businessModel)}
+                        </span>
+                      </h3>
                       <p className="text-[11px] text-gray-500 mt-0.5">
                         Order ID: <span className="font-semibold text-gray-700">{order.orderId || order.id}</span>
                       </p>
@@ -932,12 +946,17 @@ Order again from this restaurant in the ${companyName} app.`
                                 order.payment.method || 'N/A'}
                         </span>
                         {order.payment.status && (
-                          <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${order.payment.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            (order.payment.status === 'completed' || order.payment.status === 'captured' || order.payment.status === 'authorized' || order.payment.status === 'settled' || (isCodOrWallet && isDelivered)) ? 'bg-green-100 text-green-700' :
                               order.payment.status === 'failed' ? 'bg-red-100 text-red-700' :
                                 order.payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                                   'bg-gray-100 text-gray-700'
                             }`}>
-                            {order.payment.status}
+                            {(order.payment.status === 'completed' || order.payment.status === 'captured' || order.payment.status === 'authorized' || order.payment.status === 'settled' || (isCodOrWallet && isDelivered)) 
+                              ? 'Paid' 
+                              : (isCodOrWallet && order.payment.status === 'pending') 
+                                ? 'Pay on Delivery' 
+                                : order.payment.status.toUpperCase()}
                           </span>
                         )}
                       </p>
@@ -956,7 +975,7 @@ Order again from this restaurant in the ${companyName} app.`
                     )}
                   </div>
                   <div className="flex items-center ml-4">
-                    <Link to={`/user/orders/${order.id}`}>
+                    <Link to={`/food/user/orders/${order.id}/details`}>
                       <button className="text-xs text-[#2563EB] font-medium hover:text-[#1D4ED8] flex items-center gap-1">
                         View Details
                         <ChevronRight className="w-4 h-4" />

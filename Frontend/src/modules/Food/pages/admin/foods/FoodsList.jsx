@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { getFoodDisplayPrice, getFoodVariants } from "@food/utils/foodVariants"
+import { normalizeImageUrl } from "@food/utils/common"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -72,7 +73,8 @@ export default function FoodsList() {
   const toArray = (value) => (Array.isArray(value) ? value : [])
   const withImageVersion = (url) => {
     if (!url || typeof url !== "string") return "https://via.placeholder.com/40"
-    return `${url}${url.includes("?") ? "&" : "?"}v=${imageVersion}`
+    const normalized = normalizeImageUrl(url)
+    return `${normalized}${normalized.includes("?") ? "&" : "?"}v=${imageVersion}`
   }
 
   const fetchAllFoods = useCallback(async () => {

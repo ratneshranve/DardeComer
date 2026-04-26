@@ -125,9 +125,9 @@ export default function SubscriberList() {
       {/* Header */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl lg:text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <span role="img" aria-label="subscribed">
-            ??
-          </span>
+            <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+              <Users className="w-5 h-5 text-sky-600" />
+            </div>
           <span>Subscribed Restaurant List</span>
         </h1>
 
@@ -153,7 +153,7 @@ export default function SubscriberList() {
                 {card.label}
               </p>
               <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center">
-                <span className="text-lg">??</span>
+              <Users className="w-4 h-4 text-sky-600" />
               </div>
             </div>
             <p className="text-2xl font-bold text-slate-900">{card.value}</p>
@@ -179,7 +179,7 @@ export default function SubscriberList() {
           <div className="flex-1 px-5 py-3 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-slate-700">
               <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 text-lg">
-                ??
+                <DollarSign className="w-4 h-4 text-emerald-600" />
               </span>
               <div>
                 <p className="font-semibold">TOTAL EARNING</p>
@@ -193,7 +193,7 @@ export default function SubscriberList() {
           <div className="flex-1 px-5 py-3 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-slate-700">
               <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-50 text-amber-600 text-lg">
-                ??
+                <Calendar className="w-4 h-4 text-amber-600" />
               </span>
               <div>
                 <p className="font-semibold">EARNED THIS MONTH</p>

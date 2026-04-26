@@ -1600,11 +1600,11 @@ export async function deleteOrderAdmin(orderId, adminId) {
   // Remove realtime tracking node if present.
   try {
     const db = getFirebaseDB();
-    if (db && order?.orderId) {
-      await db.ref(`active_orders/${order._id.toString()}`).remove();
+    if (db) {
+      await db.ref(`food_tracking/${order._id}`).remove();
     }
   } catch (err) {
-    logger.warn(`Delete order firebase cleanup failed: ${err?.message || err}`);
+    logger.warn(`deleteOrderAdmin firebase cleanup failed: ${err?.message || err}`);
   }
 
   // Notify connected apps so stale UI entries can disappear without refresh.
@@ -1614,6 +1614,94 @@ export async function deleteOrderAdmin(orderId, adminId) {
       const payload = {
         orderMongoId: String(order._id),
         orderId: String(order._id.toString() || ""),
+        deletedBy: "ADMIN",
+        adminId: adminId ? String(adminId) : null,
+      };
+      io.to(rooms.restaurant(order.restaurantId)).emit("order_deleted", payload);
+      io.to(rooms.user(order.userId)).emit("order_deleted", payload);
+    }
+  } catch (err) {
+    logger.warn(`deleteOrderAdmin socket notify failed: ${err?.message || err}`);
+  }
+
+  return { success: true };
+}
+
+export async function updateOrderStatusAdmin(orderId, orderStatus, adminId, options = {}) {
+  const identity = buildOrderIdentityFilter(orderId);
+  const order = await FoodOrder.findOne(identity).select("+deliveryOtp");
+  if (!order) throw new NotFoundError("Order not found");
+
+  const from = order.orderStatus;
+  const isCancelledUpdate = String(orderStatus).includes("cancel");
+
+  order.orderStatus = orderStatus;
+  pushStatusHistory(order, {
+    byRole: "ADMIN",
+    byId: adminId,
+    from,
+    to: orderStatus,
+    note: options.reason || "Status updated by admin",
+  });
+
+  if (isCancelledUpdate && order.dispatch?.status && order.dispatch.status !== "cancelled") {
+    order.dispatch.status = "cancelled";
+    order.dispatch.deliveryPartnerId = undefined;
+    order.dispatch.acceptedAt = undefined;
+
+    pushStatusHistory(order, {
+      byRole: "ADMIN",
+      byId: adminId,
+      from: order.dispatch.status,
+      to: "cancelled",
+      note: "Dispatch cancelled because order was cancelled by admin",
+    });
+  }
+
+  await order.save();
+
+  // Handle Automated Refunds if cancelled
+  if (
+    isCancelledUpdate &&
+    order.payment.status === "paid" &&
+    (!order.payment.refund || order.payment.refund.status !== "processed")
+  ) {
+    if (order.payment.method === "razorpay" && order.payment.razorpay?.paymentId) {
+      try {
+        const refundResult = await initiateRazorpayRefund(order.payment.razorpay.paymentId, order.pricing.total);
+        if (refundResult.success) {
+          order.payment.status = "refunded";
+          order.payment.refund = {
+            status: "processed",
+            amount: order.pricing.total,
+            refundId: refundResult.refundId,
+            processedAt: new Date(),
+          };
+        } else {
+          order.payment.refund = { status: "failed", amount: order.pricing.total };
+        }
+      } catch (err) {
+        console.error(`Admin Cancel Refund failed:`, err);
+        order.payment.refund = { status: "failed", amount: order.pricing.total };
+      }
+    } else if (order.payment.method === "wallet") {
+      try {
+        await userWalletService.refundWalletBalance(order.userId, order.pricing.total, `Refund for order #${order.order_id || order._id} cancelled by admin`, { orderId: order._id });
+        order.payment.status = "refunded";
+        order.payment.refund = { status: "processed", amount: order.pricing.total, processedAt: new Date() };
+      } catch (err) {
+        console.error(`Admin Cancel Wallet Refund failed:`, err);
+        order.payment.refund = { status: "failed", amount: order.pricing.total };
+      }
+    }
+    await order.save();
+  }
+
+  // Real-time: status update to restaurant and user rooms.
+  try {
+    const io = getIO();
+    if (io) {
+      const payload = {
         deletedBy: "ADMIN",
         adminId: adminId ? String(adminId) : null,
       };

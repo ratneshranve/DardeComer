@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { exportToExcel, exportToPDF } from "./ordersExportUtils"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -81,7 +81,6 @@ export function useGenericTableManagement(data, title, searchFields = []) {
 
   const handlePrintOrder = async (order) => {
     try {
-      // Dynamic import of jsPDF and autoTable for instant PDF download
       const { default: jsPDF } = await import('jspdf')
       const { default: autoTable } = await import('jspdf-autotable')
       
@@ -91,132 +90,199 @@ export function useGenericTableManagement(data, title, searchFields = []) {
         format: 'a4'
       })
 
-      // Add title
-      doc.setFontSize(18)
-      doc.setTextColor(30, 30, 30)
-      doc.text('Order Invoice', 105, 20, { align: 'center' })
+      // Use original order if available for more detailed data
+      const source = order.originalOrder || order
+      const orderId = source.orderId || source.id || source.subscriptionId || 'N/A'
+      const customerName = source.customerName || order.userName || source.userId?.name || 'Unknown'
+      const customerPhone = source.customerPhone || order.userNumber || source.userId?.phone || 'N/A'
+      const restaurantName = source.restaurantName || source.restaurantId?.restaurantName || order.restaurantName || 'Unknown Restaurant'
+      const restaurantAddress = source.restaurantId?.address || 'N/A'
+      const deliveryBoyName = order.deliveryBoyName || source.deliveryPartnerName || 'N/A'
+      const deliveryBoyPhone = order.deliveryBoyNumber || source.deliveryPartnerPhone || 'N/A'
+      const items = source.cart?.items || source.items || []
+      const totalAmount = source.orderAmount || source.totalAmount || 0
+      const paymentStatus = source.paymentStatus || 'N/A'
+      const orderStatus = source.orderStatus || source.status || 'N/A'
+      const date = source.createdAt ? new Date(source.createdAt).toLocaleString() : (order.orderDate + " " + order.orderTime)
+
+      // Color Palette
+      const primaryColor = [37, 99, 235] // blue-600 (Theme Color)
+      const secondaryColor = [71, 85, 105] // slate-600
+      const textColor = [30, 41, 59] // slate-800
+
+      // Header
+      doc.setFillColor(...primaryColor)
+      doc.rect(0, 0, 210, 40, 'F')
       
-      // Order ID
-      doc.setFontSize(12)
-      doc.setTextColor(100, 100, 100)
-      const orderId = order.orderId || order.id || order.subscriptionId || 'N/A'
-      doc.text(`Order ID: ${orderId}`, 105, 28, { align: 'center' })
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(24)
+      doc.setFont(undefined, 'bold')
+      doc.text('INVOICE', 14, 25)
       
-      // Date
       doc.setFontSize(10)
-      const orderDate = order.date && order.time ? `${order.date}, ${order.time}` : (order.date || new Date().toLocaleDateString())
-      doc.text(`Date: ${orderDate}`, 105, 34, { align: 'center' })
+      doc.setFont(undefined, 'normal')
+      doc.text(`Order ID: #${orderId}`, 14, 32)
+      doc.text(`Date: ${date}`, 140, 32)
+
+      let startY = 50
+
+      // Information Sections
+      doc.setTextColor(...textColor)
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'bold')
+      doc.text('Customer Details', 14, startY)
+      doc.text('Restaurant Details', 110, startY)
       
-      let startY = 45
+      startY += 6
+      doc.setDrawColor(226, 232, 240)
+      doc.line(14, startY, 100, startY)
+      doc.line(110, startY, 196, startY)
       
-      // Customer Information
-      if (order.customerName || order.customerPhone) {
-        doc.setFontSize(12)
-        doc.setTextColor(30, 30, 30)
-        doc.text('Customer Information', 14, startY)
-        startY += 8
-        
-        doc.setFontSize(10)
-        doc.setTextColor(60, 60, 60)
-        if (order.customerName) {
-          doc.text(`Name: ${order.customerName}`, 14, startY)
-          startY += 6
-        }
-        if (order.customerPhone) {
-          doc.text(`Phone: ${order.customerPhone}`, 14, startY)
-          startY += 6
-        }
-        startY += 5
+      startY += 6
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'normal')
+      doc.setTextColor(...secondaryColor)
+      
+      // Customer Info
+      doc.text(`Name: ${customerName}`, 14, startY)
+      doc.text(`Phone: ${customerPhone}`, 14, startY + 5)
+      if (source.deliveryAddress) {
+        const addr = source.deliveryAddress
+        const addrText = `${addr.address || ""}, ${addr.city || ""}`
+        const splitAddr = doc.splitTextToSize(addrText, 80)
+        doc.text(splitAddr, 14, startY + 10)
       }
+
+      // Restaurant Info
+      doc.text(`Name: ${restaurantName}`, 110, startY)
+      const splitRestAddr = doc.splitTextToSize(`Address: ${restaurantAddress}`, 80)
+      doc.text(splitRestAddr, 110, startY + 5)
       
-      // Restaurant Information
-      if (order.restaurant) {
-        doc.setFontSize(12)
-        doc.setTextColor(30, 30, 30)
-        doc.text('Restaurant', 14, startY)
-        startY += 8
-        
+      startY += 25
+
+      // Delivery Partner info if exists
+      if (deliveryBoyName !== 'N/A') {
+        doc.setFontSize(11)
+        doc.setFont(undefined, 'bold')
+        doc.setTextColor(...textColor)
+        doc.text('Delivery Partner', 14, startY)
+        startY += 5
         doc.setFontSize(10)
-        doc.setTextColor(60, 60, 60)
-        doc.text(order.restaurant, 14, startY)
+        doc.setFont(undefined, 'normal')
+        doc.setTextColor(...secondaryColor)
+        doc.text(`${deliveryBoyName} (${deliveryBoyPhone})`, 14, startY)
         startY += 10
       }
-      
-      // Order Items Table
-      if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-        const tableData = order.items.map((item) => [
+
+      // Items Table
+      if (items.length > 0) {
+        const tableData = items.map((item, index) => [
+          index + 1,
+          item.foodName || item.name || 'Item',
           item.quantity || 1,
-          item.name || item.itemName || item.title || 'Unknown Item',
-          `?${(item.price || 0).toFixed(2)}`,
-          `?${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
+          `Rs. ${(item.price || 0).toFixed(2)}`,
+          `Rs. ${((item.quantity || 1) * (item.price || 0)).toFixed(2)}`
         ])
-        
+
         autoTable(doc, {
           startY: startY,
-          head: [['Qty', 'Item Name', 'Price', 'Total']],
+          head: [['#', 'Item', 'Qty', 'Price', 'Total']],
           body: tableData,
-          theme: 'striped',
+          theme: 'grid',
           headStyles: {
-            fillColor: [59, 130, 246],
+            fillColor: primaryColor,
             textColor: 255,
+            fontSize: 10,
             fontStyle: 'bold',
-            fontSize: 10
-          },
-          bodyStyles: {
-            fontSize: 9,
-            textColor: [30, 30, 30]
-          },
-          alternateRowStyles: {
-            fillColor: [245, 247, 250]
-          },
-          styles: {
-            cellPadding: 4,
-            lineColor: [200, 200, 200],
-            lineWidth: 0.5
+            halign: 'center'
           },
           columnStyles: {
-            0: { cellWidth: 20, halign: 'center' },
-            1: { cellWidth: 80 },
-            2: { cellWidth: 35, halign: 'right' },
-            3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 20, halign: 'center' },
+            3: { cellWidth: 30, halign: 'right' },
+            4: { cellWidth: 30, halign: 'right' }
+          },
+          styles: {
+            fontSize: 9,
+            cellPadding: 4
           },
           margin: { left: 14, right: 14 }
         })
         
         startY = doc.lastAutoTable.finalY + 10
+      } else {
+        doc.setFontSize(10)
+        doc.text('No items data available in this view.', 14, startY)
+        startY += 10
+      }
+
+      // Summary
+      const summaryX = 140
+      doc.setFontSize(10)
+      doc.setTextColor(...secondaryColor)
+      
+      if (source.itemTotal) {
+        doc.text('Item Total:', summaryX, startY)
+        doc.text(`Rs. ${source.itemTotal.toFixed(2)}`, 196, startY, { align: 'right' })
+        startY += 5
       }
       
-      // Total Amount
-      if (order.totalAmount) {
-        doc.setFontSize(14)
-        doc.setTextColor(30, 30, 30)
+      if (source.deliveryFee) {
+        doc.text('Delivery Fee:', summaryX, startY)
+        doc.text(`Rs. ${source.deliveryFee.toFixed(2)}`, 196, startY, { align: 'right' })
+        startY += 5
+      }
+
+      if (source.taxAmount) {
+        doc.text('Tax:', summaryX, startY)
+        doc.text(`Rs. ${source.taxAmount.toFixed(2)}`, 196, startY, { align: 'right' })
+        startY += 5
+      }
+
+      doc.setDrawColor(...primaryColor)
+      doc.setLineWidth(0.5)
+      doc.line(summaryX, startY, 196, startY)
+      startY += 7
+
+      doc.setFontSize(14)
+      doc.setTextColor(...textColor)
+      doc.setFont(undefined, 'bold')
+      doc.text('Grand Total:', summaryX, startY)
+      doc.text(`Rs. ${(totalAmount).toFixed(2)}`, 196, startY, { align: 'right' })
+      
+      startY += 15
+
+      // Footer Info
+      doc.setFontSize(10)
+      doc.setFont(undefined, 'bold')
+      doc.text('Order Details', 14, startY)
+      startY += 6
+      doc.setFont(undefined, 'normal')
+      doc.setTextColor(...secondaryColor)
+      doc.text(`Payment: ${paymentStatus.toUpperCase()}`, 14, startY)
+      doc.text(`Status: ${orderStatus.toUpperCase()}`, 14, startY + 5)
+
+      // Cancellation Reason
+      const reason = source.cancellationReason || source.rejectionReason
+      if (reason) {
+        startY += 12
+        doc.setTextColor(220, 38, 38)
         doc.setFont(undefined, 'bold')
-        const totalAmount = typeof order.totalAmount === 'number' ? order.totalAmount.toFixed(2) : order.totalAmount
-        doc.text(`Total Amount: ?${totalAmount}`, 14, startY)
-        startY += 8
-      }
-      
-      // Payment Status
-      if (order.paymentStatus) {
-        doc.setFontSize(10)
-        doc.setTextColor(100, 100, 100)
+        doc.text('Cancellation Reason:', 14, startY)
         doc.setFont(undefined, 'normal')
-        doc.text(`Payment Status: ${order.paymentStatus}`, 14, startY)
-        startY += 6
+        doc.text(reason, 14, startY + 5)
       }
-      
-      // Order Status
-      if (order.orderStatus) {
-        doc.setFontSize(10)
-        doc.text(`Order Status: ${order.orderStatus}`, 14, startY)
-      }
-      
-      // Save the PDF instantly
-      const filename = `Invoice_${orderId}_${new Date().toISOString().split("T")[0]}.pdf`
-      doc.save(filename)
+
+      // Footer Note
+      doc.setTextColor(150, 150, 150)
+      doc.setFontSize(8)
+      doc.text('Thank you for ordering with us!', 105, 285, { align: 'center' })
+
+      window.open(doc.output('bloburl'), '_blank')
     } catch (error) {
       debugError("Error generating PDF invoice:", error)
-      alert("Failed to download PDF invoice. Please try again.")
+      alert("Failed to generate PDF invoice. Please check if items data is available.")
     }
   }
 

@@ -375,3 +375,14 @@ export async function resendDeliveryNotificationRestaurantController(req, res, n
         next(err);
     }
 }
+export async function updateOrderStatusAdminController(req, res, next) {
+    try {
+        const adminId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const dto = validateOrderStatusDto(req.body);
+        const order = await orderService.updateOrderStatusAdmin(orderId, dto.orderStatus, adminId, { reason: req.body.reason });
+        return sendResponse(res, 200, 'Order status updated by admin', { order });
+    } catch (err) {
+        next(err);
+    }
+}

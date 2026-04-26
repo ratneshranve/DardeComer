@@ -400,6 +400,14 @@ export function useOrdersManagement(orders, statusKey, title) {
       doc.text(`Status: ${orderStatus}`, pageWidth - 14, 26, { align: "right" })
       doc.text(`Payment: ${paymentStatus}`, pageWidth - 14, 32, { align: "right" })
 
+      // Cancellation Reason if applicable
+      if (order.cancellationReason || order.rejectionReason) {
+        const reason = order.cancellationReason || order.rejectionReason
+        doc.setFontSize(8)
+        doc.setTextColor(255, 200, 200)
+        doc.text(`Reason: ${reason}`, pageWidth - 14, 38, { align: "right" })
+      }
+
       doc.setDrawColor(226, 232, 240)
       doc.setFillColor(248, 250, 252)
 
@@ -575,7 +583,8 @@ export function useOrdersManagement(orders, statusKey, title) {
       doc.text("Includes customer, restaurant, and delivery partner details.", pageWidth - 14, footerY, { align: "right" })
 
       const filename = `Invoice_${orderId}_${new Date().toISOString().split("T")[0]}.pdf`
-      doc.save(filename)
+      // doc.save(filename)
+      window.open(doc.output('bloburl'), '_blank')
     } catch (error) {
       debugError("Error generating PDF invoice:", error)
       alert("Failed to download PDF invoice. Please try again.")

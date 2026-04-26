@@ -221,6 +221,8 @@ router.patch('/dining/restaurants/:restaurantId', diningAdminController.updateDi
 router.get('/orders', orderController.listOrdersAdminController);
 router.get('/orders/:orderId', orderController.getOrderByIdAdminController);
 router.delete('/orders/:orderId', orderController.deleteOrderAdminController);
+router.patch('/orders/:orderId/status', orderController.updateOrderStatusAdminController);
+router.patch('/orders/:orderId/assign-delivery', orderController.assignDeliveryPartnerController);
 
 // ----- CMS Pages (About + legal) -----
 router.get('/pages-social-media/:key', getAdminPageController);

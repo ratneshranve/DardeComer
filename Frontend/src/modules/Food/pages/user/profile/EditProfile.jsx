@@ -31,9 +31,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs from 'dayjs'
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 const EDIT_PROFILE_DRAFT_KEY = "user_edit_profile_draft"
 
 
@@ -350,20 +350,20 @@ export default function EditProfile() {
       setIsUploadingImage(true)
       // Call updateProfile with empty string to remove the image
       const response = await userAPI.updateProfile({ profileImage: "" })
-      
+
       if (response?.data?.success) {
         setProfileImage("")
         setImagePreview("")
-        
+
         // Update context and local storage
         const updatedProfile = {
           ...(userProfile || {}),
           profileImage: "",
         }
-        
+
         updateUserProfile(updatedProfile)
         saveProfileToStorage(updatedProfile)
-        
+
         // Update draft if it exists
         const draft = loadEditProfileDraft()
         if (draft) {
@@ -706,8 +706,8 @@ export default function EditProfile() {
           onClick={handleUpdate}
           disabled={!hasChanges || isSaving || isUploadingImage}
           className={`w-full h-14 rounded-xl font-semibold text-base transition-all mb-2 ${hasChanges && !isSaving && !isUploadingImage
-              ? 'bg-[#EB590E] hover:bg-[#D94F0C] text-white'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            ? 'bg-[#EB590E] hover:bg-[#D94F0C] text-white'
+            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
         >
           {isSaving ? (

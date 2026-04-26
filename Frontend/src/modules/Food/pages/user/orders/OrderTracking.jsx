@@ -42,7 +42,7 @@ const DeliveryTrackingMap = lazy(() => import("@food/components/user/DeliveryTra
 // Fallback definitions in case imports fail at runtime or are shadowed
 const DEFAULT_CUSTOMER_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#10B981"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
 const SAFE_CUSTOMER_PIN = typeof CUSTOMER_PIN_SVG !== 'undefined' ? CUSTOMER_PIN_SVG : DEFAULT_CUSTOMER_PIN;
-const DEFAULT_RESTAURANT_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#FF6B35"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
+const DEFAULT_RESTAURANT_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#001A94"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
 const SAFE_RESTAURANT_PIN = typeof RESTAURANT_PIN_SVG !== 'undefined' ? RESTAURANT_PIN_SVG : DEFAULT_RESTAURANT_PIN;
 
 const debugLog = (...args) => console.log('[OrderTracking]', ...args)
@@ -219,6 +219,15 @@ const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow
   </motion.button>
 )
 
+const getSourceLabel = (businessModel) => {
+  const raw = String(businessModel || "").trim().toLowerCase();
+  const compact = raw.replace(/[_\-\s]+/g, "");
+  if (compact === "homekitchen" || compact === "cloudkitchen" || compact === "kitchen") {
+    return "Home Kitchen";
+  }
+  return "Restaurant";
+};
+
 const getRestaurantCoordsFromOrder = (apiOrder, fallback = null) => {
   if (
     apiOrder?.restaurantId?.location?.coordinates &&
@@ -288,7 +297,13 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     id: apiOrder?.orderId || apiOrder?._id,
     mongoId: apiOrder?._id || null,
     orderId: apiOrder?.orderId || apiOrder?._id,
-    restaurant: apiOrder?.restaurantName || previousOrder?.restaurant || 'Restaurant',
+    restaurant: 
+      apiOrder?.restaurantName || 
+      apiOrder?.restaurantId?.restaurantName || 
+      apiOrder?.restaurantId?.name || 
+      apiOrder?.restaurant?.name || 
+      previousOrder?.restaurant || 
+      'Restaurant',
     restaurantPhone:
       apiOrder?.restaurantPhone ||
       apiOrder?.restaurantId?.phone ||
@@ -298,6 +313,7 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
       previousOrder?.restaurantPhone ||
       '',
     restaurantAddress,
+    sourceLabel: apiOrder?.sourceLabel || getSourceLabel(apiOrder?.businessModel || apiOrder?.restaurantId?.businessModel || apiOrder?.restaurant?.businessModel),
     restaurantId: apiOrder?.restaurantId || previousOrder?.restaurantId || null,
     userId: apiOrder?.userId || previousOrder?.userId || null,
     userName: apiOrder?.userName || apiOrder?.userId?.name || apiOrder?.userId?.fullName || previousOrder?.userName || '',
@@ -354,12 +370,12 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
       const prevDV = previousOrder?.deliveryVerification || null
       const apiDV = apiOrder?.deliveryVerification || null
       const handoverOtp = apiOrder?.handoverOtp || null
-      
+
       if (!prevDV && !apiDV && !handoverOtp) return null
 
       const prevDropOtp = prevDV?.dropOtp || null
       const apiDropOtp = apiDV?.dropOtp || null
-      
+
       const merged = {
         ...(prevDV || {}),
         ...(apiDV || {})
@@ -412,7 +428,7 @@ function mapOrderToTrackingUiStatus(orderLike) {
 
   // Live Ride / Phase-based mapping (Highest priority for precision)
   const isRiderAccepted = orderLike.dispatch?.status === "accepted" || orderLike.assignmentInfo?.status === "accepted" || orderLike.deliveryPartner?.status === "accepted";
-  
+
   if (phase === "reached_drop" || phase === "at_drop" || statusRaw === "at_drop") return "at_drop"
   if (phase === "en_route_to_delivery" || statusRaw === "picked_up" || statusRaw === "out_for_delivery") return "on_way"
   if (!isTakeAway && phase === "at_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "at_pickup"
@@ -446,7 +462,7 @@ export default function OrderTracking() {
   const [isSocketConnected, setIsSocketConnected] = useState(
     () => (typeof window !== 'undefined' ? Boolean(window.orderSocketConnected) : false)
   )
-  
+
   // State for order data
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -520,10 +536,10 @@ export default function OrderTracking() {
         if (!prev) return prev
         const prevDV = prev.deliveryVerification || {}
         const prevDropOtp = prevDV.dropOtp || {}
-        
+
         // Only update if code actually changed to avoid render loops
         if (prevDropOtp.code === otp) return prev;
-        
+
         return {
           ...prev,
           deliveryVerification: {
@@ -756,14 +772,14 @@ export default function OrderTracking() {
       '';
 
     const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
-    
+
     if (!cleanPhone || cleanPhone.length < 5) {
       toast.error('Restaurant phone number not available');
       return;
     }
 
     debugLog('?? Attempting to call restaurant:', cleanPhone);
-    
+
     // Most compatible way to trigger dialer on overall mobile/web environments:
     // Create a temporary hidden anchor and programmatically click it.
     try {
@@ -782,7 +798,7 @@ export default function OrderTracking() {
 
   const handleCallRider = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
-    
+
     const rawPhone = order?.deliveryPartner?.phone || '';
     const cleanPhone = String(rawPhone).replace(/[^\d+]/g, '');
 
@@ -792,7 +808,7 @@ export default function OrderTracking() {
     }
 
     debugLog('?? Attempting to call rider:', cleanPhone);
-    
+
     try {
       const link = document.createElement('a');
       link.href = `tel:${cleanPhone}`;
@@ -869,6 +885,29 @@ export default function OrderTracking() {
         }
 
         if (finalOrderData) {
+          // If restaurant info is missing but we have an ID, fetch it separately (like UserOrderDetails does)
+          if (typeof finalOrderData.restaurantId === 'string' && !finalOrderData.restaurantName && !finalOrderData.restaurant) {
+            try {
+              const resResponse = await restaurantAPI.getRestaurantById(finalOrderData.restaurantId);
+              if (resResponse?.data?.success && resResponse.data.data?.restaurant) {
+                const rest = resResponse.data.data.restaurant;
+                finalOrderData.restaurantName = rest.restaurantName || rest.name;
+                finalOrderData.restaurantPhone = rest.ownerPhone || rest.primaryContactNumber || rest.phone;
+                finalOrderData.restaurantAddress = 
+                  rest.location?.formattedAddress || 
+                  rest.location?.address || 
+                  rest.address || 
+                  rest.addressLine1;
+                
+                if (rest.location?.coordinates) {
+                   finalOrderData.restaurantLocation = { coordinates: rest.location.coordinates };
+                }
+              }
+            } catch (err) {
+              debugWarn('Failed to fetch restaurant details in poll:', err);
+            }
+          }
+
           setOrder(prev => {
             const transformedOrder = transformOrderForTracking(finalOrderData, prev);
             const ui = mapOrderToTrackingUiStatus(transformedOrder);
@@ -895,7 +934,7 @@ export default function OrderTracking() {
               setLoading(false);
               return;
             }
-          } catch {}
+          } catch { }
           if (!isSubscribed) return;
           setError(err.response?.data?.message || 'Failed to fetch order details');
           terminalPollStopRef.current = true;
@@ -929,7 +968,7 @@ export default function OrderTracking() {
       // Delegate to the latest instance of our polling function capturing current state
       if (pollRef.current) pollRef.current(false);
     };
-    
+
     const pollInterval = (isSocketConnected || window.orderSocketConnected) ? 12000 : 5000;
     const interval = setInterval(tick, pollInterval);
 
@@ -1150,7 +1189,9 @@ export default function OrderTracking() {
       if (response.data?.success && response.data.data?.order) {
         const apiOrder = response.data.data.order
 
-        // Extract restaurant location coordinates with multiple fallbacks
+        /**
+         * Robustly extract restaurant location coordinates from API order or fallback.
+         */
         let restaurantCoords = null;
         let restaurantAddress = null;
 
@@ -1234,55 +1275,55 @@ export default function OrderTracking() {
     placed: {
       title: "Order Placed",
       subtitle: "Waiting for restaurant to accept",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'food'
     },
     confirmed: {
       title: "Order Confirmed",
       subtitle: "Restaurant has accepted your order",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'food'
     },
     preparing: {
       title: "Food is being prepared",
       subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Cooking your meal",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'food'
     },
     assigned: {
       title: "Rider is arriving",
       subtitle: "A delivery partner is arriving at the restaurant",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'rider'
     },
     at_pickup: {
       title: "Rider at restaurant",
       subtitle: "Rider is waiting for your order",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'rider'
     },
     ready: {
       title: "Handover in progress",
       subtitle: "Rider is picking up your order",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'rider'
     },
     on_way: {
       title: "Out for delivery",
       subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Rider is out for delivery",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'rider'
     },
     at_drop: {
       title: "Arrived at location",
       subtitle: "Please come to the door",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'rider'
     },
     delivered: {
       title: "Order delivered",
       subtitle: "Enjoy your meal!",
-      color: "bg-green-600",
+      color: "bg-blue-600",
       iconType: 'delivered'
     },
     cancelled: {
@@ -1388,7 +1429,12 @@ export default function OrderTracking() {
               <ArrowLeft className="w-6 h-6" />
             </motion.button>
           </Link>
-          <h2 className="font-semibold text-lg">{order.restaurant}</h2>
+          <div className="flex flex-col items-center flex-1 min-w-0 px-2">
+            <h2 className="font-semibold text-lg truncate w-full text-center">{order.restaurant}</h2>
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 leading-none">
+              {order.sourceLabel}
+            </span>
+          </div>
           <motion.button
             className="w-10 h-10 flex items-center justify-center cursor-pointer"
             whileTap={{ scale: 0.9 }}
@@ -1421,7 +1467,7 @@ export default function OrderTracking() {
               {orderStatus === 'preparing' && (
                 <>
                   <span className="w-1 h-1 rounded-full bg-white" />
-                  <span className="text-sm text-orange-200">On time</span>
+                  <span className="text-sm text-blue-200">On time</span>
                 </>
               )}
               <motion.button
@@ -1430,11 +1476,11 @@ export default function OrderTracking() {
                 animate={{ rotate: isRefreshing ? 360 : 0 }}
                 transition={{ duration: 0.5 }}
               >
-              <RefreshCw className="w-4 h-4" />
-            </motion.button>
-          </motion.div>
-        </div>
-      )}
+                <RefreshCw className="w-4 h-4" />
+              </motion.button>
+            </motion.div>
+          </div>
+        )}
       </motion.div>
 
       {/* Map Section */}
@@ -1456,7 +1502,7 @@ export default function OrderTracking() {
         {/* 1-minute cancellation window after admin acceptance */}
         {isAdminAccepted && isEditWindowOpen && (
           <motion.div
-            className="bg-white rounded-xl p-4 shadow-sm border border-orange-100"
+            className="bg-white rounded-xl p-4 shadow-sm border border-blue-100"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
@@ -1465,7 +1511,7 @@ export default function OrderTracking() {
               <p className="text-sm font-semibold text-gray-900">
                 Cancel order
               </p>
-              <span className={`text-sm font-bold px-2 py-1 rounded-md ${isEditWindowOpen ? 'bg-orange-50 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`text-sm font-bold px-2 py-1 rounded-md ${isEditWindowOpen ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
                 {isEditWindowOpen ? editWindowText : 'Expired'}
               </span>
             </div>
@@ -1489,23 +1535,23 @@ export default function OrderTracking() {
           orderStatus !== 'delivered' &&
           orderStatus !== 'cancelled' &&
           ((!isTakeAwayOrder && isRiderAtDrop) || isTakeAwayOrder) && (
-          <motion.div
-            className="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.28 }}
-          >
-            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-              {isTakeAwayOrder ? 'Pickup OTP' : 'Delivery OTP'}
-            </p>
-            <p className="text-2xl font-extrabold text-blue-900 mt-1 tracking-widest">{customerDeliveryOtp}</p>
-            <p className="text-xs text-blue-700 mt-1">
-              {isTakeAwayOrder
-                ? 'Share this 4-digit OTP with the Home Kitchen while collecting your order.'
-                : 'Share this 4-digit OTP with your delivery partner at drop-off.'}
-            </p>
-          </motion.div>
-        )}
+            <motion.div
+              className="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.28 }}
+            >
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                {isTakeAwayOrder ? 'Pickup OTP' : 'Delivery OTP'}
+              </p>
+              <p className="text-2xl font-extrabold text-blue-900 mt-1 tracking-widest">{customerDeliveryOtp}</p>
+              <p className="text-xs text-blue-700 mt-1">
+                {isTakeAwayOrder
+                  ? 'Share this 4-digit OTP with the Home Kitchen while collecting your order.'
+                  : 'Share this 4-digit OTP with your delivery partner at drop-off.'}
+              </p>
+            </motion.div>
+          )}
 
         {/* Dynamic Status Card */}
         <motion.div
@@ -1515,16 +1561,15 @@ export default function OrderTracking() {
           transition={{ delay: 0.3 }}
         >
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm border border-gray-100 ${
-              currentStatus.iconType === 'rider' ? 'bg-blue-50' : 
-              currentStatus.iconType === 'cancelled' ? 'bg-red-50' : 
-              currentStatus.iconType === 'delivered' ? 'bg-green-50' : 
-              'bg-orange-50'
-            }`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm border border-gray-100 ${currentStatus.iconType === 'rider' ? 'bg-blue-50' :
+                currentStatus.iconType === 'cancelled' ? 'bg-red-50' :
+                  currentStatus.iconType === 'delivered' ? 'bg-green-50' :
+                    'bg-blue-50'
+              }`}>
               {currentStatus.iconType === 'rider' ? (
-                <div 
-                  dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }} 
-                  className="w-full h-full" 
+                <div
+                  dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }}
+                  className="w-full h-full"
                 />
               ) : currentStatus.iconType === 'cancelled' ? (
                 <div className="w-full h-full flex items-center justify-center p-2 text-red-500">
@@ -1562,9 +1607,9 @@ export default function OrderTracking() {
                 {order.deliveryPartner?.avatar ? (
                   <img src={order.deliveryPartner.avatar} alt="Rider" className="w-full h-full object-cover" />
                 ) : (
-                  <div 
-                    dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }} 
-                    className="w-full h-full p-1" 
+                  <div
+                    dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }}
+                    className="w-full h-full p-1"
                   />
                 )}
               </div>
@@ -1724,18 +1769,23 @@ export default function OrderTracking() {
           transition={{ delay: 0.75 }}
         >
           <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200">
-            <div className="w-12 h-12 rounded-full bg-orange-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center flex-shrink-0">
               <div
                 dangerouslySetInnerHTML={{ __html: SAFE_RESTAURANT_PIN }}
                 className="w-7 h-7 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
               />
             </div>
-            <div className="flex-1">
-              <p className="font-semibold text-gray-900">{order.restaurant}</p>
-              <p className="text-sm text-gray-500">{order.restaurantAddress || 'Restaurant location'}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-gray-900 truncate">{order.restaurant}</p>
+                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase tracking-wider">
+                  {order.sourceLabel}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 truncate">{order.restaurantAddress || 'Restaurant location'}</p>
             </div>
             <motion.button
-              className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center"
+              className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"
               onClick={handleCallRestaurant}
               whileTap={{ scale: 0.9 }}
             >
@@ -1875,7 +1925,9 @@ export default function OrderTracking() {
         <DialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white rounded-2xl p-0 overflow-hidden border-none outline-none">
           <DialogHeader className="p-6 pb-4 border-b border-gray-100 pr-12">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold text-gray-900">Order Details</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-gray-900">
+                Order from {order.restaurant}
+              </DialogTitle>
             </div>
           </DialogHeader>
 
@@ -1908,10 +1960,10 @@ export default function OrderTracking() {
 
             {/* Delivery Instructions Section */}
             {!isTakeAwayOrder && order?.note && (
-              <div className="bg-orange-50/50 rounded-xl p-4 border border-orange-100 flex gap-3">
-                <MessageSquare className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+              <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 flex gap-3">
+                <MessageSquare className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Delivery Instructions</p>
+                  <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Delivery Instructions</p>
                   <p className="text-sm text-gray-800 leading-relaxed font-medium capitalize">
                     {order.note}
                   </p>
@@ -1946,7 +1998,7 @@ export default function OrderTracking() {
             {/* Bill Summary */}
             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
               <p className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">Bill Summary</p>
-              
+
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-600">Item Total</span>
                 <span className="text-gray-900 font-medium">₹{Number(order?.subtotal || 0).toFixed(2)}</span>
@@ -2018,7 +2070,7 @@ export default function OrderTracking() {
       {!isTakeAwayOrder && <Dialog open={isInstructionsModalOpen} onOpenChange={setIsInstructionsModalOpen}>
         <DialogContent className="sm:max-w-md w-[95vw] rounded-3xl p-6 border-0 shadow-2xl bg-white max-h-[90vh] overflow-y-auto z-[200]">
           <DialogHeader className="mb-2">
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-400 bg-clip-text text-transparent">
+            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
               Delivery Instructions
             </DialogTitle>
           </DialogHeader>
@@ -2030,12 +2082,12 @@ export default function OrderTracking() {
               value={deliveryInstructions}
               onChange={(e) => setDeliveryInstructions(e.target.value)}
               placeholder="E.g. Ring the doorbell, leave at the front desk..."
-              className="min-h-[120px] resize-none border-gray-200 focus:ring-orange-500 rounded-xl bg-gray-50 text-base"
+              className="min-h-[120px] resize-none border-gray-200 focus:ring-blue-500 rounded-xl bg-gray-50 text-base"
             />
-            <Button 
-              onClick={handleUpdateInstructions} 
+            <Button
+              onClick={handleUpdateInstructions}
               disabled={isUpdatingInstructions}
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold h-12 rounded-xl border-none"
+              className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold h-12 rounded-xl border-none"
             >
               {isUpdatingInstructions ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Instructions"}
             </Button>

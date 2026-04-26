@@ -20,10 +20,18 @@ import { toast } from "sonner"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
+const getSourceLabel = (businessModel) => {
+  const raw = String(businessModel || "").trim().toLowerCase();
+  const compact = raw.replace(/[_\-\s]+/g, "");
+  if (compact === "homekitchen" || compact === "cloudkitchen" || compact === "kitchen") {
+    return "Home Kitchen";
+  }
+  return "Restaurant";
+};
 
 export default function UserOrderDetails() {
   const navigate = useNavigate()
@@ -54,11 +62,23 @@ export default function UserOrderDetails() {
 
         setOrder(orderData)
 
-        // If restaurantId is just a string (not populated), fetch restaurant details separately
-        const restaurantId = orderData.restaurantId
-        if (restaurantId && typeof restaurantId === 'string' && !orderData.restaurant) {
+        // Determine restaurant ID for potential fetching
+        const rId = typeof orderData.restaurantId === 'string' 
+          ? orderData.restaurantId 
+          : (orderData.restaurantId?._id || (typeof orderData.restaurant === 'object' ? orderData.restaurant?._id : orderData.restaurant))
+
+        // Check if we already have the name
+        const hasName = !!(
+          orderData.restaurantName || 
+          orderData.restaurantId?.restaurantName || 
+          orderData.restaurantId?.name ||
+          (typeof orderData.restaurant === 'object' && (orderData.restaurant?.restaurantName || orderData.restaurant?.name))
+        )
+
+        // If we have an ID but no name, fetch restaurant details separately
+        if (rId && !hasName) {
           try {
-            const restaurantResponse = await restaurantAPI.getRestaurantById(restaurantId)
+            const restaurantResponse = await restaurantAPI.getRestaurantById(rId)
             if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
               setRestaurant(restaurantResponse.data.data.restaurant)
             } else if (restaurantResponse?.data?.restaurant) {
@@ -66,7 +86,6 @@ export default function UserOrderDetails() {
             }
           } catch (restaurantError) {
             debugWarn("Failed to fetch restaurant details:", restaurantError)
-            // Don't show error toast, just log it - order details can still be shown
           }
         }
       } catch (error) {
@@ -109,7 +128,7 @@ export default function UserOrderDetails() {
           <p className="text-gray-700 text-sm font-medium">Order not found</p>
           <button
             onClick={() => navigate("/user/orders")}
-            className="px-4 py-2 rounded-lg bg-[#EB590E] text-white text-sm font-semibold"
+            className="px-4 py-2 rounded-lg bg-[#001A94] text-white text-sm font-semibold"
           >
             Back to Orders
           </button>
@@ -122,7 +141,12 @@ export default function UserOrderDetails() {
   // Use fetched restaurant data if available, otherwise use order.restaurantId or order.restaurant
   const restaurantObj = restaurant || order.restaurantId || order.restaurant || {}
   const restaurantName =
-    order.restaurantName || restaurantObj.name || "Restaurant"
+    order.restaurantName ||
+    (typeof order.restaurantId === 'object' && (order.restaurantId.restaurantName || order.restaurantId.name)) ||
+    (typeof order.restaurant === 'object' && (order.restaurant.restaurantName || order.restaurant.name)) ||
+    restaurantObj.restaurantName ||
+    restaurantObj.name ||
+    "Restaurant"
 
   // Build restaurant address (try restaurant fields first, then fall back)
   const restaurantLocation = (() => {
@@ -201,6 +225,8 @@ export default function UserOrderDetails() {
     restaurantObj.contactNumber ||
     order.restaurantPhone ||
     ""
+
+  const sourceLabel = getSourceLabel(order.businessModel || restaurantObj.businessModel || "")
 
   const handleCallRestaurant = () => {
     if (!restaurantPhone) {
@@ -405,7 +431,12 @@ export default function UserOrderDetails() {
                 className="w-10 h-10 rounded-lg object-cover"
               />
               <div>
-                <h3 className="font-semibold text-gray-800">{restaurantName}</h3>
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                  {restaurantName}
+                  <span className="text-[10px] font-bold uppercase bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded tracking-wider">
+                    {sourceLabel}
+                  </span>
+                </h3>
                 <p className="text-xs text-gray-500">{restaurantLocation}</p>
               </div>
             </div>
@@ -413,7 +444,7 @@ export default function UserOrderDetails() {
             <button
               type="button"
               onClick={handleCallRestaurant}
-              className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#EB590E] hover:bg-orange-50"
+              className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-[#001A94] hover:bg-blue-50"
             >
               <Phone className="w-4 h-4" />
             </button>
@@ -431,8 +462,8 @@ export default function UserOrderDetails() {
           <div className="flex items-center gap-2 mb-4">
             <span
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${sendsCutlery
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-orange-50 text-orange-700 border border-orange-200"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-blue-50 text-blue-700 border border-blue-200"
                 }`}
             >
               {sendsCutlery ? "Send cutlery" : "Don't send cutlery"}
@@ -475,7 +506,7 @@ export default function UserOrderDetails() {
             <button
               type="button"
               onClick={handleDownloadSummary}
-              className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center text-[#EB590E] hover:bg-orange-100"
+              className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-[#001A94] hover:bg-blue-100"
             >
               <Download className="w-4 h-4" />
             </button>
@@ -504,11 +535,11 @@ export default function UserOrderDetails() {
             <div className="flex justify-between">
               <span className="text-gray-400 font-medium">Delivery fee</span>
               {pricing.deliveryFee === 0 && (
-                <span className="text-[#EB590E] text-[10px] font-bold border border-[#EB590E] px-1 rounded ml-1">
+                <span className="text-[#001A94] text-[10px] font-bold border border-[#001A94] px-1 rounded ml-1">
                   FREE
                 </span>
               )}
-              <span className="text-[#EB590E] font-medium uppercase">
+              <span className="text-[#001A94] font-medium uppercase">
                 {pricing.deliveryFee ? `₹${Number(pricing.deliveryFee).toFixed(2)}` : "Free"}
               </span>
             </div>
@@ -535,7 +566,7 @@ export default function UserOrderDetails() {
 
           {/* Savings Banner */}
           {savings > 0 && (
-            <div className="relative bg-orange-50 p-3 pb-4 mt-2">
+            <div className="relative bg-blue-50 p-3 pb-4 mt-2">
               <div className="absolute -top-1.5 left-0 w-full overflow-hidden leading-none">
                 <svg
                   className="relative block w-[calc(100%+1.3px)] h-[8px]"
@@ -551,7 +582,7 @@ export default function UserOrderDetails() {
                 </svg>
               </div>
 
-              <div className="flex items-center justify-center gap-2 pt-1 text-[#EB590E] font-bold text-sm">
+              <div className="flex items-center justify-center gap-2 pt-1 text-[#001A94] font-bold text-sm">
                 <span>??</span>
                 <span>
                   You saved ₹{Number(savings).toFixed(2)} on this order!
@@ -626,7 +657,7 @@ export default function UserOrderDetails() {
         <button
           type="button"
           onClick={() => handleReorder(order)}
-          className="flex-1 bg-[#EB590E] text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-[#D94F0C] transition-colors"
+          className="flex-1 bg-[#001A94] text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-[#00157a] transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
           Reorder
@@ -634,7 +665,7 @@ export default function UserOrderDetails() {
         <button
           type="button"
           onClick={handleDownloadSummary}
-          className="flex-1 bg-white border border-[#EB590E] text-[#EB590E] py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors"
+          className="flex-1 bg-white border border-[#001A94] text-[#001A94] py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"
         >
           <Download className="w-4 h-4" />
           Invoice
@@ -668,7 +699,7 @@ export default function UserOrderDetails() {
               debugLog("Navigating to complaint page with orderId:", orderIdString)
               navigate(`/user/complaints/submit/${encodeURIComponent(orderIdString)}`)
             }}
-            className="w-full bg-orange-50 border border-orange-200 text-orange-700 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-orange-100 transition-colors"
+            className="w-full bg-blue-50 border border-blue-200 text-blue-700 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
           >
             <FileText className="w-4 h-4" />
             Restaurant Complaint

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Monitor, Info, Check, Copy, Edit, ExternalLink, Settings, ArrowUpDown, Columns } from "lucide-react"
+import { Monitor, Info, Check, Copy, Edit, ExternalLink, Settings, ArrowUpDown, Columns, User, Phone, Share2, Mail } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -209,9 +209,9 @@ export default function LoginSetup() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { key: "manualLogin", label: "Manual Login", icon: "??" },
-                  { key: "otpLogin", label: "OTP Login", icon: "??" },
-                  { key: "socialMediaLogin", label: "Social Media Login", icon: "??" }
+                  { key: "manualLogin", label: "Manual Login", icon: <User className="w-5 h-5 text-orange-600" /> },
+                  { key: "otpLogin", label: "OTP Login", icon: <Phone className="w-5 h-5 text-orange-600" /> },
+                  { key: "socialMediaLogin", label: "Social Media Login", icon: <Share2 className="w-5 h-5 text-orange-600" /> }
                 ].map((option) => (
                   <div
                     key={option.key}
@@ -264,9 +264,9 @@ export default function LoginSetup() {
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Choose social media</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { key: "google", label: "Google", icon: "??", color: "blue" },
-                    { key: "facebook", label: "Facebook", icon: "??", color: "blue" },
-                    { key: "apple", label: "Apple", icon: "?", color: "black" }
+                    { key: "google", label: "Google", icon: <span className="text-xl">G</span>, color: "blue" },
+                    { key: "facebook", label: "Facebook", icon: <span className="text-xl">f</span>, color: "blue" },
+                    { key: "apple", label: "Apple", icon: <span className="text-xl">A</span>, color: "black" }
                   ].map((platform) => (
                     <div
                       key={platform.key}
@@ -315,8 +315,8 @@ export default function LoginSetup() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  { key: "emailVerification", label: "Email Verification", icon: "??" },
-                  { key: "phoneVerification", label: "Phone Number Verification", icon: "??" }
+                  { key: "emailVerification", label: "Email Verification", icon: <Mail className="w-5 h-5 text-orange-600" /> },
+                  { key: "phoneVerification", label: "Phone Number Verification", icon: <Phone className="w-5 h-5 text-orange-600" /> }
                 ].map((verify) => (
                   <div
                     key={verify.key}

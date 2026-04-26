@@ -324,7 +324,7 @@ export default function OrdersPage({ statusKey = "all" }) {
           statusKey === "all"
             ? undefined
             : statusKey === "restaurant-cancelled"
-              ? "cancelled"
+              ? "restaurant-cancelled"
               : statusKey,
         cancelledBy: statusKey === "restaurant-cancelled" ? "restaurant" : undefined,
       }
@@ -434,14 +434,17 @@ export default function OrdersPage({ statusKey = "all" }) {
         const s = String(paymentStatusRaw || "").toLowerCase()
         if (s === "refunded") paymentStatus = "Refunded"
         else if (s === "paid" || s === "authorized" || s === "captured" || s === "settled") paymentStatus = "Paid"
-        else if (s === "failed") paymentStatus = "Failed"
+        else if (s === "failed" || s === "rejected") paymentStatus = "Failed"
+        else if (s === "pending" || s === "created") paymentStatus = "Pending"
         else paymentStatus = "Pending"
       }
 
       const backendStatus = String(order.orderStatus || "").toLowerCase()
       let displayStatus = order.orderStatus
-      if (!backendStatus || backendStatus === "created" || backendStatus === "confirmed") {
+      if (backendStatus === "created") {
         displayStatus = "Pending"
+      } else if (backendStatus === "confirmed") {
+        displayStatus = "Accepted"
       } else if (backendStatus === "preparing" || backendStatus === "ready_for_pickup") {
         displayStatus = "Processing"
       } else if (backendStatus === "picked_up") {

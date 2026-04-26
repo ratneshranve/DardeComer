@@ -20,6 +20,38 @@ export default function FilterPanel({ isOpen, onClose, filters, setFilters, onAp
         </div>
         
         <div className="p-6 space-y-6">
+          {/* Order Status Filter */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Order Status
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "All", 
+                "Ordered", 
+                "Restaurant Accepted", 
+                "Rejected", 
+                "Delivery Boy Assigned", 
+                "Delivery Boy Reached Pickup", 
+                "Order ID Accepted", 
+                "Reached Drop", 
+                "Ordered Delivered"
+              ].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilters(prev => ({ ...prev, status: status === "All" ? "" : status }))}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filters.status === status || (status === "All" && !filters.status)
+                      ? "bg-orange-500 text-white shadow-md"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Payment Status Filter */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">

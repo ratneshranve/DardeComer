@@ -80,7 +80,9 @@ export default function SubscriptionPackages() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl lg:text-2xl font-bold text-slate-900 flex items-center gap-2">
           <span role="img" aria-label="subscription">
-            ??
+            <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+              <Package className="w-5 h-5 text-orange-600" />
+            </div>
           </span>
           <span>Subscription Package List</span>
           <span className="inline-flex items-center justify-center text-[11px] font-semibold rounded-full bg-slate-100 text-slate-700 px-2 py-0.5">
@@ -383,7 +385,9 @@ function OverviewCard({ title, amount, previous, bgColor }) {
     <div className={`${bgColor} rounded-xl px-6 py-5 flex flex-col items-center justify-between`}>
       <div className="mb-4 flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-sm">
         <span role="img" aria-label={title} className="text-xl">
-          ??
+          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+            <Package className="w-5 h-5 text-orange-600" />
+          </div>
         </span>
       </div>
       <p className="text-sm font-semibold text-slate-700 mb-1">{title}</p>

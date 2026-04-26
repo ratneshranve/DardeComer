@@ -273,7 +273,7 @@ export default function Profile() {
       .then((res) => {
         setTableBookings(res?.data?.data || []);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingBookings(false));
   }, []);
 
@@ -358,10 +358,10 @@ export default function Profile() {
         const { signOut } = await import("firebase/auth");
         // Firebase Auth is lazy-initialized now; only attempt sign out if it was actually used
         if (firebaseAuth) {
-           const currentUser = firebaseAuth.currentUser;
-           if (currentUser) {
-             await signOut(firebaseAuth);
-           }
+          const currentUser = firebaseAuth.currentUser;
+          if (currentUser) {
+            await signOut(firebaseAuth);
+          }
         }
       } catch (firebaseError) {
         // Continue even if Firebase logout fails
@@ -598,46 +598,46 @@ export default function Profile() {
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
-            <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <motion.div
-                      className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
-                      whileHover={{ rotate: 15, scale: 1.1 }}
-                      transition={{ duration: 0.3 }}>
-                      <Tag className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                    </motion.div>
-                    <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Refer & Earn
-                    </span>
+              <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
+                        whileHover={{ rotate: 15, scale: 1.1 }}
+                        transition={{ duration: 0.3 }}>
+                        <Tag className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                      </motion.div>
+                      <span className="text-base font-medium text-gray-900 dark:text-white">
+                        Refer & Earn
+                      </span>
+                    </div>
+                    {referralReward > 0 && (
+                      <span className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
+                        Earn {"\u20B9"}{referralReward}
+                      </span>
+                    )}
                   </div>
-                  {referralReward > 0 && (
-                    <span className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
-                      Earn {"\u20B9"}{referralReward}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Invite a friend. Reward is added to your wallet when they
-                    sign up.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleShareReferral();
-                    }}
-                    className="inline-flex items-center gap-1 text-xs text-[#EB590E] font-medium ml-2 px-2 py-1 rounded-md"
-                    disabled={!referralLink}>
-                    <Share2 className="h-3.5 w-3.5" />
-                    Refer
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Invite a friend. Reward is added to your wallet when they
+                      sign up.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleShareReferral();
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-[#EB590E] font-medium ml-2 px-2 py-1 rounded-md"
+                      disabled={!referralLink}>
+                      <Share2 className="h-3.5 w-3.5" />
+                      Refer
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           </Link>
 
@@ -698,8 +698,8 @@ export default function Profile() {
                   <div className="flex items-center gap-2">
                     <motion.span
                       className={`text-xs font-medium px-2 py-1 rounded ${isComplete
-                          ? "bg-green-100 text-green-700 border border-green-300"
-                          : "bg-orange-100 text-orange-800"
+                        ? "bg-green-100 text-green-700 border border-green-300"
+                        : "bg-orange-100 text-orange-800"
                         }`}
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.2 }}>
@@ -1034,14 +1034,14 @@ export default function Profile() {
                 setVegModeOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center justify-between ${vegMode
-                  ? "border-green-600 bg-green-50"
-                  : "border-gray-200 bg-white hover:border-gray-300"
+                ? "border-green-600 bg-green-50"
+                : "border-gray-200 bg-white hover:border-gray-300"
                 }`}>
               <div className="flex items-center gap-3">
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${vegMode
-                      ? "border-green-600 bg-green-600"
-                      : "border-gray-300"
+                    ? "border-green-600 bg-green-600"
+                    : "border-gray-300"
                     }`}>
                   {vegMode && <Check className="h-3 w-3 text-white" />}
                 </div>
@@ -1064,8 +1064,8 @@ export default function Profile() {
                 setVegModeOpen(false);
               }}
               className={`w-full p-3 rounded-xl border-2 transition-all flex items-center justify-between ${!vegMode
-                  ? "border-red-600 bg-red-50"
-                  : "border-gray-200 bg-white hover:border-gray-300"
+                ? "border-red-600 bg-red-50"
+                : "border-gray-200 bg-white hover:border-gray-300"
                 }`}>
               <div className="flex items-center gap-3">
                 <div
