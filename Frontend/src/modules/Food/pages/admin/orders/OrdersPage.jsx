@@ -422,7 +422,7 @@ export default function OrdersPage({ statusKey = "all" }) {
       const paymentMethod = order.payment?.method || order.paymentMethod || ""
       let paymentType = order.paymentType
       if (!paymentType) {
-        if (paymentMethod === "cash" || paymentMethod === "cod") paymentType = "Cash on Delivery"
+        if (paymentMethod === "cash" || paymentMethod === "cod" || paymentMethod === "razorpay_qr") paymentType = "Cash on Delivery"
         else if (paymentMethod === "wallet") paymentType = "Wallet"
         else if (paymentMethod) paymentType = "Online"
         else paymentType = "N/A"
@@ -504,6 +504,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         platformFee,
         totalAmount,
         paymentType,
+        paymentMethod,
         paymentStatus,
         orderStatus: displayStatus,
         deliveryPartnerName,

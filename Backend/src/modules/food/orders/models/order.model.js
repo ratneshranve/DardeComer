@@ -209,6 +209,10 @@ const orderSchema = new mongoose.Schema(
             ref: 'FoodRestaurant',
             required: true
         },
+        restaurantName: { type: String, trim: true },
+        restaurantAddress: { type: String, trim: true },
+        restaurantPhone: { type: String, trim: true },
+        businessModel: { type: String, trim: true },
         zoneId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'FoodZone',

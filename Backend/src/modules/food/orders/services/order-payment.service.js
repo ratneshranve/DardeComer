@@ -44,20 +44,20 @@ async function syncRazorpayQrPayment(orderDoc) {
   const linkStatus = String(link?.status || '').toLowerCase();
   if (!linkStatus) return orderDoc.payment;
 
-  // Write back to FoodTransaction (ledger) only.
-  await FoodTransaction.updateOne(
-    { orderId: orderDoc?._id },
-    {
-      $set: {
-        'payment.qr.status': linkStatus,
-        'payment.status': ['paid', 'captured', 'authorized'].includes(linkStatus)
-          ? 'paid'
-          : ['expired', 'cancelled', 'canceled', 'failed'].includes(linkStatus)
-            ? 'failed'
-            : (payment.status || 'pending_qr'),
-      },
-    },
-  );
+  // Write back to FoodTransaction (ledger) and FoodOrder (snapshot).
+  const updateFields = {
+    'payment.qr.status': linkStatus,
+    'payment.status': ['paid', 'captured', 'authorized'].includes(linkStatus)
+      ? 'paid'
+      : ['expired', 'cancelled', 'canceled', 'failed'].includes(linkStatus)
+        ? 'failed'
+        : (payment.status || 'pending_qr'),
+  };
+
+  await Promise.all([
+    FoodTransaction.updateOne({ orderId: orderDoc?._id }, { $set: updateFields }),
+    FoodOrder.updateOne({ _id: orderDoc?._id }, { $set: updateFields })
+  ]);
 
   const updatedTx = await FoodTransaction.findOne({ orderId: orderDoc?._id }).lean();
   return updatedTx?.payment || payment;
@@ -105,24 +105,24 @@ export async function createCollectQr(
     customerPhone: customerInfo.phone || user.phone,
   });
 
-  // Phase 2: write QR collection state into FoodTransaction only.
-  await FoodTransaction.updateOne(
-    { orderId: order._id },
-    {
-      $set: {
-        paymentMethod: 'razorpay_qr',
-        'payment.method': 'razorpay_qr',
-        'payment.status': 'pending_qr',
-        'payment.qr': {
-          paymentLinkId: link.id,
-          shortUrl: link.short_url,
-          imageUrl: link.short_url,
-          status: link.status || 'created',
-          expiresAt: link.expire_by ? new Date(link.expire_by * 1000) : null,
-        },
-      },
+  // Phase 2: write QR collection state into FoodTransaction and FoodOrder.
+  const updateFields = {
+    paymentMethod: 'razorpay_qr',
+    'payment.method': 'razorpay_qr',
+    'payment.status': 'pending_qr',
+    'payment.qr': {
+      paymentLinkId: link.id,
+      shortUrl: link.short_url,
+      imageUrl: link.short_url,
+      status: link.status || 'created',
+      expiresAt: link.expire_by ? new Date(link.expire_by * 1000) : null,
     },
-  );
+  };
+
+  await Promise.all([
+    FoodTransaction.updateOne({ orderId: order._id }, { $set: updateFields }),
+    FoodOrder.updateOne({ _id: order._id }, { $set: updateFields })
+  ]);
 
   const updatedTx = await FoodTransaction.findOne({ orderId: order._id }).lean();
 

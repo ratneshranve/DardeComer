@@ -602,9 +602,16 @@ export async function confirmReachedPickupDelivery(orderId, deliveryPartnerId) {
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
   assertOrderNotCancelled(order, 'confirm pickup arrival');
-  if (
-    order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
-  ) {
+  if (!order.dispatch?.deliveryPartnerId) {
+    logger.warn(`[DeliveryService] confirmReachedPickup: Order ${orderId} has no assigned partner (status: ${order.dispatch?.status})`);
+    throw new ForbiddenError('This order is not assigned to any delivery partner.');
+  }
+
+  const assignedId = order.dispatch.deliveryPartnerId.toString();
+  const currentId = deliveryPartnerId.toString();
+
+  if (assignedId !== currentId) {
+    logger.warn(`[DeliveryService] confirmReachedPickup: Partner ID mismatch for order ${orderId}. Assigned: ${assignedId}, Current: ${currentId}`);
     throw new ForbiddenError('Not your order');
   }
   if (order.orderStatus === 'delivered') {
@@ -682,9 +689,16 @@ export async function confirmPickupDelivery(orderId, deliveryPartnerId, billImag
   const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
   if (!order) throw new NotFoundError('Order not found');
   assertOrderNotCancelled(order, 'pick up this order');
-  if (
-    order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
-  ) {
+  if (!order.dispatch?.deliveryPartnerId) {
+    logger.warn(`[DeliveryService] confirmPickup: Order ${orderId} has no assigned partner`);
+    throw new ForbiddenError('This order is not assigned to any delivery partner.');
+  }
+
+  const assignedId = order.dispatch.deliveryPartnerId.toString();
+  const currentId = deliveryPartnerId.toString();
+
+  if (assignedId !== currentId) {
+    logger.warn(`[DeliveryService] confirmPickup: Partner ID mismatch for order ${orderId}. Assigned: ${assignedId}, Current: ${currentId}`);
     throw new ForbiddenError('Not your order');
   }
 
@@ -903,13 +917,23 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   }
 
   order.orderStatus = 'delivered';
-  if (Number.isFinite(txAmountDue) && txAmountDue > 0) {
+  if (tx) {
+    order.payment = {
+      ...(order.payment?.toObject?.() || order.payment || {}),
+      method: tx.payment?.method || order.payment?.method,
+      status: tx.payment?.status || order.payment?.status,
+      amountDue: Number.isFinite(txAmountDue) ? txAmountDue : order.payment?.amountDue,
+    };
+    order.paymentMethod = tx.paymentMethod || order.paymentMethod;
+    order.markModified('payment');
+  } else if (Number.isFinite(txAmountDue) && txAmountDue > 0) {
     order.payment = {
       ...(order.payment?.toObject?.() || order.payment || {}),
       amountDue: txAmountDue,
     };
     order.markModified('payment');
   }
+
   order.deliveryState = {
     ...(order.deliveryState?.toObject?.() || order.deliveryState || {}),
     currentPhase: 'delivered',

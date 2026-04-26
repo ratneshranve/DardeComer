@@ -1927,7 +1927,7 @@ export async function getContactMessages(query = {}) {
 // ----- Delivery Cash Limit (admin) -----
 export async function getDeliveryCashLimitSettings() {
     const doc = await FoodDeliveryCashLimit.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
-    const settings = doc || { deliveryCashLimit: 0, deliveryWithdrawalLimit: 100, isActive: true };
+    const settings = doc || { deliveryCashLimit: 1000, deliveryWithdrawalLimit: 100, isActive: true };
     return {
         deliveryCashLimit: Number(settings.deliveryCashLimit) || 0,
         deliveryWithdrawalLimit: Number(settings.deliveryWithdrawalLimit) || 100

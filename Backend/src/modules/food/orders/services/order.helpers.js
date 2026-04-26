@@ -230,8 +230,8 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
       "",
     restaurantPhone: restaurant?.phone || "",
     restaurantLocation: {
-      latitude: restaurantLocation?.latitude,
-      longitude: restaurantLocation?.longitude,
+      latitude: restaurantLocation?.latitude ?? restaurantLocation?.coordinates?.[1],
+      longitude: restaurantLocation?.longitude ?? restaurantLocation?.coordinates?.[0],
       address:
         restaurantLocation?.address ||
         restaurantLocation?.formattedAddress ||

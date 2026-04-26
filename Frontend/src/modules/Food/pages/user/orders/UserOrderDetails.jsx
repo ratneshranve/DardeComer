@@ -139,13 +139,18 @@ export default function UserOrderDetails() {
 
   const orderIdDisplay = order.orderId || order._id || orderId
   // Use fetched restaurant data if available, otherwise use order.restaurantId or order.restaurant
-  const restaurantObj = restaurant || order.restaurantId || order.restaurant || {}
+  const restaurantObj = (restaurant && typeof restaurant === 'object') 
+    ? restaurant 
+    : ((order.restaurantId && typeof order.restaurantId === 'object') 
+        ? order.restaurantId 
+        : ((order.restaurant && typeof order.restaurant === 'object') ? order.restaurant : {}));
+        
   const restaurantName =
     order.restaurantName ||
-    (typeof order.restaurantId === 'object' && (order.restaurantId.restaurantName || order.restaurantId.name)) ||
-    (typeof order.restaurant === 'object' && (order.restaurant.restaurantName || order.restaurant.name)) ||
     restaurantObj.restaurantName ||
     restaurantObj.name ||
+    (typeof order.restaurantId === 'object' && (order.restaurantId.restaurantName || order.restaurantId.name)) ||
+    (typeof order.restaurant === 'object' && (order.restaurant.restaurantName || order.restaurant.name)) ||
     "Restaurant"
 
   // Build restaurant address (try restaurant fields first, then fall back)
@@ -196,7 +201,14 @@ export default function UserOrderDetails() {
 
   const userName = order.userName || ""
   const userPhone = order.userPhone || ""
-  const paymentMethod = order.payment?.method || "Online"
+  const getPaymentLabel = (method) => {
+    const raw = String(method || "").toLowerCase()
+    if (raw === "razorpay" || raw === "razorpay_qr") return "Online"
+    if (raw === "cash" || raw === "cod" || raw === "cash_on_delivery") return "Cash"
+    return method || "Online"
+  }
+
+  const paymentMethod = getPaymentLabel(order.payment?.method || order.paymentMethod)
   const paymentDate = order.createdAt
     ? new Date(order.createdAt).toLocaleString("en-IN", {
       month: "long",
@@ -617,7 +629,7 @@ export default function UserOrderDetails() {
                 Payment method
               </h4>
               <p className="text-gray-500 text-xs mt-0.5">
-                Paid via: {paymentMethod.toUpperCase()}
+                Paid via: {paymentMethod}
               </p>
             </div>
           </div>

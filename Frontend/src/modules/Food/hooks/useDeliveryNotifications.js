@@ -270,7 +270,8 @@ export const useDeliveryNotifications = () => {
       return Math.max(0, totalLimit - (Number.isFinite(cashInHand) ? cashInHand : 0));
     }
 
-    return toSafeNumber(totalLimit);
+    // fallback to a sane default if no limit is configured
+    return 2000;
   };
 
   const refreshAvailableCashLimit = useCallback(async () => {
@@ -301,7 +302,15 @@ export const useDeliveryNotifications = () => {
     }
 
     if (!Number.isFinite(availableLimit)) return false;
-    return orderAmount > availableLimit;
+    
+    const isSuppressed = orderAmount > availableLimit;
+    if (isSuppressed) {
+      debugWarn(`COD Alert suppressed! Order Amount (${orderAmount}) exceeds Available Limit (${availableLimit})`);
+    } else {
+      debugLog(`COD Alert permitted. Order Amount: ${orderAmount}, Available Limit: ${availableLimit}`);
+    }
+    
+    return isSuppressed;
   }, [refreshAvailableCashLimit]);
 
   const shouldProcessOrderAlert = (orderData = {}) => {
@@ -461,6 +470,7 @@ export const useDeliveryNotifications = () => {
 
   const handleIncomingOrderAlert = useCallback((orderData = {}) => {
     if (!shouldProcessOrderAlert(orderData)) {
+      debugLog('Alert deduped (already shown recently):', orderData?.orderId || orderData?._id);
       return;
     }
 
@@ -1074,10 +1084,22 @@ export const useDeliveryNotifications = () => {
         debugLog('play_notification_sound received', {
           orderId: normalizedData?.orderId || normalizedData?.orderMongoId || normalizedData?.order_id,
         });
+        
         // Force immediate buzz for notification events, even if dedupe would skip.
         activeOrderRef.current = normalizedData || { id: Date.now() };
         playNotificationSound(normalizedData);
         startAlertLoop(playNotificationSound);
+
+        // Ensure the modal shows up! 
+        // If we received a sound event but the modal state is empty, fill it.
+        setNewOrder(prev => {
+          if (!prev) {
+            debugLog('Setting newOrder from play_notification_sound event as it was missing.');
+            return normalizedData;
+          }
+          return prev;
+        });
+
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
           showBackgroundOrderNotification(normalizedData);
         }

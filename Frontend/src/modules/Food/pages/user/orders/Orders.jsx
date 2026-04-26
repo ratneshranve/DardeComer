@@ -942,7 +942,7 @@ Order again from this restaurant in the ${companyName} app.`
                         Payment: <span className="font-medium capitalize">
                           {order.payment.method === 'cash' || order.payment.method === 'cod' ? 'Cash on Delivery' :
                             order.payment.method === 'wallet' ? 'Wallet' :
-                              order.payment.method === 'razorpay' ? 'Online' :
+                              (order.payment.method === 'razorpay' || order.payment.method === 'razorpay_qr') ? 'Online' :
                                 order.payment.method || 'N/A'}
                         </span>
                         {order.payment.status && (

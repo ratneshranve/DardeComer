@@ -1637,8 +1637,8 @@ export default function OrdersMain() {
 
     // Accept order via API if we have a real order
     if (orderToAccept?.orderMongoId || orderToAccept?.orderId) {
+      const orderId = orderToAccept.orderMongoId || orderToAccept.orderId;
       try {
-        const orderId = orderToAccept.orderMongoId || orderToAccept.orderId;
         const response = await restaurantAPI.acceptOrder(orderId, prepTime);
         debugLog("? Order accepted:", orderId);
         toast.success("Order accepted successfully");
@@ -1691,8 +1691,8 @@ export default function OrdersMain() {
 
     // Reject order via API if we have a real order
     if (orderToReject?.orderMongoId || orderToReject?.orderId) {
+      const orderId = orderToReject.orderMongoId || orderToReject.orderId;
       try {
-        const orderId = orderToReject.orderMongoId || orderToReject.orderId;
         await restaurantAPI.rejectOrder(orderId, rejectReason);
         debugLog("? Order rejected:", orderId);
         requestOrdersRefresh();

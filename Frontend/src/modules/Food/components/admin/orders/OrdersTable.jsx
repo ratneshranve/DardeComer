@@ -137,6 +137,22 @@ export default function OrdersTable({
                   </div>
                 </th>
               )}
+              {visibleColumns.subtotal && (
+                <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <div className="flex items-center justify-end gap-2">
+                    <span>Price</span>
+                    <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                  </div>
+                </th>
+              )}
+              {visibleColumns.deliveryCharge && (
+                <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <div className="flex items-center justify-end gap-2">
+                    <span>Delivery Charge</span>
+                    <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                  </div>
+                </th>
+              )}
               {visibleColumns.totalAmount && (
                 <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                   <div className="flex items-center justify-end gap-2">
@@ -149,6 +165,14 @@ export default function OrdersTable({
                 <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
                     <span>Payment Type</span>
+                    <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                  </div>
+                </th>
+              )}
+              {visibleColumns.paymentMethod && (
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    <span>Payment Method</span>
                     <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                   </div>
                 </th>
@@ -242,6 +266,20 @@ export default function OrdersTable({
                     </div>
                   </td>
                 )}
+                {visibleColumns.subtotal && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <span className="text-sm font-medium text-slate-700">
+                      ₹{Number(order.subtotal || 0).toFixed(2)}
+                    </span>
+                  </td>
+                )}
+                {visibleColumns.deliveryCharge && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <span className="text-sm font-medium text-slate-700">
+                      ₹{Number(order.deliveryCharge || 0).toFixed(2)}
+                    </span>
+                  </td>
+                )}
                 {visibleColumns.totalAmount && (
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="text-sm font-medium text-slate-900">
@@ -301,6 +339,18 @@ export default function OrdersTable({
                         </span>
                       );
                     })()}
+                  </td>
+                )}
+                {visibleColumns.paymentMethod && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm font-medium text-slate-700 capitalize">
+                      {(() => {
+                        const method = String(order.paymentMethod || order.payment?.method || "").toLowerCase()
+                        if (method === "razorpay_qr" || method === "razorpay") return "Online"
+                        if (method === "cod" || method === "cash" || method === "cash_on_delivery") return "Cash"
+                        return method || "--"
+                      })()}
+                    </span>
                   </td>
                 )}
                 {(visibleColumns.paymentCollectionStatus !== false) && (

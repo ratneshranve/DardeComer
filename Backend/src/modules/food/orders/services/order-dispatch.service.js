@@ -50,14 +50,19 @@ async function listNearbyOnlineDeliveryPartners(
 
   const scored = [];
   const allowedStatuses = process.env.NODE_ENV === 'production' ? ['approved'] : ['approved', 'pending'];
-  const STALE_GPS_MS = 10 * 60 * 1000;
+  const STALE_GPS_MS = config.nodeEnv === 'production' ? 10 * 60 * 1000 : 60 * 60 * 1000;
 
   for (const p of allOnline) {
     if (!allowedStatuses.includes(p.status)) continue;
 
     const isStale = !p.lastLocationAt || (Date.now() - new Date(p.lastLocationAt).getTime()) > STALE_GPS_MS;
     if (p.lastLat == null || p.lastLng == null || isStale) {
-      scored.push({ partnerId: p._id, distanceKm: 999, status: p.status });
+      scored.push({ 
+        partnerId: p._id, 
+        distanceKm: 999, 
+        status: p.status,
+        reason: p.lastLat == null ? 'no_lat' : (isStale ? 'stale_gps' : 'unknown')
+      });
       continue;
     }
 
@@ -88,10 +93,11 @@ async function listNearbyOnlineDeliveryPartners(
     };
   }
 
-  const final = (config.env === 'production')
+  const final = (config.nodeEnv === 'production')
     ? picked.filter(p => p.status === 'approved')
     : picked;
 
+  logger.info(`[Dispatch] Found ${final.length} nearby online partners (max ${maxKm}km).`);
   return { partners: final };
 }
 
@@ -112,8 +118,13 @@ async function filterPartnersByCashLimit(order, partners = []) {
   if (orderCashAmount <= 0) return partners;
 
   const settings = await getDeliveryCashLimitSettings();
-  const totalCashLimit = Number(settings?.deliveryCashLimit) || 0;
-  if (totalCashLimit <= 0) return [];
+  let totalCashLimit = Number(settings?.deliveryCashLimit) || 0;
+  
+  // If no limit is configured by admin, use a safe default of 2000 to avoid blocking all COD orders.
+  if (totalCashLimit <= 0) {
+    totalCashLimit = 2000;
+    logger.warn(`[Dispatch] Delivery cash limit is not configured (0). Using default of 2000.`);
+  }
 
   const partnerObjectIds = partners
     .map((p) => p?.partnerId)
@@ -126,7 +137,7 @@ async function filterPartnersByCashLimit(order, partners = []) {
         $match: {
           'dispatch.deliveryPartnerId': { $in: partnerObjectIds },
           orderStatus: 'delivered',
-          'payment.method': 'cash',
+          'payment.method': { $in: ['cash', 'cod', 'cash_on_delivery', 'cash on delivery'] },
         },
       },
       {
@@ -296,14 +307,20 @@ export async function tryAutoAssign(orderId, options = {}) {
       logger.info(`[Phase 2] Broadcasting order ${order._id} to ${eligible.length} riders.`);
       for (const p of eligible) {
         const roomName = rooms.delivery(p.partnerId);
-        if (io) io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
+        if (io) {
+          io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
+          io.to(roomName).emit('play_notification_sound', { ...payload, pickupDistanceKm: p.distanceKm });
+        }
       }
     } else {
       // PHASE 1: Broadcast to ALL eligible (not just best)
       logger.info(`[Phase 1] Broadcasting order ${order._id} to ${eligible.length} eligible riders.`);
       for (const p of eligible) {
         const roomName = rooms.delivery(p.partnerId);
-        if (io) io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
+        if (io) {
+          io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
+          io.to(roomName).emit('play_notification_sound', { ...payload, pickupDistanceKm: p.distanceKm });
+        }
         try {
           await notifyOwnerSafely(
             { ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId },
@@ -385,7 +402,7 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
   const order = await FoodOrder.findOne({
     ...identity,
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
-  });
+  }).populate(['restaurantId', 'userId']);
 
   if (!order) throw new NotFoundError('Order not found');
 
@@ -393,7 +410,7 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
     throw new ValidationError('Take Away orders do not require delivery partner dispatch');
   }
 
-  const activeStatuses = ['confirmed', 'preparing', 'ready_for_pickup', 'ready'];
+  const activeStatuses = ['created', 'confirmed', 'preparing', 'ready_for_pickup', 'ready'];
   if (!activeStatuses.includes(order.orderStatus)) {
     throw new ValidationError(`Cannot resend notification for order in status: ${order.orderStatus}`);
   }
@@ -402,11 +419,64 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
     throw new ValidationError('A delivery partner has already accepted this order.');
   }
 
+  // Reset dispatch state completely, including stale dispatchingAt lock
   order.dispatch.status = 'unassigned';
   order.dispatch.deliveryPartnerId = null;
   order.dispatch.offeredTo = [];
+  order.dispatch.dispatchingAt = undefined;
   await order.save();
 
-  await tryAutoAssign(order._id);
+  // Also clear with $unset to be safe
+  await FoodOrder.findByIdAndUpdate(order._id, {
+    $unset: { 'dispatch.dispatchingAt': '' },
+  });
+
+  logger.info(`[Resend] Cleared dispatch state for order ${order._id}. Now broadcasting directly + running tryAutoAssign.`);
+
+  // DIRECT BROADCAST: Send socket alerts to ALL nearby online riders immediately.
+  // This ensures alerts reach riders even if tryAutoAssign's lock logic has issues.
+  try {
+    const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, { maxKm: 60, limit: 25 });
+    const io = getIO();
+    const payload = buildDeliverySocketPayload(order, order.restaurantId);
+
+    if (io && partners.length > 0) {
+      logger.info(`[Resend] Direct broadcasting order ${order._id} to ${partners.length} riders via socket.`);
+      for (const p of partners) {
+        const roomName = rooms.delivery(p.partnerId);
+        io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
+        // Also emit play_notification_sound for maximum visibility
+        io.to(roomName).emit('play_notification_sound', { ...payload, pickupDistanceKm: p.distanceKm });
+      }
+
+      // Send FCM push notifications to all nearby riders
+      for (const p of partners) {
+        try {
+          await notifyOwnerSafely(
+            { ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId },
+            {
+              title: 'New order available! 🔔',
+              body: `Order #${order.order_id || order._id} is waiting for pickup. Accept now!`,
+              data: { type: 'new_order', orderId: order._id.toString() },
+            },
+          );
+        } catch (err) {
+          logger.warn(`[Resend] Push notification failed for partner ${p.partnerId}: ${err.message}`);
+        }
+      }
+    } else {
+      logger.warn(`[Resend] No online partners found or IO not initialized. Partners: ${partners.length}`);
+    }
+  } catch (err) {
+    logger.error(`[Resend] Direct broadcast failed: ${err.message}`);
+  }
+
+  // Also kick off tryAutoAssign for the standard dispatch loop
+  try {
+    await tryAutoAssign(order._id);
+  } catch (err) {
+    logger.warn(`[Resend] tryAutoAssign after resend failed (broadcast already sent): ${err.message}`);
+  }
+
   return { success: true };
 }

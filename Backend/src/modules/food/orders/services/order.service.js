@@ -174,14 +174,13 @@ export async function calculateOrder(userId, dto) {
 // ----- Create order -----
 export async function createOrder(userId, dto) {
   const restaurant = await FoodRestaurant.findById(dto.restaurantId)
-    .select("status restaurantName businessModel zoneId location isAcceptingOrders addressLine1 addressLine2 city state pincode landmark")
+    .select("status restaurantName businessModel zoneId location isAcceptingOrders addressLine1 addressLine2 city state pincode landmark primaryContactNumber ownerPhone")
     .lean();
   if (!restaurant) throw new ValidationError("Restaurant not found");
   if (restaurant.status !== "approved")
     throw new ValidationError("Restaurant not accepting orders");
   if (restaurant.isAcceptingOrders === false)
     throw new ValidationError("Restaurant not accepting orders");
-
 
   const settings = await getDispatchSettings();
   const dispatchMode = settings.dispatchMode;
@@ -227,6 +226,7 @@ export async function createOrder(userId, dto) {
     if (!Number.isFinite(price) || !Number.isFinite(qty)) return sum;
     return sum + Math.max(0, price) * Math.max(0, qty);
   }, 0);
+
   const normalizedPricing = {
     subtotal: Number(dto.pricing?.subtotal ?? computedSubtotal),
     tax: Number(dto.pricing?.tax ?? 0),
@@ -237,35 +237,22 @@ export async function createOrder(userId, dto) {
     total: Number(dto.pricing?.total ?? 0),
     currency: String(dto.pricing?.currency || "INR"),
   };
+
   if (isTakeAway) {
     normalizedPricing.deliveryFee = 0;
   }
+
   const computedTotal = Math.max(
     0,
-    (Number.isFinite(normalizedPricing.subtotal)
-      ? normalizedPricing.subtotal
-      : 0) +
+    (Number.isFinite(normalizedPricing.subtotal) ? normalizedPricing.subtotal : 0) +
       (Number.isFinite(normalizedPricing.tax) ? normalizedPricing.tax : 0) +
-      (Number.isFinite(normalizedPricing.packagingFee)
-        ? normalizedPricing.packagingFee
-        : 0) +
-      (Number.isFinite(normalizedPricing.deliveryFee)
-        ? normalizedPricing.deliveryFee
-        : 0) +
-      (Number.isFinite(normalizedPricing.platformFee)
-        ? normalizedPricing.platformFee
-        : 0) -
-      (Number.isFinite(normalizedPricing.discount)
-        ? normalizedPricing.discount
-        : 0),
+      (Number.isFinite(normalizedPricing.packagingFee) ? normalizedPricing.packagingFee : 0) +
+      (Number.isFinite(normalizedPricing.deliveryFee) ? normalizedPricing.deliveryFee : 0) +
+      (Number.isFinite(normalizedPricing.platformFee) ? normalizedPricing.platformFee : 0) -
+      (Number.isFinite(normalizedPricing.discount) ? normalizedPricing.discount : 0),
   );
-  if (
-    !Number.isFinite(normalizedPricing.total) ||
-    normalizedPricing.total <= 0
-  ) {
-    normalizedPricing.total = computedTotal;
-  }
-  if (isTakeAway) {
+
+  if (!Number.isFinite(normalizedPricing.total) || normalizedPricing.total <= 0) {
     normalizedPricing.total = computedTotal;
   }
 
@@ -287,10 +274,6 @@ export async function createOrder(userId, dto) {
     const [dLng, dLat] = dto.address.location.coordinates;
     const d = haversineKm(rLat, rLng, dLat, dLng);
     distanceKm = Number.isFinite(d) ? d : null;
-  } else {
-    console.warn(
-      `Food order: distance not available, rider earning set to 0`,
-    );
   }
 
   const riderEarning = isTakeAway ? 0 : await getRiderEarning(distanceKm);
@@ -311,9 +294,15 @@ export async function createOrder(userId, dto) {
       riderEarning,
   );
 
+  const roundedPlatformProfit = Math.round(platformProfit * 100) / 100;
+
   const order = new FoodOrder({
     userId: new mongoose.Types.ObjectId(userId),
     restaurantId: new mongoose.Types.ObjectId(dto.restaurantId),
+    restaurantName: restaurant.restaurantName,
+    restaurantAddress: restaurant.location?.formattedAddress || restaurant.location?.address || `${restaurant.addressLine1 || ""} ${restaurant.city || ""}`.trim() || "Address not available",
+    restaurantPhone: restaurant.primaryContactNumber || restaurant.ownerPhone || "",
+    businessModel: restaurant.businessModel || "",
     zoneId: dto.zoneId
       ? new mongoose.Types.ObjectId(dto.zoneId)
       : restaurant.zoneId,
@@ -340,7 +329,7 @@ export async function createOrder(userId, dto) {
     deliveryFleet: dto.deliveryFleet || "standard",
     scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     riderEarning,
-    platformProfit,
+    platformProfit: roundedPlatformProfit,
   });
 
   let razorpayPayload = null;
@@ -1463,7 +1452,7 @@ export async function listOrdersAdmin(query) {
         filter.orderStatus = { $in: ["created", "confirmed"] };
         break;
       case "accepted":
-        filter.orderStatus = "confirmed";
+        filter.orderStatus = { $in: ["confirmed", "preparing", "ready_for_pickup"] };
         break;
       case "processing":
         filter.orderStatus = { $in: ["preparing", "ready_for_pickup"] };

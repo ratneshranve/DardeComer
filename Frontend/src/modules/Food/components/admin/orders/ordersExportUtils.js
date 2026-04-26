@@ -217,25 +217,35 @@ export const exportToPDF = async (orders, filename = "orders") => {
       format: 'a4'
     })
 
-    // Add title
-    doc.setFontSize(16)
-    doc.setTextColor(30, 30, 30)
-    const title = filename.charAt(0).toUpperCase() + filename.slice(1).replace(/_/g, ' ')
-    doc.text(title, 148, 15, { align: 'center' })
+    // Header Colors
+    const primaryColor = [30, 41, 59] // Slate 800
+    const secondaryColor = [100, 116, 139] // Slate 500
+    
+    // Add Brand Header
+    doc.setFontSize(22)
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+    doc.setFont('helvetica', 'bold')
+    doc.text("DARDECOMER", 14, 20)
+    
+    doc.setFontSize(14)
+    const title = (filename.charAt(0).toUpperCase() + filename.slice(1).replace(/_/g, ' ')) + " Report"
+    doc.text(title, 14, 30)
     
     // Add export info
-    doc.setFontSize(10)
-    doc.setTextColor(100, 100, 100)
-    const exportDate = new Date().toLocaleDateString('en-GB', {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2])
+    const exportDate = new Date().toLocaleString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     })
-    doc.text(`Exported on: ${exportDate} | Total Records: ${orders.length}`, 148, 22, { align: 'center' })
+    doc.text(`Generated on: ${exportDate}`, 14, 36)
+    doc.text(`Total Records: ${orders.length}`, 14, 41)
     
-    let headers, tableData
+    let headers, tableData, columnStyles = {}
     
     if (isSubscription) {
       headers = [["SI", "Subscription ID", "Order Type", "Duration", "Restaurant", "Customer Name", "Customer Phone", "Status", "Total Orders", "Delivered"]]
@@ -252,8 +262,7 @@ export const exportToPDF = async (orders, filename = "orders") => {
         order.delivered || 'N/A'
       ])
     } else if (isOrderDetectDelivery) {
-      // OrderDetectDelivery format - includes delivery boy info and payment details
-      headers = [["SI", "Order ID", "Order Date", "Order Time", "Customer Name", "Customer Phone", "Restaurant Name", "Delivery Boy Name", "Delivery Boy Phone", "Status", "Total Amount", "Payment Status"]]
+      headers = [["SI", "Order ID", "Date", "Customer", "Phone", "Restaurant", "Rider", "Status", "Amount", "P. Status"]]
       tableData = orders.map((order, index) => {
         const originalOrder = order.originalOrder || {}
         const totalAmount = originalOrder.pricing?.total || originalOrder.totalAmount || originalOrder.total || 0
@@ -262,68 +271,125 @@ export const exportToPDF = async (orders, filename = "orders") => {
         return [
           order.sl || index + 1,
           order.orderId || 'N/A',
-          order.orderDate || 'N/A',
-          order.orderTime || 'N/A',
+          `${order.orderDate || ''} ${order.orderTime || ''}`,
           order.userName || 'N/A',
           order.userNumber || 'N/A',
           order.restaurantName || 'N/A',
           order.deliveryBoyName || 'N/A',
-          order.deliveryBoyNumber || 'N/A',
           order.status || 'N/A',
           totalAmount > 0 ? `Rs. ${totalAmount.toFixed(2)}` : 'N/A',
           paymentStatus
         ]
       })
+      columnStyles = {
+        8: { halign: 'right' }
+      }
     } else {
-      headers = ["SI", "Order ID", "Order Date", "Customer Name", "Customer Phone", "Restaurant", "Total Amount", "Payment Status", "Order Status", "Delivery Type"]
+      headers = [["SI", "Order ID", "Date", "Customer", "Restaurant", "Price", "D.Charge", "Total", "P. Method", "P. Status", "O. Status"]]
       tableData = orders.map((order, index) => {
-        const amount =
-          order.totalAmount ??
-          order.total ??
-          order.pricing?.total ??
-          0
+        const pricing = order.pricing || {}
+        const subtotal = order.subtotal ?? pricing.subtotal ?? 0
+        const deliveryCharge = order.deliveryCharge ?? pricing.deliveryFee ?? 0
+        const total = order.totalAmount ?? order.total ?? pricing.total ?? 0
+        const paymentMethod = order.paymentMethod || order.payment?.method || 'N/A'
+        const paymentStatus = order.paymentStatus || order.payment?.status || 'N/A'
+
         return [
           index + 1,
           order.orderId || order.id || 'N/A',
-          `${order.date || ''}${order.time ? `, ${order.time}` : ""}` || 'N/A',
-          order.customerName || 'N/A',
-          order.customerPhone || 'N/A',
+          `${order.date || ''}${order.time ? `\n${order.time}` : ""}` || 'N/A',
+          `${order.customerName || 'N/A'}\n${order.customerPhone || ''}`,
           order.restaurant || 'N/A',
-          amount ? `Rs. ${Number(amount).toFixed(2)}` : 'N/A',
-          order.paymentStatus || 'N/A',
-          order.orderStatus || 'N/A',
-          order.deliveryType || 'N/A'
+          subtotal ? `Rs. ${Number(subtotal).toFixed(2)}` : 'Rs. 0.00',
+          deliveryCharge ? `Rs. ${Number(deliveryCharge).toFixed(2)}` : 'Rs. 0.00',
+          total ? `Rs. ${Number(total).toFixed(2)}` : 'Rs. 0.00',
+          paymentMethod,
+          paymentStatus,
+          order.orderStatus || 'N/A'
         ]
       })
+      columnStyles = {
+        5: { halign: 'right' },
+        6: { halign: 'right' },
+        7: { halign: 'right' }
+      }
     }
 
     // Add table using autoTable
     autoTable(doc, {
       head: headers,
       body: tableData,
-      startY: 28,
+      startY: 48,
       styles: {
-        fontSize: 7,
-        cellPadding: 2,
+        fontSize: 8,
+        cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
+        overflow: 'linebreak',
+        font: 'helvetica'
       },
       headStyles: {
-        fillColor: [59, 130, 246],
+        fillColor: primaryColor,
         textColor: 255,
         fontStyle: 'bold',
-        fontSize: 8
+        fontSize: 8,
+        halign: 'center'
       },
       bodyStyles: {
-        fontSize: 7,
-        textColor: [30, 30, 30]
+        textColor: [50, 50, 50],
+        lineColor: [230, 230, 230],
+        lineWidth: 0.1
       },
       alternateRowStyles: {
-        fillColor: [248, 250, 252]
+        fillColor: [250, 250, 252]
       },
       columnStyles: {
-        0: { cellWidth: 12 }, // SI
+        0: { cellWidth: 10, halign: 'center' }, // SI
+        1: { cellWidth: 25 }, // Order ID
+        2: { cellWidth: 25 }, // Date
+        ...columnStyles
       },
-      margin: { top: 28, left: 10, right: 10 },
+      margin: { left: 14, right: 14 },
+      didDrawPage: (data) => {
+        // Footer
+        doc.setFontSize(8)
+        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2])
+        const pageCount = doc.internal.getNumberOfPages()
+        const pageCurrent = doc.internal.getCurrentPageInfo().pageNumber
+        doc.text(`Page ${pageCurrent} of ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10)
+        doc.text("DardeComer - Order Management System", doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' })
+      }
     })
+
+    // Calculate Summary
+    if (!isSubscription) {
+      const finalY = doc.lastAutoTable.finalY + 10
+      const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.totalAmount || o.total || o.pricing?.total || 0)), 0)
+      
+      // Check if we have space for summary, otherwise add new page
+      if (finalY > doc.internal.pageSize.height - 40) {
+        doc.addPage()
+        doc.setPage(doc.internal.getNumberOfPages())
+      }
+
+      const summaryX = doc.internal.pageSize.width - 80
+      doc.setFontSize(12)
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+      doc.setFont('helvetica', 'bold')
+      doc.text("Financial Summary", summaryX, finalY)
+      
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Total Orders:`, summaryX, finalY + 8)
+      doc.text(`${orders.length}`, doc.internal.pageSize.width - 14, finalY + 8, { align: 'right' })
+      
+      doc.text(`Total Revenue:`, summaryX, finalY + 14)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`Rs. ${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, doc.internal.pageSize.width - 14, finalY + 14, { align: 'right' })
+      
+      // Signature / Footer Line
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
+      doc.setLineWidth(0.5)
+      doc.line(14, doc.internal.pageSize.height - 20, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 20)
+    }
 
     // Save the PDF instantly
     const fileTimestamp = new Date().toISOString().split("T")[0]
@@ -346,5 +412,3 @@ export const exportToJSON = (orders, filename = "orders") => {
   link.click()
   document.body.removeChild(link)
 }
-
-

@@ -191,6 +191,14 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
     setTimeout(() => setIsSyncing(false), 800);
   };
 
+  // Sync state with order prop updates (e.g. from websocket or store refresh)
+  useEffect(() => {
+    const s = String(order.payment?.status || "").toLowerCase();
+    if (['paid', 'captured', 'authorized'].includes(s)) {
+      setPaymentStatus('paid');
+    }
+  }, [order.payment?.status]);
+
   useEffect(() => {
     if (paymentStatus === 'pending' || (amountToCollect > 0 && paymentStatus !== 'paid')) {
       pollingRef.current = setInterval(checkPaymentSync, 5000);
@@ -254,7 +262,18 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
                  </p>
                  <p className="text-amber-950 text-4xl font-bold">₹{amountToCollect.toFixed(2)}</p>
                </div>
-               {isPaid && <div className="bg-green-500 text-white px-4 py-2 rounded-full text-[10px] font-bold">PAID ✓</div>}
+               {isPaid ? (
+                 <div className="bg-green-500 text-white px-4 py-2 rounded-full text-[10px] font-bold">PAID ✓</div>
+               ) : (
+                 <button 
+                  onClick={handleManualCheck}
+                  disabled={isSyncing}
+                  className="flex items-center gap-2 bg-white/50 border border-amber-200 px-3 py-2 rounded-xl text-[10px] font-bold text-amber-800 active:scale-95 transition-all"
+                 >
+                   {isSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                   Sync Payment
+                 </button>
+               )}
              </div>
 
              {!isPaid && (
@@ -265,7 +284,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
                    className="w-full py-4 bg-white border-2 border-amber-200 text-amber-800 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                  >
                    {isGeneratingQr ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-5 h-5" />}
-                   Show Payment QR
+                   {paymentStatus === 'pending' ? 'Show Payment QR Again' : 'Show Payment QR'}
                  </button>
                </div>
              )}
