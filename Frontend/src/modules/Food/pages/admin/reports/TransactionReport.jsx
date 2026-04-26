@@ -1,8 +1,13 @@
 import { useState, useMemo, useEffect } from "react"
 import { BarChart3, ChevronDown, Info, Settings, FileText, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
-import { exportTransactionReportToCSV, exportTransactionReportToExcel, exportTransactionReportToPDF, exportTransactionReportToJSON } from "@food/components/admin/reports/reportsExportUtils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
+import { 
+  exportReportsToCSV, 
+  exportReportsToExcel, 
+  exportReportsToPDF, 
+  exportReportsToJSON 
+} from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 
@@ -16,16 +21,18 @@ import deliverymanEarningIcon from "@food/assets/Transaction-report-icons/delive
 // Import search and export icons from Dashboard-icons
 import searchIcon from "@food/assets/Dashboard-icons/image8.png"
 import exportIcon from "@food/assets/Dashboard-icons/image9.png"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-
 
 export default function TransactionReport() {
   const [searchQuery, setSearchQuery] = useState("")
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  
   const [summary, setSummary] = useState({
     completedTransaction: 0,
     refundedTransaction: 0,
@@ -33,14 +40,37 @@ export default function TransactionReport() {
     restaurantEarning: 0,
     deliverymanEarning: 0
   })
+
+  const [columnVisibility, setColumnVisibility] = useState(() => {
+    const saved = localStorage.getItem("transactionReport_columnVisibility")
+    return saved ? JSON.parse(saved) : {
+      si: true,
+      orderId: true,
+      restaurant: true,
+      customerName: true,
+      totalItemAmount: true,
+      couponDiscount: true,
+      vatTax: true,
+      deliveryCharge: true,
+      platformFee: true,
+      orderAmount: true,
+      status: true,
+    }
+  })
+
   const [filters, setFilters] = useState({
     zone: "All Zones",
     restaurant: "All restaurants",
     time: "All Time",
   })
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
   const [zones, setZones] = useState([])
   const [restaurants, setRestaurants] = useState([])
+
+  // Save column visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem("transactionReport_columnVisibility", JSON.stringify(columnVisibility))
+  }, [columnVisibility])
 
   // Fetch zones and restaurants for filters
   useEffect(() => {
@@ -128,24 +158,46 @@ export default function TransactionReport() {
   }, [searchQuery, filters])
 
   const filteredTransactions = useMemo(() => {
-    return transactions // Backend already filters, so just return transactions
+    return transactions 
   }, [transactions])
 
   const handleExport = (format) => {
     if (filteredTransactions.length === 0) {
-      alert("No data to export")
+      toast.error("No data to export")
       return
     }
+
+    const allHeaders = [
+      { key: "si", label: "SI" },
+      { key: "orderId", label: "Order Id" },
+      { key: "restaurant", label: "Restaurant" },
+      { key: "customerName", label: "Customer Name" },
+      { key: "totalItemAmount", label: "Total Item Amount" },
+      { key: "couponDiscount", label: "Coupon Discount" },
+      { key: "vatTax", label: "Vat/Tax" },
+      { key: "deliveryCharge", label: "Delivery Charge" },
+      { key: "platformFee", label: "Platform Fee" },
+      { key: "orderAmount", label: "Order Amount" },
+      { key: "status", label: "Status" },
+    ]
+
+    const headers = allHeaders.filter(h => columnVisibility[h.key])
+
+    if (headers.length === 0) {
+      toast.error("No columns selected for export")
+      return
+    }
+
     switch (format) {
-      case "csv": exportTransactionReportToCSV(filteredTransactions); break
-      case "excel": exportTransactionReportToExcel(filteredTransactions); break
-      case "pdf": exportTransactionReportToPDF(filteredTransactions); break
-      case "json": exportTransactionReportToJSON(filteredTransactions); break
+      case "csv": exportReportsToCSV(filteredTransactions, headers, "transaction_report"); break
+      case "excel": exportReportsToExcel(filteredTransactions, headers, "transaction_report"); break
+      case "pdf": exportReportsToPDF(filteredTransactions, headers, "transaction_report", "Transaction Report"); break
+      case "json": exportReportsToJSON(filteredTransactions, "transaction_report"); break
     }
   }
 
   const handleFilterApply = () => {
-    // Filters are already applied via useMemo
+    // Filters are already applied via useEffect
   }
 
   const handleResetFilters = () => {
@@ -183,6 +235,18 @@ export default function TransactionReport() {
     }
 
     return 'bg-slate-100 text-slate-700'
+  }
+
+  const toggleColumn = (key) => {
+    setColumnVisibility(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
+  }
+
+  const handleSaveSettings = () => {
+    setIsSettingsOpen(false)
+    toast.success("Settings updated successfully")
   }
 
   if (loading) {
@@ -278,9 +342,7 @@ export default function TransactionReport() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-          {/* Left Column - Large Cards */}
           <div className="space-y-3">
-            {/* Completed Transaction - Green */}
             <div className="rounded-lg shadow-sm border border-slate-200 p-4" style={{ backgroundColor: '#f1f5f9' }}>
               <div className="relative mb-3 flex justify-center">
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
@@ -296,7 +358,6 @@ export default function TransactionReport() {
               </div>
             </div>
 
-            {/* Refunded Transaction - Red */}
             <div className="rounded-lg shadow-sm border border-slate-200 p-4" style={{ backgroundColor: '#f1f5f9' }}>
               <div className="relative mb-3 flex justify-center">
                 <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
@@ -313,9 +374,7 @@ export default function TransactionReport() {
             </div>
           </div>
 
-          {/* Right Column - Small Cards */}
           <div className="space-y-3">
-            {/* Admin Earning */}
             <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -333,7 +392,6 @@ export default function TransactionReport() {
               </div>
             </div>
 
-            {/* Restaurant Earning */}
             <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -351,7 +409,6 @@ export default function TransactionReport() {
               </div>
             </div>
 
-            {/* Deliveryman Earning */}
             <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -434,23 +491,23 @@ export default function TransactionReport() {
             <table className="w-full" style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '3%' }}>SI</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '7%' }}>Order Id</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Restaurant</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Customer Name</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '11%' }}>Total Item Amount</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Coupon Discount</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Vat/Tax</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Delivery Charge</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Platform Fee</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Order Amount</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Status</th>
+                  {columnVisibility.si && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '3%' }}>SI</th>}
+                  {columnVisibility.orderId && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '7%' }}>Order Id</th>}
+                  {columnVisibility.restaurant && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Restaurant</th>}
+                  {columnVisibility.customerName && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Customer Name</th>}
+                  {columnVisibility.totalItemAmount && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '11%' }}>Total Item Amount</th>}
+                  {columnVisibility.couponDiscount && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Coupon Discount</th>}
+                  {columnVisibility.vatTax && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Vat/Tax</th>}
+                  {columnVisibility.deliveryCharge && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Delivery Charge</th>}
+                  {columnVisibility.platformFee && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Platform Fee</th>}
+                  {columnVisibility.orderAmount && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Order Amount</th>}
+                  {columnVisibility.status && <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Status</th>}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-20 text-center">
+                    <td colSpan={Object.values(columnVisibility).filter(Boolean).length} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No transactions match your search</p>
@@ -460,50 +517,72 @@ export default function TransactionReport() {
                 ) : (
                   filteredTransactions.map((transaction, index) => (
                     <tr
-                      key={transaction.id}
+                      key={transaction._id || index}
                       className="hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] font-medium text-slate-700">{index + 1}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{transaction.orderId}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700 truncate block">{transaction.restaurant}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className={`text-[10px] truncate block ${
-                          transaction.customerName === "Invalid Customer Data" 
-                            ? "text-red-600 font-semibold" 
-                            : "text-slate-700"
-                        }`}>
-                          {transaction.customerName}
-                        </span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.totalItemAmount)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.couponDiscount)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.vatTax)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.deliveryCharge)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.platformFee || 0)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] font-medium text-slate-900">{formatFullCurrency(transaction.orderAmount)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${getStatusBadgeClasses(transaction.status || transaction.orderStatus)}`}>
-                          {transaction.status || transaction.orderStatus || 'N/A'}
-                        </span>
-                      </td>
+                      {columnVisibility.si && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] font-medium text-slate-700">{index + 1}</span>
+                        </td>
+                      )}
+                      {columnVisibility.orderId && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700">{transaction.orderId}</span>
+                        </td>
+                      )}
+                      {columnVisibility.restaurant && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700 truncate block">{transaction.restaurant}</span>
+                        </td>
+                      )}
+                      {columnVisibility.customerName && (
+                        <td className="px-1.5 py-1">
+                          <span className={`text-[10px] truncate block ${
+                            transaction.customerName === "Invalid Customer Data" 
+                              ? "text-red-600 font-semibold" 
+                              : "text-slate-700"
+                          }`}>
+                            {transaction.customerName}
+                          </span>
+                        </td>
+                      )}
+                      {columnVisibility.totalItemAmount && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.totalItemAmount)}</span>
+                        </td>
+                      )}
+                      {columnVisibility.couponDiscount && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.couponDiscount)}</span>
+                        </td>
+                      )}
+                      {columnVisibility.vatTax && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.vatTax)}</span>
+                        </td>
+                      )}
+                      {columnVisibility.deliveryCharge && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.deliveryCharge)}</span>
+                        </td>
+                      )}
+                      {columnVisibility.platformFee && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.platformFee || 0)}</span>
+                        </td>
+                      )}
+                      {columnVisibility.orderAmount && (
+                        <td className="px-1.5 py-1">
+                          <span className="text-[10px] font-medium text-slate-900">{formatFullCurrency(transaction.orderAmount)}</span>
+                        </td>
+                      )}
+                      {columnVisibility.status && (
+                        <td className="px-1.5 py-1">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${getStatusBadgeClasses(transaction.status || transaction.orderStatus)}`}>
+                            {transaction.status || transaction.orderStatus || 'N/A'}
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -519,25 +598,56 @@ export default function TransactionReport() {
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5" />
-              Report Settings
+              Table Column Settings
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-700">
-              Transaction report settings and preferences will be available here.
+          <div className="px-6 pb-4">
+            <p className="text-sm text-slate-500 mb-4">
+              Select the columns you want to display in the report table.
             </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { key: "si", label: "SI" },
+                { key: "orderId", label: "Order Id" },
+                { key: "restaurant", label: "Restaurant" },
+                { key: "customerName", label: "Customer Name" },
+                { key: "totalItemAmount", label: "Total Item Amount" },
+                { key: "couponDiscount", label: "Coupon Discount" },
+                { key: "vatTax", label: "Vat/Tax" },
+                { key: "deliveryCharge", label: "Delivery Charge" },
+                { key: "platformFee", label: "Platform Fee" },
+                { key: "orderAmount", label: "Order Amount" },
+                { key: "status", label: "Status" },
+              ].map((col) => (
+                <label key={col.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={columnVisibility[col.key]}
+                    onChange={() => toggleColumn(col.key)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700">{col.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
-          <div className="px-6 pb-6 flex items-center justify-end">
+          <DialogFooter className="px-6 py-4 bg-slate-50 rounded-b-lg">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             >
-              Close
+              Cancel
             </button>
-          </div>
+            <button
+              onClick={handleSaveSettings}
+              className="px-6 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-sm"
+            >
+              Save Changes
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   )
 }
-

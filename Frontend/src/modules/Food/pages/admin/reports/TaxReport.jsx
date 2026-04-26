@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react"
 import { Download, ChevronDown, FileText, DollarSign, Settings, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
+import { 
+  exportReportsToCSV, 
+  exportReportsToExcel, 
+  exportReportsToPDF, 
+  exportReportsToJSON 
+} from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-
 
 export default function TaxReport() {
   const [filters, setFilters] = useState({
@@ -27,6 +31,22 @@ export default function TaxReport() {
   const [selectedReport, setSelectedReport] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [reportDetail, setReportDetail] = useState(null)
+
+  const [columnVisibility, setColumnVisibility] = useState(() => {
+    const saved = localStorage.getItem("taxReport_columnVisibility")
+    return saved ? JSON.parse(saved) : {
+      sl: true,
+      incomeSource: true,
+      totalIncome: true,
+      totalTax: true,
+      action: true,
+    }
+  })
+
+  // Save column visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem("taxReport_columnVisibility", JSON.stringify(columnVisibility))
+  }, [columnVisibility])
 
   const fetchTaxReport = async () => {
     try {
@@ -142,22 +162,43 @@ export default function TaxReport() {
 
   const handleExport = (format) => {
     if (reports.length === 0) {
-      alert("No data to export")
+      toast.error("No data to export")
       return
     }
-    const headers = [
+    
+    const allHeaders = [
       { key: "sl", label: "SI" },
       { key: "incomeSource", label: "Income Source" },
       { key: "orderCount", label: "Order Count" },
       { key: "totalIncome", label: "Total Income" },
       { key: "totalTax", label: "Total Tax" },
     ]
+
+    const headers = allHeaders.filter(h => columnVisibility[h.key])
+
+    if (headers.length === 0) {
+      toast.error("No columns selected for export")
+      return
+    }
+
     switch (format) {
       case "csv": exportReportsToCSV(reports, headers, "tax_report"); break
       case "excel": exportReportsToExcel(reports, headers, "tax_report"); break
       case "pdf": exportReportsToPDF(reports, headers, "tax_report", "Tax Report"); break
       case "json": exportReportsToJSON(reports, "tax_report"); break
     }
+  }
+
+  const toggleColumn = (key) => {
+    setColumnVisibility(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
+  }
+
+  const handleSaveSettings = () => {
+    setIsSettingsOpen(false)
+    toast.success("Settings updated successfully")
   }
 
   if (loading) {
@@ -259,7 +300,6 @@ export default function TaxReport() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {/* Total Income Card */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -272,7 +312,6 @@ export default function TaxReport() {
             </div>
           </div>
 
-          {/* Total Tax Card */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -348,46 +387,66 @@ export default function TaxReport() {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      SI
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      Income Source
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      Total Income
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      Total Tax
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      Action
-                    </th>
+                    {columnVisibility.sl && (
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        SI
+                      </th>
+                    )}
+                    {columnVisibility.incomeSource && (
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Income Source
+                      </th>
+                    )}
+                    {columnVisibility.totalIncome && (
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Total Income
+                      </th>
+                    )}
+                    {columnVisibility.totalTax && (
+                      <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Total Tax
+                      </th>
+                    )}
+                    {columnVisibility.action && (
+                      <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                        Action
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {reports.map((report) => (
-                    <tr key={report.sl} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-700">{report.sl}</span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{report.incomeSource}</span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{report.totalIncome}</span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{report.totalTax}</span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button 
-                          onClick={() => handleViewDetails(report)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          View
-                        </button>
-                      </td>
+                  {reports.map((report, index) => (
+                    <tr key={report.sl || index} className="hover:bg-slate-50 transition-colors">
+                      {columnVisibility.sl && (
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-700">{report.sl || index + 1}</span>
+                        </td>
+                      )}
+                      {columnVisibility.incomeSource && (
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">{report.incomeSource}</span>
+                        </td>
+                      )}
+                      {columnVisibility.totalIncome && (
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-900">{report.totalIncome}</span>
+                        </td>
+                      )}
+                      {columnVisibility.totalTax && (
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-900">{report.totalTax}</span>
+                        </td>
+                      )}
+                      {columnVisibility.action && (
+                        <td className="px-4 py-3 text-center">
+                          <button 
+                            onClick={() => handleViewDetails(report)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            View
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -403,22 +462,48 @@ export default function TaxReport() {
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5" />
-              Report Settings
+              Table Column Settings
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-700">
-              Tax report settings and preferences will be available here.
+          <div className="px-6 pb-4">
+            <p className="text-sm text-slate-500 mb-4">
+              Select the columns you want to display in the tax report table.
             </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { key: "sl", label: "SI" },
+                { key: "incomeSource", label: "Income Source" },
+                { key: "totalIncome", label: "Total Income" },
+                { key: "totalTax", label: "Total Tax" },
+                { key: "action", label: "Action" },
+              ].map((col) => (
+                <label key={col.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={columnVisibility[col.key]}
+                    onChange={() => toggleColumn(col.key)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700">{col.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
-          <div className="px-6 pb-6 flex items-center justify-end">
+          <DialogFooter className="px-6 py-4 bg-slate-50 rounded-b-lg">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             >
-              Close
+              Cancel
             </button>
-          </div>
+            <button
+              onClick={handleSaveSettings}
+              className="px-6 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-sm"
+            >
+              Save Changes
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -487,4 +572,3 @@ export default function TaxReport() {
     </div>
   )
 }
-

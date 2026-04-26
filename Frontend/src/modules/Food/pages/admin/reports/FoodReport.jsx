@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Search, Download, ChevronDown, Filter, UtensilsCrossed, Settings, ArrowUpDown, Star, BarChart3, FileText, FileSpreadsheet, Code } from "lucide-react"
 import { emptyFoodReports, emptyYearlySalesData } from "@food/utils/adminFallbackData"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"

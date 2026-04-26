@@ -22,31 +22,26 @@ export default function RestaurantReport() {
   })
   const [zones, setZones] = useState([])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [visibleColumns, setVisibleColumns] = useState({
-    sl: true,
-    restaurantName: true,
-    totalFood: true,
-    totalOrder: true,
-    totalOrderAmount: true,
-    totalRestaurantEarning: true,
-    totalDiscountGiven: true,
-    totalAdminCommission: true,
-    totalVATTAX: true,
-    averageRatings: true,
+  const [columnVisibility, setColumnVisibility] = useState(() => {
+    const saved = localStorage.getItem("restaurantReport_columnVisibility")
+    return saved ? JSON.parse(saved) : {
+      sl: true,
+      restaurantName: true,
+      totalFood: true,
+      totalOrder: true,
+      totalOrderAmount: true,
+      totalRestaurantEarning: true,
+      totalDiscountGiven: true,
+      totalAdminCommission: true,
+      totalVATTAX: true,
+      averageRatings: true,
+    }
   })
 
-  const columnConfig = [
-    { key: "sl", label: "SL" },
-    { key: "restaurantName", label: "Restaurant Name" },
-    { key: "totalFood", label: "Total Food" },
-    { key: "totalOrder", label: "Total Order" },
-    { key: "totalOrderAmount", label: "Total Order Amount" },
-    { key: "totalRestaurantEarning", label: "Restaurant Earning" },
-    { key: "totalDiscountGiven", label: "Total Discount Given" },
-    { key: "totalAdminCommission", label: "Total Admin Commission" },
-    { key: "totalVATTAX", label: "Total VAT/TAX" },
-    { key: "averageRatings", label: "Average Ratings" },
-  ]
+  // Save column visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem("restaurantReport_columnVisibility", JSON.stringify(columnVisibility))
+  }, [columnVisibility])
 
   // Fetch zones for filter dropdown
   useEffect(() => {
@@ -120,9 +115,27 @@ export default function RestaurantReport() {
       alert("No data to export")
       return
     }
-    const headers = columnConfig
-      .filter(col => visibleColumns[col.key])
-      .map(col => ({ key: col.key, label: col.label }))
+    
+    // Only export visible columns
+    const allHeaders = [
+      { key: "sl", label: "SL" },
+      { key: "restaurantName", label: "Restaurant Name" },
+      { key: "totalFood", label: "Total Food" },
+      { key: "totalOrder", label: "Total Order" },
+      { key: "totalOrderAmount", label: "Total Order Amount" },
+      { key: "totalRestaurantEarning", label: "Restaurant Earning" },
+      { key: "totalDiscountGiven", label: "Total Discount Given" },
+      { key: "totalAdminCommission", label: "Total Admin Commission" },
+      { key: "totalVATTAX", label: "Total VAT/TAX" },
+      { key: "averageRatings", label: "Average Ratings" },
+    ]
+    
+    const headers = allHeaders.filter(h => columnVisibility[h.key])
+    
+    if (headers.length === 0) {
+      toast.error("No columns selected for export")
+      return
+    }
 
     switch (format) {
       case "csv": exportReportsToCSV(filteredRestaurants, headers, "restaurant_report"); break
@@ -136,13 +149,6 @@ export default function RestaurantReport() {
     // Filters are already applied via useMemo
   }
 
-  const toggleColumn = (key) => {
-    setVisibleColumns(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }))
-  }
-
   const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.all !== "All" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
 
   const renderStars = (rating, reviews) => {
@@ -152,6 +158,18 @@ export default function RestaurantReport() {
     const fullStars = Math.floor(rating)
     const hasHalfStar = rating % 1 !== 0
     return "★".repeat(fullStars) + (hasHalfStar ? "½" : "") + "☆".repeat(5 - Math.ceil(rating)) + ` (${reviews})`
+  }
+
+  const toggleColumn = (key) => {
+    setColumnVisibility(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
+  }
+
+  const handleSaveSettings = () => {
+    setIsSettingsOpen(false)
+    toast.success("Settings updated successfully")
   }
 
   if (loading) {
@@ -337,20 +355,92 @@ export default function RestaurantReport() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {columnConfig.map(col => visibleColumns[col.key] && (
-                    <th key={col.key} className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">
+                  {columnVisibility.sl && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                       <div className="flex items-center gap-1">
-                        <span>{col.label}</span>
+                        <span>SL</span>
                         <ArrowUpDown className="w-3 h-3 text-slate-400" />
                       </div>
                     </th>
-                  ))}
+                  )}
+                  {columnVisibility.restaurantName && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Restaurant Name</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalFood && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Total Food</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalOrder && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Total Order</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalOrderAmount && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Total Order Amount</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalRestaurantEarning && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Restaurant Earning</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalDiscountGiven && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Total Discount Given</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalAdminCommission && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Total Admin Commission</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.totalVATTAX && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Total VAT/TAX</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
+                  {columnVisibility.averageRatings && (
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        <span>Average Ratings</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredRestaurants.length === 0 ? (
                   <tr>
-                    <td colSpan={columnConfig.filter(c => visibleColumns[c.key]).length} className="px-6 py-20 text-center">
+                    <td colSpan={Object.values(columnVisibility).filter(Boolean).length} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No restaurants match your search</p>
@@ -360,12 +450,12 @@ export default function RestaurantReport() {
                 ) : (
                   filteredRestaurants.map((restaurant) => (
                     <tr key={restaurant.sl} className="hover:bg-slate-50 transition-colors">
-                      {visibleColumns.sl && (
+                      {columnVisibility.sl && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-slate-700">{restaurant.sl}</span>
                         </td>
                       )}
-                      {visibleColumns.restaurantName && (
+                      {columnVisibility.restaurantName && (
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -388,32 +478,32 @@ export default function RestaurantReport() {
                           </div>
                         </td>
                       )}
-                      {visibleColumns.totalFood && (
+                      {columnVisibility.totalFood && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{restaurant.totalFood}</span>
                         </td>
                       )}
-                      {visibleColumns.totalOrder && (
+                      {columnVisibility.totalOrder && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{restaurant.totalOrder}</span>
                         </td>
                       )}
-                      {visibleColumns.totalOrderAmount && (
+                      {columnVisibility.totalOrderAmount && (
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-900">{restaurant.totalOrderAmount}</span>
+                          <span className="text-sm text-slate-700">{restaurant.totalOrderAmount}</span>
                         </td>
                       )}
-                      {visibleColumns.totalRestaurantEarning && (
+                      {columnVisibility.totalRestaurantEarning && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-slate-900">{restaurant.totalRestaurantEarning}</span>
                         </td>
                       )}
-                      {visibleColumns.totalDiscountGiven && (
+                      {columnVisibility.totalDiscountGiven && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{restaurant.totalDiscountGiven}</span>
                         </td>
                       )}
-                      {visibleColumns.totalAdminCommission && (
+                      {columnVisibility.totalAdminCommission && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`text-sm font-medium ${
                             restaurant.totalAdminCommission.startsWith('?-') || restaurant.totalAdminCommission.startsWith('-?')
@@ -424,12 +514,12 @@ export default function RestaurantReport() {
                           </span>
                         </td>
                       )}
-                      {visibleColumns.totalVATTAX && (
+                      {columnVisibility.totalVATTAX && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{restaurant.totalVATTAX}</span>
                         </td>
                       )}
-                      {visibleColumns.averageRatings && (
+                      {columnVisibility.averageRatings && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{renderStars(restaurant.averageRatings, restaurant.reviews)}</span>
                         </td>
@@ -445,48 +535,55 @@ export default function RestaurantReport() {
 
       {/* Settings Dialog */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md bg-white p-0 overflow-hidden rounded-xl">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
-              <Settings className="w-5 h-5 text-blue-600" />
-              Table Columns Settings
+        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Table Column Settings
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-6 max-h-[60vh] overflow-y-auto">
-            <p className="text-sm text-slate-500 mb-4 font-medium">
-              Choose which columns you want to see in the restaurant report table.
+          <div className="px-6 pb-4">
+            <p className="text-sm text-slate-500 mb-4">
+              Select the columns you want to display in the report table.
             </p>
-            <div className="grid grid-cols-1 gap-3">
-              {columnConfig.map((col) => (
-                <div 
-                  key={col.key} 
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all cursor-pointer group"
-                  onClick={() => toggleColumn(col.key)}
-                >
-                  <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">{col.label}</span>
-                  <div className={`w-11 h-6 rounded-full relative transition-colors duration-200 ${visibleColumns[col.key] ? 'bg-blue-600' : 'bg-slate-200'}`}>
-                    <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${visibleColumns[col.key] ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </div>
-                </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { key: "sl", label: "SL" },
+                { key: "restaurantName", label: "Restaurant Name" },
+                { key: "totalFood", label: "Total Food" },
+                { key: "totalOrder", label: "Total Order" },
+                { key: "totalOrderAmount", label: "Total Order Amount" },
+                { key: "totalRestaurantEarning", label: "Restaurant Earning" },
+                { key: "totalDiscountGiven", label: "Total Discount Given" },
+                { key: "totalAdminCommission", label: "Admin Commission" },
+                { key: "totalVATTAX", label: "VAT/TAX" },
+                { key: "averageRatings", label: "Average Ratings" },
+              ].map((col) => (
+                <label key={col.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={columnVisibility[col.key]}
+                    onChange={() => toggleColumn(col.key)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700">{col.label}</span>
+                </label>
               ))}
             </div>
           </div>
-          <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex sm:justify-between items-center gap-4">
-            <button
-              onClick={() => {
-                const allVisible = {}
-                columnConfig.forEach(c => allVisible[c.key] = true)
-                setVisibleColumns(allVisible)
-              }}
-              className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-all"
-            >
-              Reset to Default
-            </button>
+          <DialogFooter className="px-6 py-4 bg-slate-50 rounded-b-lg">
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-6 py-2.5 text-sm font-bold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm"
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             >
-              Done
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveSettings}
+              className="px-6 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-sm"
+            >
+              Save Changes
             </button>
           </DialogFooter>
         </DialogContent>
