@@ -909,9 +909,10 @@ export async function getRestaurantReport(query = {}) {
     const orderCreatedAtFilter = parseTimeRange(query.time);
     const orderMatch = {
         restaurantId: { $in: restaurantIds },
+        orderStatus: 'delivered',
         $or: [
             { "payment.method": { $in: ["cash", "wallet"] } },
-            { "payment.status": { $in: ["paid", "authorized", "captured", "settled", "refunded"] } },
+            { "payment.status": { $in: ["paid", "authorized", "captured", "settled"] } },
         ],
     };
     if (orderCreatedAtFilter) {

@@ -26,19 +26,25 @@ export const exportToCSV = (orders, filename = "orders") => {
       order.delivered
     ])
   } else {
-    headers = ["SI", "Order ID", "Order Date", "Customer Name", "Customer Phone", "Restaurant", "Total Amount", "Payment Status", "Order Status", "Delivery Type"]
-    rows = orders.map((order, index) => [
-      index + 1,
-      order.orderId || order.id,
-      `${order.date}${order.time ? `, ${order.time}` : ""}`,
-      order.customerName,
-      order.customerPhone,
-      order.restaurant,
-      order.total || `Rs. ${(order.totalAmount || 0).toFixed(2)}`,
-      order.paymentStatus || "",
-      order.orderStatus || "",
-      order.deliveryType || ""
-    ])
+    headers = ["SI", "Order ID", "Order Date", "Customer Name", "Customer Phone", "Restaurant", "Price", "Delivery Charge", "Platform Fee", "Total Amount", "Payment Status", "Order Status", "Delivery Type"]
+    rows = orders.map((order, index) => {
+      const pricing = order.pricing || {}
+      return [
+        index + 1,
+        order.orderId || order.id,
+        `${order.date}${order.time ? `, ${order.time}` : ""}`,
+        order.customerName,
+        order.customerPhone,
+        order.restaurant,
+        order.subtotal || pricing.subtotal || 0,
+        order.deliveryCharge || pricing.deliveryFee || 0,
+        order.platformFee || pricing.platformFee || 0,
+        order.total || (order.totalAmount || 0).toFixed(2),
+        order.paymentStatus || "",
+        order.orderStatus || "",
+        order.deliveryType || ""
+      ]
+    })
   }
   
   const csvContent = [
@@ -108,19 +114,25 @@ export const exportToExcel = (orders, filename = "orders") => {
       ]
     })
   } else {
-    headers = ["SI", "Order ID", "Order Date", "Customer Name", "Customer Phone", "Restaurant", "Total Amount", "Payment Status", "Order Status", "Delivery Type"]
-    rows = orders.map((order, index) => [
-      index + 1,
-      order.orderId || order.id,
-      `${order.date || ''}${order.time ? `, ${order.time}` : ""}`,
-      order.customerName || 'N/A',
-      order.customerPhone || 'N/A',
-      order.restaurant || 'N/A',
-      order.total || `Rs. ${(order.totalAmount || 0).toFixed(2)}`,
-      order.paymentStatus || 'N/A',
-      order.orderStatus || 'N/A',
-      order.deliveryType || 'N/A'
-    ])
+    headers = ["SI", "Order ID", "Order Date", "Customer Name", "Customer Phone", "Restaurant", "Price", "Delivery Charge", "Platform Fee", "Total Amount", "Payment Status", "Order Status", "Delivery Type"]
+    rows = orders.map((order, index) => {
+      const pricing = order.pricing || {}
+      return [
+        index + 1,
+        order.orderId || order.id,
+        `${order.date || ''}${order.time ? `, ${order.time}` : ""}`,
+        order.customerName || 'N/A',
+        order.customerPhone || 'N/A',
+        order.restaurant || 'N/A',
+        order.subtotal || pricing.subtotal || 0,
+        order.deliveryCharge || pricing.deliveryFee || 0,
+        order.platformFee || pricing.platformFee || 0,
+        order.total || (order.totalAmount || 0).toFixed(2),
+        order.paymentStatus || 'N/A',
+        order.orderStatus || 'N/A',
+        order.deliveryType || 'N/A'
+      ]
+    })
   }
   
   // Helper function to escape HTML and format cell values
@@ -285,11 +297,12 @@ export const exportToPDF = async (orders, filename = "orders") => {
         8: { halign: 'right' }
       }
     } else {
-      headers = [["SI", "Order ID", "Date", "Customer", "Restaurant", "Price", "D.Charge", "Total", "P. Method", "P. Status", "O. Status"]]
+      headers = [["SI", "Order ID", "Date", "Customer", "Restaurant", "Price", "D.Charge", "P.Fee", "Total", "P. Method", "P. Status", "O. Status"]]
       tableData = orders.map((order, index) => {
         const pricing = order.pricing || {}
         const subtotal = order.subtotal ?? pricing.subtotal ?? 0
         const deliveryCharge = order.deliveryCharge ?? pricing.deliveryFee ?? 0
+        const platformFee = order.platformFee ?? pricing.platformFee ?? 0
         const total = order.totalAmount ?? order.total ?? pricing.total ?? 0
         const paymentMethod = order.paymentMethod || order.payment?.method || 'N/A'
         const paymentStatus = order.paymentStatus || order.payment?.status || 'N/A'
@@ -302,6 +315,7 @@ export const exportToPDF = async (orders, filename = "orders") => {
           order.restaurant || 'N/A',
           subtotal ? `Rs. ${Number(subtotal).toFixed(2)}` : 'Rs. 0.00',
           deliveryCharge ? `Rs. ${Number(deliveryCharge).toFixed(2)}` : 'Rs. 0.00',
+          platformFee ? `Rs. ${Number(platformFee).toFixed(2)}` : 'Rs. 0.00',
           total ? `Rs. ${Number(total).toFixed(2)}` : 'Rs. 0.00',
           paymentMethod,
           paymentStatus,
@@ -311,7 +325,8 @@ export const exportToPDF = async (orders, filename = "orders") => {
       columnStyles = {
         5: { halign: 'right' },
         6: { halign: 'right' },
-        7: { halign: 'right' }
+        7: { halign: 'right' },
+        8: { halign: 'right' }
       }
     }
 
@@ -342,9 +357,9 @@ export const exportToPDF = async (orders, filename = "orders") => {
         fillColor: [250, 250, 252]
       },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' }, // SI
-        1: { cellWidth: 25 }, // Order ID
-        2: { cellWidth: 25 }, // Date
+        0: { cellWidth: 8, halign: 'center' }, // SI
+        1: { cellWidth: 22 }, // Order ID
+        2: { cellWidth: 22 }, // Date
         ...columnStyles
       },
       margin: { left: 14, right: 14 },

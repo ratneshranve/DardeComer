@@ -841,18 +841,19 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
   }
 
   // Notify User and Restaurant about the cancellation
-  const finalPaymentMethod = String(order.payment?.method || paymentMethod || "cash").toLowerCase();
-  const finalPaymentStatus = String(order.payment?.status || paymentStatus || "cod_pending").toLowerCase();
-  const isOnlinePaid =
+  const finalPaymentMethod = String(order.payment?.method || "cash").toLowerCase();
+  const finalPaymentStatus = String(order.payment?.status || "cod_pending").toLowerCase();
+  const isOnlinePaid_internal =
     finalPaymentMethod === "razorpay" &&
     (finalPaymentStatus === "paid" || finalPaymentStatus === "refunded");
   const refundDestination = String(order.payment?.refund?.destination || "source").toLowerCase();
-  const refundDetail = isOnlinePaid
+  const refundDetail = isOnlinePaid_internal
     ? refundDestination === "wallet"
       ? ` Your refund of ₹${order.pricing.total} has been credited to your wallet.`
       : ` Your refund of ₹${order.pricing.total} is being processed and will be credited to your source account within 2-3 working days.`
     : "";
   
+  // User notification: "Order cancelled"
   await notifyOwnersSafely(
     [{ ownerType: "USER", ownerId: userId }],
     {
@@ -867,6 +868,7 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
     },
   );
 
+  // Restaurant notification: "Customer cancelled order"
   await notifyOwnersSafely(
     [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
     {
@@ -886,16 +888,27 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
   try {
     const io = getIO();
     if (io) {
-      const payload = {
+      const basePayload = {
         orderMongoId: order._id?.toString?.(),
         orderId: order._id.toString(),
         orderStatus: order.orderStatus,
         cancelledBy: "user",
         cancelReason: reason || "",
-        message: `Customer cancelled order #${order.order_id || order._id}.`
       };
-      io.to(rooms.user(userId)).emit("order_status_update", payload);
-      io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", payload);
+
+      // User payload: "Order cancelled"
+      io.to(rooms.user(userId)).emit("order_status_update", {
+        ...basePayload,
+        title: "Order Cancelled ❌",
+        message: `Order #${order.order_id || order._id} has been cancelled successfully.`
+      });
+
+      // Restaurant payload: "Customer cancelled order"
+      io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", {
+        ...basePayload,
+        title: "Order Cancelled ❌",
+        message: `Customer cancelled order #${order.order_id || order._id}.`
+      });
     }
   } catch (err) {
     logger.warn(`cancelOrder socket emit failed: ${err?.message || err}`);
@@ -907,6 +920,7 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
 export async function submitOrderRatings(orderId, userId, dto) {
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
+
 
   const order = await FoodOrder.findOne({
     ...identity,

@@ -1118,7 +1118,7 @@ export default function OrderTracking() {
                 ? 'Order cancelled successfully. Refund has been credited to your wallet.'
                 : 'Order cancelled successfully. Amount will be credited to your source account in 2-3 working days.')
               : 'Order cancelled successfully. Refund will be processed shortly.'));
-        toast.success(successMessage);
+        toast.success("Order cancelled successfully");
         setShowCancelDialog(false);
         setCancellationReason("");
         setRefundDestination('source')

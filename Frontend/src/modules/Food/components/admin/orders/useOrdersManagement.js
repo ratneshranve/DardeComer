@@ -338,7 +338,15 @@ export function useOrdersManagement(orders, statusKey, title) {
         order.discountAmount ??
         order.pricing?.discount
       )
-      const computedTotal = subtotal + deliveryFee + taxAmount - discountAmount
+      const platformFee = toNumber(
+        order.platformFee ??
+        order.pricing?.platformFee
+      )
+      const packagingFee = toNumber(
+        order.packagingFee ??
+        order.pricing?.packagingFee
+      )
+      const computedTotal = subtotal + deliveryFee + taxAmount + platformFee + packagingFee - discountAmount
       const totalAmount = toNumber(
         order.totalAmount ??
         order.pricing?.total ??
@@ -547,14 +555,18 @@ export function useOrdersManagement(orders, statusKey, title) {
       const summaryStartY = (doc.lastAutoTable?.finalY || 130) + 10
       doc.setDrawColor(226, 232, 240)
       doc.setFillColor(248, 250, 252)
-      doc.roundedRect(pageWidth - 92, summaryStartY - 5, 78, 35, 2, 2, "FD")
+      const summaryRowsCount = 2 + (deliveryFee > 0 ? 1 : 0) + (platformFee > 0 ? 1 : 0) + (packagingFee > 0 ? 1 : 0) + (taxAmount > 0 ? 1 : 0) + (discountAmount > 0 ? 1 : 0)
+      const summaryHeight = summaryRowsCount * 6 + 5
+      doc.roundedRect(pageWidth - 92, summaryStartY - 5, 78, summaryHeight, 2, 2, "FD")
       autoTable(doc, {
         startY: summaryStartY,
         body: [
           ["Subtotal", formatMoney(subtotal)],
-          ["Delivery Fee", formatMoney(deliveryFee)],
-          ["Tax", formatMoney(taxAmount)],
-          ["Discount", `- ${formatMoney(discountAmount)}`],
+          ...(deliveryFee > 0 ? [["Delivery Fee", formatMoney(deliveryFee)]] : []),
+          ...(platformFee > 0 ? [["Platform Fee", formatMoney(platformFee)]] : []),
+          ...(packagingFee > 0 ? [["Packaging Fee", formatMoney(packagingFee)]] : []),
+          ...(taxAmount > 0 ? [["Tax", formatMoney(taxAmount)]] : []),
+          ...(discountAmount > 0 ? [["Discount", `- ${formatMoney(discountAmount)}`]] : []),
           ["Grand Total", formatMoney(totalAmount)],
         ],
         theme: "plain",
@@ -569,7 +581,7 @@ export function useOrdersManagement(orders, statusKey, title) {
         },
         margin: { left: pageWidth - 88 },
         didParseCell: (hookData) => {
-          if (hookData.row.index === 4) {
+          if (hookData.row.index === hookData.table.body.length - 1) {
             hookData.cell.styles.fontStyle = "bold"
             hookData.cell.styles.fontSize = 11
             hookData.cell.styles.textColor = [15, 118, 110]

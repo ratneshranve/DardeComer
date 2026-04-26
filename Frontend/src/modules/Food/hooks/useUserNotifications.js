@@ -93,6 +93,7 @@ export const useUserNotifications = () => {
       const isOrderTrackingPage =
         typeof window !== 'undefined' &&
         /^\/food\/user\/orders\/[^/]+/i.test(String(window.location?.pathname || ''));
+      
       if (isImportant && !isOrderTrackingPage) {
         const toastId = `user-order-status-${String(data.orderMongoId || data.orderId || '')}`;
         toast.message(title, {
