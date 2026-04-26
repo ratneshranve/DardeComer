@@ -148,6 +148,7 @@ export default function TaxReport() {
     const headers = [
       { key: "sl", label: "SI" },
       { key: "incomeSource", label: "Income Source" },
+      { key: "orderCount", label: "Order Count" },
       { key: "totalIncome", label: "Total Income" },
       { key: "totalTax", label: "Total Tax" },
     ]

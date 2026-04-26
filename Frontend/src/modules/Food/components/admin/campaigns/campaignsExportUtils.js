@@ -32,7 +32,8 @@ export const exportCampaignsToCSV = (campaigns, filename = "campaigns", isFoodCa
     ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", csvContent], { type: "text/csv;charset=utf-8;" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -71,12 +72,13 @@ export const exportCampaignsToExcel = (campaigns, filename = "campaigns", isFood
     ])
   }
   
-  const csvContent = [
+  const excelContent = [
     headers.join("\t"),
     ...rows.map(row => row.join("\t"))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", excelContent], { type: "application/vnd.ms-excel" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -87,9 +89,17 @@ export const exportCampaignsToExcel = (campaigns, filename = "campaigns", isFood
   document.body.removeChild(link)
 }
 
-export const exportCampaignsToPDF = (campaigns, filename = "campaigns", isFoodCampaign = false) => {
-  let headers, rows
+export const exportCampaignsToPDF = async (campaigns, filename = "campaigns", isFoodCampaign = false) => {
+  const { default: jsPDF } = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
   
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text("Campaigns List", 14, 15)
+  doc.setFontSize(10)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
+  
+  let headers, rows
   if (isFoodCampaign) {
     headers = ["SI", "Title", "Date Start", "Date End", "Time Start", "Time End", "Price", "Status"]
     rows = campaigns.map((campaign, index) => [
@@ -115,48 +125,15 @@ export const exportCampaignsToPDF = (campaigns, filename = "campaigns", isFoodCa
     ])
   }
   
-  const printWindow = window.open("", "_blank")
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${filename}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; font-weight: bold; }
-          @media print { body { margin: 0; } }
-        </style>
-      </head>
-      <body>
-        <h1>${filename}</h1>
-        <p>Generated on: ${new Date().toLocaleString()}</p>
-        <table>
-          <thead>
-            <tr>
-              ${headers.map(h => `<th>${h}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(row => `
-              <tr>
-                ${row.map(cell => `<td>${cell}</td>`).join("")}
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => window.close(), 100);
-          }
-        </script>
-      </body>
-    </html>
-  `
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 25,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  })
+  
+  doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`)
 }
 
 export const exportCampaignsToJSON = (campaigns, filename = "campaigns") => {

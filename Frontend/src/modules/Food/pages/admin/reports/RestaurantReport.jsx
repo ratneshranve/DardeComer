@@ -22,6 +22,31 @@ export default function RestaurantReport() {
   })
   const [zones, setZones] = useState([])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [visibleColumns, setVisibleColumns] = useState({
+    sl: true,
+    restaurantName: true,
+    totalFood: true,
+    totalOrder: true,
+    totalOrderAmount: true,
+    totalRestaurantEarning: true,
+    totalDiscountGiven: true,
+    totalAdminCommission: true,
+    totalVATTAX: true,
+    averageRatings: true,
+  })
+
+  const columnConfig = [
+    { key: "sl", label: "SL" },
+    { key: "restaurantName", label: "Restaurant Name" },
+    { key: "totalFood", label: "Total Food" },
+    { key: "totalOrder", label: "Total Order" },
+    { key: "totalOrderAmount", label: "Total Order Amount" },
+    { key: "totalRestaurantEarning", label: "Restaurant Earning" },
+    { key: "totalDiscountGiven", label: "Total Discount Given" },
+    { key: "totalAdminCommission", label: "Total Admin Commission" },
+    { key: "totalVATTAX", label: "Total VAT/TAX" },
+    { key: "averageRatings", label: "Average Ratings" },
+  ]
 
   // Fetch zones for filter dropdown
   useEffect(() => {
@@ -95,17 +120,10 @@ export default function RestaurantReport() {
       alert("No data to export")
       return
     }
-    const headers = [
-      { key: "sl", label: "SL" },
-      { key: "restaurantName", label: "Restaurant Name" },
-      { key: "totalFood", label: "Total Food" },
-      { key: "totalOrder", label: "Total Order" },
-      { key: "totalRestaurantEarning", label: "Restaurant Earning" },
-      { key: "totalDiscountGiven", label: "Total Discount Given" },
-      { key: "totalAdminCommission", label: "Total Admin Commission" },
-      { key: "totalVATTAX", label: "Total VAT/TAX" },
-      { key: "averageRatings", label: "Average Ratings" },
-    ]
+    const headers = columnConfig
+      .filter(col => visibleColumns[col.key])
+      .map(col => ({ key: col.key, label: col.label }))
+
     switch (format) {
       case "csv": exportReportsToCSV(filteredRestaurants, headers, "restaurant_report"); break
       case "excel": exportReportsToExcel(filteredRestaurants, headers, "restaurant_report"); break
@@ -116,6 +134,13 @@ export default function RestaurantReport() {
 
   const handleFilterApply = () => {
     // Filters are already applied via useMemo
+  }
+
+  const toggleColumn = (key) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
   }
 
   const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.all !== "All" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
@@ -312,66 +337,20 @@ export default function RestaurantReport() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>SL</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Restaurant Name</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Food</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Order</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Restaurant Earning</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Discount Given</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Admin Commission</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total VAT/TAX</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Average Ratings</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
+                  {columnConfig.map(col => visibleColumns[col.key] && (
+                    <th key={col.key} className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <span>{col.label}</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredRestaurants.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-20 text-center">
+                    <td colSpan={columnConfig.filter(c => visibleColumns[c.key]).length} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No restaurants match your search</p>
@@ -381,57 +360,80 @@ export default function RestaurantReport() {
                 ) : (
                   filteredRestaurants.map((restaurant) => (
                     <tr key={restaurant.sl} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-700">{restaurant.sl}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
-                            {restaurant.icon ? (
-                              <img
-                                src={restaurant.icon}
-                                alt={restaurant.restaurantName}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.src = "https://via.placeholder.com/32"
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-slate-300 flex items-center justify-center text-xs text-slate-600 font-semibold">
-                                {restaurant.restaurantName.charAt(0).toUpperCase()}
-                              </div>
-                            )}
+                      {visibleColumns.sl && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-700">{restaurant.sl}</span>
+                        </td>
+                      )}
+                      {visibleColumns.restaurantName && (
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                              {restaurant.icon ? (
+                                <img
+                                  src={restaurant.icon}
+                                  alt={restaurant.restaurantName}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = "https://via.placeholder.com/32"
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-slate-300 flex items-center justify-center text-xs text-slate-600 font-semibold">
+                                  {restaurant.restaurantName.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm font-medium text-slate-900">{restaurant.restaurantName}</span>
                           </div>
-                          <span className="text-sm font-medium text-slate-900">{restaurant.restaurantName}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalFood}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalOrder}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{restaurant.totalRestaurantEarning}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalDiscountGiven}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-sm font-medium ${
-                          restaurant.totalAdminCommission.startsWith('?-') || restaurant.totalAdminCommission.startsWith('-?')
-                            ? 'text-red-600'
-                            : 'text-slate-900'
-                        }`}>
-                          {restaurant.totalAdminCommission}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalVATTAX}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{renderStars(restaurant.averageRatings, restaurant.reviews)}</span>
-                      </td>
+                        </td>
+                      )}
+                      {visibleColumns.totalFood && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">{restaurant.totalFood}</span>
+                        </td>
+                      )}
+                      {visibleColumns.totalOrder && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">{restaurant.totalOrder}</span>
+                        </td>
+                      )}
+                      {visibleColumns.totalOrderAmount && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-900">{restaurant.totalOrderAmount}</span>
+                        </td>
+                      )}
+                      {visibleColumns.totalRestaurantEarning && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-900">{restaurant.totalRestaurantEarning}</span>
+                        </td>
+                      )}
+                      {visibleColumns.totalDiscountGiven && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">{restaurant.totalDiscountGiven}</span>
+                        </td>
+                      )}
+                      {visibleColumns.totalAdminCommission && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`text-sm font-medium ${
+                            restaurant.totalAdminCommission.startsWith('?-') || restaurant.totalAdminCommission.startsWith('-?')
+                              ? 'text-red-600'
+                              : 'text-slate-900'
+                          }`}>
+                            {restaurant.totalAdminCommission}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.totalVATTAX && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">{restaurant.totalVATTAX}</span>
+                        </td>
+                      )}
+                      {visibleColumns.averageRatings && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">{renderStars(restaurant.averageRatings, restaurant.reviews)}</span>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -443,26 +445,50 @@ export default function RestaurantReport() {
 
       {/* Settings Dialog */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Report Settings
+        <DialogContent className="max-w-md bg-white p-0 overflow-hidden rounded-xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
+              <Settings className="w-5 h-5 text-blue-600" />
+              Table Columns Settings
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-700">
-              Restaurant report settings and preferences will be available here.
+          <div className="px-6 py-6 max-h-[60vh] overflow-y-auto">
+            <p className="text-sm text-slate-500 mb-4 font-medium">
+              Choose which columns you want to see in the restaurant report table.
             </p>
+            <div className="grid grid-cols-1 gap-3">
+              {columnConfig.map((col) => (
+                <div 
+                  key={col.key} 
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all cursor-pointer group"
+                  onClick={() => toggleColumn(col.key)}
+                >
+                  <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900">{col.label}</span>
+                  <div className={`w-11 h-6 rounded-full relative transition-colors duration-200 ${visibleColumns[col.key] ? 'bg-blue-600' : 'bg-slate-200'}`}>
+                    <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${visibleColumns[col.key] ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="px-6 pb-6 flex items-center justify-end">
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex sm:justify-between items-center gap-4">
+            <button
+              onClick={() => {
+                const allVisible = {}
+                columnConfig.forEach(c => allVisible[c.key] = true)
+                setVisibleColumns(allVisible)
+              }}
+              className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-all"
+            >
+              Reset to Default
+            </button>
             <button
               onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
+              className="px-6 py-2.5 text-sm font-bold rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm"
             >
-              Close
+              Done
             </button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

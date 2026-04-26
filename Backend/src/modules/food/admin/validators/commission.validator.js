@@ -6,7 +6,7 @@ const restaurantCommissionUpsertSchema = z.object({
     restaurantId: z.string().min(1, 'Restaurant is required'),
     defaultCommission: z.object({
         type: z.enum(['percentage', 'amount']).default('percentage'),
-        value: z.number().min(0, 'Commission value must be 0 or greater')
+        value: z.number().min(10, 'Commission value must be 10 or greater')
     }),
     notes: z.string().optional().or(z.literal(''))
 });

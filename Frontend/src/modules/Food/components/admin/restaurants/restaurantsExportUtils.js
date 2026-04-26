@@ -24,12 +24,13 @@ export const exportRestaurantsToExcel = (restaurants, filename = "restaurants") 
     restaurant.rating || 0
   ])
   
-  const csvContent = [
+  const excelContent = [
     headers.join("\t"),
     ...rows.map(row => row.join("\t"))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", excelContent], { type: "application/vnd.ms-excel" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -40,7 +41,21 @@ export const exportRestaurantsToExcel = (restaurants, filename = "restaurants") 
   document.body.removeChild(link)
 }
 
-export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") => {
+export const exportRestaurantsToPDF = async (restaurants, filename = "restaurants") => {
+  const { default: jsPDF } = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
+  
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  })
+  
+  doc.setFontSize(16)
+  doc.text("Restaurants List", 14, 15)
+  doc.setFontSize(10)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
+  
   const headers = [
     "SI",
     "Restaurant ID",
@@ -65,88 +80,14 @@ export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") =>
     restaurant.rating || 0
   ])
   
-  const printWindow = window.open("", "_blank")
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${filename}</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            padding: 20px; 
-            margin: 0;
-          }
-          h1 { 
-            text-align: center; 
-            color: #1e293b;
-            margin-bottom: 10px;
-          }
-          p { 
-            text-align: center; 
-            color: #64748b;
-            margin-bottom: 20px;
-          }
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 20px; 
-            font-size: 12px;
-          }
-          th, td { 
-            border: 1px solid #ddd; 
-            padding: 8px; 
-            text-align: left; 
-          }
-          th { 
-            background-color: #3b82f6; 
-            color: white; 
-            font-weight: bold; 
-          }
-          tr:nth-child(even) { 
-            background-color: #f9fafb; 
-          }
-          tr:hover { 
-            background-color: #f1f5f9; 
-          }
-          @media print { 
-            body { 
-              margin: 0; 
-              padding: 10px;
-            }
-            @page {
-              margin: 1cm;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <h1>Restaurants List</h1>
-        <p>Generated on: ${new Date().toLocaleString()}</p>
-        <table>
-          <thead>
-            <tr>
-              ${headers.map(h => `<th>${h}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(row => `
-              <tr>
-                ${row.map(cell => `<td>${cell}</td>`).join("")}
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => window.close(), 100);
-          }
-        </script>
-      </body>
-    </html>
-  `
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 25,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  })
+  
+  doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`)
 }
 

@@ -2,7 +2,15 @@
 export const exportReportsToCSV = (data, headers, filename = "report") => {
   const rows = data.map((item, index) => {
     return headers.map(header => {
-      const value = item[header.key] || item[header] || ""
+      const key = typeof header === 'string' ? header : header.key
+      let value = item[key]
+      
+      // Automatic Serial Number handling
+      if ((key === 'sl' || key === 'si' || key === 'SI' || key === 'SL') && (value === undefined || value === null)) {
+        value = index + 1
+      }
+      
+      if (value === null || value === undefined) value = ""
       return typeof value === 'object' ? JSON.stringify(value) : value
     })
   })
@@ -13,7 +21,8 @@ export const exportReportsToCSV = (data, headers, filename = "report") => {
     ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", csvContent], { type: "text/csv;charset=utf-8;" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -25,20 +34,29 @@ export const exportReportsToCSV = (data, headers, filename = "report") => {
 }
 
 export const exportReportsToExcel = (data, headers, filename = "report") => {
-  const rows = data.map((item) => {
+  const rows = data.map((item, index) => {
     return headers.map(header => {
-      const value = item[header.key] || item[header] || ""
+      const key = typeof header === 'string' ? header : header.key
+      let value = item[key]
+      
+      // Automatic Serial Number handling
+      if ((key === 'sl' || key === 'si' || key === 'SI' || key === 'SL') && (value === undefined || value === null)) {
+        value = index + 1
+      }
+      
+      if (value === null || value === undefined) value = ""
       return typeof value === 'object' ? JSON.stringify(value) : value
     })
   })
   
   const headerRow = headers.map(h => typeof h === 'string' ? h : h.label).join("\t")
-  const csvContent = [
+  const excelContent = [
     headerRow,
     ...rows.map(row => row.join("\t"))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", excelContent], { type: "application/vnd.ms-excel" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -49,54 +67,47 @@ export const exportReportsToExcel = (data, headers, filename = "report") => {
   document.body.removeChild(link)
 }
 
-export const exportReportsToPDF = (data, headers, filename = "report", title = "Report") => {
-  const headerRow = headers.map(h => typeof h === 'string' ? h : h.label)
+export const exportReportsToPDF = async (data, headers, filename = "report", title = "Report") => {
+  const { default: jsPDF } = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
   
-  let htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${title}</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 10px; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        h1 { text-align: center; }
-      </style>
-    </head>
-    <body>
-      <h1>${title}</h1>
-      <p>Generated on: ${new Date().toLocaleString()}</p>
-      <table>
-        <thead>
-          <tr>
-            ${headerRow.map(h => `<th>${h}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${data.map(item => {
-            const cells = headers.map(header => {
-              const value = item[header.key] || item[header] || ""
-              return `<td>${String(value)}</td>`
-            })
-            return `<tr>${cells.join("")}</tr>`
-          }).join("")}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `
+  const isLandscape = headers.length > 7
+  const doc = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  })
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  doc.setFontSize(16)
+  doc.text(title, 14, 15)
+  doc.setFontSize(10)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
+  
+  const headerLabels = headers.map(h => typeof h === 'string' ? h : h.label)
+  const rows = data.map((item, index) => {
+    return headers.map(header => {
+      const key = typeof header === 'string' ? header : header.key
+      let value = item[key]
+      
+      // Automatic Serial Number handling
+      if ((key === 'sl' || key === 'si' || key === 'SI' || key === 'SL') && (value === undefined || value === null)) {
+        value = index + 1
+      }
+      
+      if (value === null || value === undefined) value = ""
+      return String(value)
+    })
+  })
+  
+  autoTable(doc, {
+    head: [headerLabels],
+    body: rows,
+    startY: 25,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  })
+  
+  doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`)
 }
 
 export const exportReportsToJSON = (data, filename = "report") => {
@@ -133,7 +144,8 @@ export const exportTransactionReportToCSV = (transactions, filename = "transacti
     ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", csvContent], { type: "text/csv;charset=utf-8;" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -159,12 +171,13 @@ export const exportTransactionReportToExcel = (transactions, filename = "transac
     transaction.orderAmount.toFixed(2)
   ])
   
-  const csvContent = [
+  const excelContent = [
     headers.join("\t"),
     ...rows.map(row => row.join("\t"))
   ].join("\n")
   
-  const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" })
+  // Add BOM for Excel UTF-8 support
+  const blob = new Blob(["\ufeff", excelContent], { type: "application/vnd.ms-excel" })
   const link = document.createElement("a")
   const url = URL.createObjectURL(blob)
   link.setAttribute("href", url)
@@ -175,61 +188,45 @@ export const exportTransactionReportToExcel = (transactions, filename = "transac
   document.body.removeChild(link)
 }
 
-export const exportTransactionReportToPDF = (transactions, filename = "transaction_report") => {
+export const exportTransactionReportToPDF = async (transactions, filename = "transaction_report") => {
+  const { default: jsPDF } = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
+  
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  })
+  
+  doc.setFontSize(16)
+  doc.text("Transaction Report", 14, 15)
+  doc.setFontSize(10)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22)
+  
   const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Coupon Discount", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
   
-  let htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Transaction Report</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 8px; }
-        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        h1 { text-align: center; }
-      </style>
-    </head>
-    <body>
-      <h1>Transaction Report</h1>
-      <p>Generated on: ${new Date().toLocaleString()}</p>
-      <table>
-        <thead>
-          <tr>
-            ${headers.map(h => `<th>${h}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${transactions.map((transaction, index) => `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${transaction.orderId}</td>
-              <td>${transaction.restaurant}</td>
-              <td>${transaction.customerName}</td>
-              <td>Rs. ${transaction.totalItemAmount.toFixed(2)}</td>
-              <td>Rs. ${transaction.couponDiscount.toFixed(2)}</td>
-              <td>Rs. ${transaction.vatTax.toFixed(2)}</td>
-              <td>Rs. ${transaction.deliveryCharge.toFixed(2)}</td>
-              <td>Rs. ${Number(transaction.platformFee || 0).toFixed(2)}</td>
-              <td>Rs. ${transaction.orderAmount.toFixed(2)}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `
+  const rows = transactions.map((transaction, index) => [
+    index + 1,
+    transaction.orderId,
+    transaction.restaurant,
+    transaction.customerName,
+    `Rs. ${transaction.totalItemAmount.toFixed(2)}`,
+    `Rs. ${transaction.couponDiscount.toFixed(2)}`,
+    `Rs. ${transaction.vatTax.toFixed(2)}`,
+    `Rs. ${transaction.deliveryCharge.toFixed(2)}`,
+    `Rs. ${Number(transaction.platformFee || 0).toFixed(2)}`,
+    `Rs. ${transaction.orderAmount.toFixed(2)}`
+  ])
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  autoTable(doc, {
+    head: [headers],
+    body: rows,
+    startY: 25,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  })
+  
+  doc.save(`${filename}_${new Date().toISOString().split("T")[0]}.pdf`)
 }
 
 export const exportTransactionReportToJSON = (transactions, filename = "transaction_report") => {

@@ -280,13 +280,15 @@ export default function RestaurantCommission() {
       errors.restaurantId = "Restaurant is required"
     }
 
-    if (!formData.defaultCommission.value || parseFloat(formData.defaultCommission.value) < 0) {
+    if (!formData.defaultCommission.value) {
       errors.defaultCommission = "Default commission value is required"
+    } else if (parseFloat(formData.defaultCommission.value) < 10) {
+      errors.defaultCommission = "Commission should not be less than 10"
     }
 
     if (formData.defaultCommission.type === "percentage" && 
-        (parseFloat(formData.defaultCommission.value) < 0 || parseFloat(formData.defaultCommission.value) > 100)) {
-      errors.defaultCommission = "Percentage must be between 0-100"
+        (parseFloat(formData.defaultCommission.value) < 10 || parseFloat(formData.defaultCommission.value) > 100)) {
+      errors.defaultCommission = "Percentage must be between 10-100"
     }
 
     setFormErrors(errors)

@@ -4,9 +4,10 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { cn } from "@food/utils/utils"
 
 function Popover({
+  modal = false,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+  return <PopoverPrimitive.Root data-slot="popover" modal={modal} {...props} />
 }
 
 function PopoverTrigger({
