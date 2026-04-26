@@ -341,20 +341,20 @@ export default function OrderDetectDelivery() {
     ["orderId", "userName", "userNumber", "restaurantName", "deliveryBoyName", "status"]
   )
 
-  // Statistics
+  // Statistics - Always calculate from full orders list
   const stats = useMemo(() => {
     const total = orders.length
-    const ordered = filteredData.filter(o => o.status === "Ordered").length
-    const restaurantAccepted = filteredData.filter(o => o.status === "Restaurant Accepted" || o.status === "Accepted").length
-    const rejected = filteredData.filter(o => o.status === "Rejected").length
-    const deliveryBoyAssigned = filteredData.filter(o => o.status === "Delivery Boy Assigned").length
-    const reachedPickup = filteredData.filter(o => o.status === "Delivery Boy Reached Pickup" || o.status === "Reached Pickup").length
-    const orderIdAccepted = filteredData.filter(o => o.status === "Order ID Accepted").length
-    const reachedDrop = filteredData.filter(o => o.status === "Reached Drop").length
-    const delivered = filteredData.filter(o => o.status === "Ordered Delivered").length
+    const ordered = orders.filter(o => o.status === "Ordered").length
+    const restaurantAccepted = orders.filter(o => o.status === "Restaurant Accepted" || o.status === "Accepted").length
+    const rejected = orders.filter(o => o.status === "Rejected").length
+    const deliveryBoyAssigned = orders.filter(o => o.status === "Delivery Boy Assigned").length
+    const reachedPickup = orders.filter(o => o.status === "Delivery Boy Reached Pickup" || o.status === "Reached Pickup").length
+    const orderIdAccepted = orders.filter(o => o.status === "Order ID Accepted").length
+    const reachedDrop = orders.filter(o => o.status === "Reached Drop").length
+    const delivered = orders.filter(o => o.status === "Ordered Delivered").length
 
     return { total, ordered, restaurantAccepted, rejected, deliveryBoyAssigned, reachedPickup, orderIdAccepted, reachedDrop, delivered }
-  }, [filteredData, orders.length])
+  }, [orders])
 
   const resetColumns = () => {
     setVisibleColumns({
@@ -415,102 +415,129 @@ export default function OrderDetectDelivery() {
       />
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+        <div 
+          onClick={() => handleResetFilters()}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Total Orders</p>
-              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+              <p className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{stats.total}</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
               <Package className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Ordered" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Ordered</p>
               <p className="text-2xl font-bold text-blue-600">{stats.ordered}</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
               <Clock className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Restaurant Accepted" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Restaurant Accepted</p>
               <p className="text-2xl font-bold text-emerald-600">{stats.restaurantAccepted}</p>
             </div>
-            <div className="p-3 bg-emerald-50 rounded-lg">
+            <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
               <CheckCircle className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Rejected" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-red-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Rejected</p>
               <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
             </div>
-            <div className="p-3 bg-red-50 rounded-lg">
+            <div className="p-3 bg-red-50 rounded-lg group-hover:bg-red-100 transition-colors">
               <XCircle className="w-6 h-6 text-red-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Delivery Boy Assigned" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-purple-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Delivery Boy Assigned</p>
               <p className="text-2xl font-bold text-purple-600">{stats.deliveryBoyAssigned}</p>
             </div>
-            <div className="p-3 bg-purple-50 rounded-lg">
+            <div className="p-3 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
               <Truck className="w-6 h-6 text-purple-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Delivery Boy Reached Pickup" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-orange-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Delivery Boy Reached Pickup</p>
               <p className="text-2xl font-bold text-orange-600">{stats.reachedPickup}</p>
             </div>
-            <div className="p-3 bg-orange-50 rounded-lg">
+            <div className="p-3 bg-orange-50 rounded-lg group-hover:bg-orange-100 transition-colors">
               <Package className="w-6 h-6 text-orange-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Order ID Accepted" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Order ID Accepted</p>
               <p className="text-2xl font-bold text-indigo-600">{stats.orderIdAccepted}</p>
             </div>
-            <div className="p-3 bg-indigo-50 rounded-lg">
+            <div className="p-3 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors">
               <CheckCircle className="w-6 h-6 text-indigo-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Reached Drop" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-amber-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Reached Drop</p>
               <p className="text-2xl font-bold text-amber-600">{stats.reachedDrop}</p>
             </div>
-            <div className="p-3 bg-amber-50 rounded-lg">
+            <div className="p-3 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
               <Truck className="w-6 h-6 text-amber-600" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div 
+          onClick={() => setFilters(prev => ({ ...prev, status: "Ordered Delivered" }))}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all group"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500 mb-1">Delivered</p>
               <p className="text-2xl font-bold text-emerald-600">{stats.delivered}</p>
             </div>
-            <div className="p-3 bg-emerald-50 rounded-lg">
+            <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
               <CheckCircle className="w-6 h-6 text-emerald-600" />
             </div>
           </div>
