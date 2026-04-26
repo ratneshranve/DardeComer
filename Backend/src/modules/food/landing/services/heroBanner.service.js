@@ -2,7 +2,19 @@ import { FoodHeroBanner } from '../models/heroBanner.model.js';
 import { v2 as cloudinary } from 'cloudinary';
 
 export const listHeroBanners = async () => {
-    return FoodHeroBanner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
+    const banners = await FoodHeroBanner.find()
+        .sort({ sortOrder: 1, createdAt: -1 })
+        .populate('linkedRestaurantIds', 'restaurantName profileImage')
+        .lean();
+    
+    // Map linkedRestaurantIds to linkedRestaurants for frontend compatibility
+    return banners.map(banner => ({
+        ...banner,
+        linkedRestaurants: (banner.linkedRestaurantIds || []).map(r => ({
+            ...r,
+            name: r.restaurantName // Frontend expects .name
+        }))
+    }));
 };
 
 export const createHeroBannersFromFiles = async (files, meta = {}) => {
@@ -81,3 +93,11 @@ export const toggleHeroBannerStatus = async (id, isActive) => {
     return updated;
 };
 
+export const linkRestaurantsToBanner = async (id, restaurantIds) => {
+    const updated = await FoodHeroBanner.findByIdAndUpdate(
+        id,
+        { linkedRestaurantIds: restaurantIds },
+        { new: true }
+    ).lean();
+    return updated;
+};

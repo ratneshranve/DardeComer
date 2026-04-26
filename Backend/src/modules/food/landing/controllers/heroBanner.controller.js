@@ -3,10 +3,12 @@ import {
     createHeroBannersFromFiles,
     deleteHeroBanner,
     updateHeroBannerOrder,
-    toggleHeroBannerStatus
+    toggleHeroBannerStatus,
+    linkRestaurantsToBanner
 } from '../services/heroBanner.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
+import { FoodHeroBanner } from '../models/heroBanner.model.js';
 
 export const listHeroBannersController = async (req, res, next) => {
     try {
@@ -53,11 +55,13 @@ export const deleteHeroBannerController = async (req, res, next) => {
 export const updateHeroBannerOrderController = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { sortOrder } = req.body;
-        if (!id || typeof sortOrder !== 'number') {
-            throw new ValidationError('id and numeric sortOrder are required');
+        const { sortOrder, order } = req.body;
+        const finalOrder = typeof sortOrder === 'number' ? sortOrder : order;
+        
+        if (!id || typeof finalOrder !== 'number') {
+            throw new ValidationError('id and numeric order/sortOrder are required');
         }
-        const updated = await updateHeroBannerOrder(id, sortOrder);
+        const updated = await updateHeroBannerOrder(id, finalOrder);
         return sendResponse(res, 200, 'Hero banner order updated', updated);
     } catch (error) {
         next(error);
@@ -67,10 +71,19 @@ export const updateHeroBannerOrderController = async (req, res, next) => {
 export const toggleHeroBannerStatusController = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { isActive } = req.body;
-        if (!id || typeof isActive !== 'boolean') {
-            throw new ValidationError('id and boolean isActive are required');
+        let { isActive } = req.body;
+        
+        if (!id) {
+            throw new ValidationError('Banner id is required');
         }
+
+        // If isActive is not provided, fetch current and toggle
+        if (typeof isActive !== 'boolean') {
+            const banner = await FoodHeroBanner.findById(id);
+            if (!banner) throw new ValidationError('Banner not found');
+            isActive = !banner.isActive;
+        }
+
         const updated = await toggleHeroBannerStatus(id, isActive);
         return sendResponse(res, 200, 'Hero banner status updated', updated);
     } catch (error) {
@@ -78,3 +91,16 @@ export const toggleHeroBannerStatusController = async (req, res, next) => {
     }
 };
 
+export const linkRestaurantsToBannerController = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { restaurantIds } = req.body;
+        if (!id || !Array.isArray(restaurantIds)) {
+            throw new ValidationError('id and array of restaurantIds are required');
+        }
+        const updated = await linkRestaurantsToBanner(id, restaurantIds);
+        return sendResponse(res, 200, 'Restaurants linked to banner successfully', updated);
+    } catch (error) {
+        next(error);
+    }
+};

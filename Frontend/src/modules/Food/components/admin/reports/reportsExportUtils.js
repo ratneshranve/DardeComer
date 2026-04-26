@@ -95,7 +95,8 @@ export const exportReportsToPDF = async (data, headers, filename = "report", tit
       }
       
       if (value === null || value === undefined) value = ""
-      return String(value)
+      // Replace Rupee symbol with Rs. for PDF
+      return String(value).replace(/\u20B9/g, 'Rs. ')
     })
   })
   

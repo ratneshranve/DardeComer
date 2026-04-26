@@ -5,15 +5,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
-
 export default function RestaurantReport() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [filters, setFilters] = useState({
     zone: "All Zones",
     all: "All",
@@ -38,6 +40,14 @@ export default function RestaurantReport() {
     }
   })
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   // Save column visibility to localStorage
   useEffect(() => {
     localStorage.setItem("restaurantReport_columnVisibility", JSON.stringify(columnVisibility))
@@ -59,43 +69,53 @@ export default function RestaurantReport() {
   }, [])
 
   // Fetch restaurant report data
-  useEffect(() => {
-    const fetchRestaurantReport = async () => {
-      try {
-        setLoading(true)
-        
-        const params = {
-          zone: filters.zone !== "All Zones" ? filters.zone : undefined,
-          all: filters.all !== "All" ? filters.all : undefined,
-          type: filters.type !== "All types" ? filters.type : undefined,
-          time: filters.time !== "All Time" ? filters.time : undefined,
-          search: searchQuery || undefined
-        }
-
-        const response = await adminAPI.getRestaurantReport(params)
-
-        if (response?.data?.success && response.data.data) {
-          setRestaurants(response.data.data.restaurants || [])
-        } else {
-          setRestaurants([])
-          if (response?.data?.message) {
-            toast.error(response.data.message)
-          }
-        }
-      } catch (error) {
-        debugError("Error fetching restaurant report:", error)
-        toast.error("Failed to fetch restaurant report")
-        setRestaurants([])
-      } finally {
-        setLoading(false)
+  const fetchRestaurantReport = async (isSilent = false) => {
+    try {
+      if (!isSilent) setLoading(true)
+      else setIsRefreshing(true)
+      
+      const params = {
+        zone: filters.zone !== "All Zones" ? filters.zone : undefined,
+        all: filters.all !== "All" ? filters.all : undefined,
+        type: filters.type !== "All types" ? filters.type : undefined,
+        time: filters.time !== "All Time" ? filters.time : undefined,
+        search: debouncedSearchQuery || undefined
       }
-    }
 
-    fetchRestaurantReport()
-  }, [filters, searchQuery])
+      const response = await adminAPI.getRestaurantReport(params)
+
+      if (response?.data?.success && response.data.data) {
+        setRestaurants(response.data.data.restaurants || [])
+      } else {
+        setRestaurants([])
+        if (response?.data?.message) {
+          toast.error(response.data.message)
+        }
+      }
+    } catch (error) {
+      debugError("Error fetching restaurant report:", error)
+      toast.error("Failed to fetch restaurant report")
+      setRestaurants([])
+    } finally {
+      setLoading(false)
+      setIsRefreshing(false)
+    }
+  }
+
+  // Initial fetch and filter updates
+  useEffect(() => {
+    fetchRestaurantReport(false)
+  }, [filters])
+
+  // Search update fetch (Silent)
+  useEffect(() => {
+    // Only search if it's not the initial load or filters just changed
+    // Actually, it's safer to always use silent fetch for search query changes
+    fetchRestaurantReport(true)
+  }, [debouncedSearchQuery])
 
   const filteredRestaurants = useMemo(() => {
-    return restaurants // Backend already filters, so just return restaurants
+    return restaurants 
   }, [restaurants])
 
   const totalRestaurants = filteredRestaurants.length
@@ -112,11 +132,10 @@ export default function RestaurantReport() {
 
   const handleExport = (format) => {
     if (filteredRestaurants.length === 0) {
-      alert("No data to export")
+      toast.error("No data to export")
       return
     }
     
-    // Only export visible columns
     const allHeaders = [
       { key: "sl", label: "SL" },
       { key: "restaurantName", label: "Restaurant Name" },
@@ -146,7 +165,7 @@ export default function RestaurantReport() {
   }
 
   const handleFilterApply = () => {
-    // Filters are already applied via useMemo
+    fetchRestaurantReport(false)
   }
 
   const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.all !== "All" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
@@ -309,7 +328,10 @@ export default function RestaurantReport() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-4 pr-10 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {isRefreshing && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                  <Search className="w-4 h-4 text-slate-400" />
+                </div>
               </div>
 
               <DropdownMenu>
@@ -448,11 +470,11 @@ export default function RestaurantReport() {
                     </td>
                   </tr>
                 ) : (
-                  filteredRestaurants.map((restaurant) => (
-                    <tr key={restaurant.sl} className="hover:bg-slate-50 transition-colors">
+                  filteredRestaurants.map((restaurant, index) => (
+                    <tr key={restaurant.sl || index} className="hover:bg-slate-50 transition-colors">
                       {columnVisibility.sl && (
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-medium text-slate-700">{restaurant.sl}</span>
+                          <span className="text-sm font-medium text-slate-700">{restaurant.sl || index + 1}</span>
                         </td>
                       )}
                       {columnVisibility.restaurantName && (
@@ -470,7 +492,7 @@ export default function RestaurantReport() {
                                 />
                               ) : (
                                 <div className="w-full h-full bg-slate-300 flex items-center justify-center text-xs text-slate-600 font-semibold">
-                                  {restaurant.restaurantName.charAt(0).toUpperCase()}
+                                  {restaurant.restaurantName?.charAt(0).toUpperCase() || 'R'}
                                 </div>
                               )}
                             </div>
@@ -506,7 +528,7 @@ export default function RestaurantReport() {
                       {columnVisibility.totalAdminCommission && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`text-sm font-medium ${
-                            restaurant.totalAdminCommission.startsWith('?-') || restaurant.totalAdminCommission.startsWith('-?')
+                            restaurant.totalAdminCommission?.startsWith('?-') || restaurant.totalAdminCommission?.startsWith('-?')
                               ? 'text-red-600'
                               : 'text-slate-900'
                           }`}>
@@ -591,4 +613,3 @@ export default function RestaurantReport() {
     </div>
   )
 }
-

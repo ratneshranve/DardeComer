@@ -11,7 +11,8 @@ export const exportTransactionsToCSV = (transactions, headers, filename = "trans
     }).join(","))
   ].join("\n");
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  // Add BOM for Excel compatibility with UTF-8 (Rupee symbol support)
+  const blob = new Blob(["\ufeff", csvContent], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
@@ -60,7 +61,8 @@ export const exportTransactionsToExcel = (transactions, headers, filename = "tra
     </html>
   `;
 
-  const blob = new Blob([htmlContent], { type: "application/vnd.ms-excel" });
+  // Add BOM for Excel compatibility
+  const blob = new Blob(["\ufeff", htmlContent], { type: "application/vnd.ms-excel" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.setAttribute("href", url);
@@ -102,7 +104,9 @@ export const exportTransactionsToPDF = async (transactions, headers, filename = 
   const body = transactions.map(row =>
     headers.map(h => {
       const v = row[h.key]
-      return v === null || v === undefined ? '' : String(v)
+      if (v === null || v === undefined) return ''
+      // Replace Rupee symbol with Rs. for PDF as standard PDF fonts don't support it
+      return String(v).replace(/\u20B9/g, 'Rs. ')
     })
   )
 
@@ -131,13 +135,3 @@ export const exportTransactionsToJSON = (transactions, filename = "transactions"
   link.click();
   document.body.removeChild(link);
 };
-
-
-
-
-
-
-
-
-
-
