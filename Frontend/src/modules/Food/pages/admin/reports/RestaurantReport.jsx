@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Search, Download, ChevronDown, Filter, Briefcase, RefreshCw, Settings, ArrowUpDown, FileText, FileSpreadsheet, Code, Loader2, Star } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
@@ -100,7 +100,7 @@ export default function RestaurantReport() {
       { key: "restaurantName", label: "Restaurant Name" },
       { key: "totalFood", label: "Total Food" },
       { key: "totalOrder", label: "Total Order" },
-      { key: "totalOrderAmount", label: "Total Order Amount" },
+      { key: "totalRestaurantEarning", label: "Restaurant Earning" },
       { key: "totalDiscountGiven", label: "Total Discount Given" },
       { key: "totalAdminCommission", label: "Total Admin Commission" },
       { key: "totalVATTAX", label: "Total VAT/TAX" },
@@ -338,7 +338,7 @@ export default function RestaurantReport() {
                   </th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-1">
-                      <span>Total Order Amount</span>
+                      <span>Restaurant Earning</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     </div>
                   </th>
@@ -412,7 +412,7 @@ export default function RestaurantReport() {
                         <span className="text-sm text-slate-700">{restaurant.totalOrder}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{restaurant.totalOrderAmount}</span>
+                        <span className="text-sm font-medium text-slate-900">{restaurant.totalRestaurantEarning}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{restaurant.totalDiscountGiven}</span>

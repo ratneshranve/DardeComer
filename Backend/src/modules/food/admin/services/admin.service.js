@@ -941,10 +941,22 @@ export async function getRestaurantReport(query = {}) {
                     _id: '$restaurantId',
                     totalOrder: { $sum: 1 },
                     totalOrderAmount: { $sum: { $ifNull: ['$pricing.total', 0] } },
+                    totalRestaurantEarning: {
+                        $sum: {
+                            $subtract: [
+                                {
+                                    $add: [
+                                        { $ifNull: ['$pricing.subtotal', 0] },
+                                        { $ifNull: ['$pricing.packagingFee', 0] }
+                                    ]
+                                },
+                                { $ifNull: ['$pricing.restaurantCommission', 0] }
+                            ]
+                        }
+                    },
                     totalDiscountGiven: { $sum: { $ifNull: ['$pricing.discount', 0] } },
                     totalVATTAX: { $sum: { $ifNull: ['$pricing.tax', 0] } },
-                    totalAdminCommissionFromPlatformProfit: { $sum: { $ifNull: ['$platformProfit', 0] } },
-                    totalAdminCommissionFromPlatformFee: { $sum: { $ifNull: ['$pricing.platformFee', 0] } }
+                    totalRestaurantCommission: { $sum: { $ifNull: ['$pricing.restaurantCommission', 0] } }
                 }
             }
         ])
@@ -957,12 +969,10 @@ export async function getRestaurantReport(query = {}) {
             {
                 totalOrder: Number(x.totalOrder || 0),
                 totalOrderAmount: Number(x.totalOrderAmount || 0),
+                totalRestaurantEarning: Number(x.totalRestaurantEarning || 0),
                 totalDiscountGiven: Number(x.totalDiscountGiven || 0),
                 totalVATTAX: Number(x.totalVATTAX || 0),
-                totalAdminCommission:
-                    Number(x.totalAdminCommissionFromPlatformProfit || 0) > 0
-                        ? Number(x.totalAdminCommissionFromPlatformProfit || 0)
-                        : Number(x.totalAdminCommissionFromPlatformFee || 0)
+                totalAdminCommission: Number(x.totalRestaurantCommission || 0)
             }
         ])
     );
@@ -985,6 +995,7 @@ export async function getRestaurantReport(query = {}) {
             totalFood: foodMap.get(key) || 0,
             totalOrder: counts.totalOrder,
             totalOrderAmount: formatCurrency(counts.totalOrderAmount),
+            totalRestaurantEarning: formatCurrency(counts.totalRestaurantEarning),
             totalDiscountGiven: formatCurrency(counts.totalDiscountGiven),
             totalAdminCommission: formatCurrency(counts.totalAdminCommission),
             totalVATTAX: formatCurrency(counts.totalVATTAX),
