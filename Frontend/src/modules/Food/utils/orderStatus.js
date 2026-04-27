@@ -49,6 +49,9 @@ export const normalizeStatus = (status) => {
   // Map various formats to standard format
   const statusMap = {
     'pending': ORDER_STATUS.PENDING,
+    'created': ORDER_STATUS.PENDING,
+    'cod_pending': ORDER_STATUS.PENDING,
+    'paid': ORDER_STATUS.PENDING,
     'confirmed': ORDER_STATUS.CONFIRMED,
     'cooking': ORDER_STATUS.COOKING,
     'ready': ORDER_STATUS.READY_TO_HANDOVER,

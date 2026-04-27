@@ -222,7 +222,7 @@ export const PocketV2 = () => {
           
           {/* 2. WEEKLY EARNINGS CARD */}
           <div 
-            onClick={() => navigate('/food/delivery/earnings')}
+            onClick={() => navigate('/food/delivery/pocket/balance')}
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 text-center mb-5 transition-all active:scale-[0.98]"
           >
              <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest mb-2">Earnings: {getCurrentWeekRange()}</p>
@@ -390,7 +390,7 @@ export const PocketV2 = () => {
                    <div className="w-16 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
                    
                    <div className="text-center mb-8">
-                      <div className="w-20 h-20 bg-primary/10 rounded-3xl-primary/20 text-primary">
+                      <div className="w-20 h-20 bg-primary/10 rounded-3xl overflow-hidden flex items-center justify-center text-primary">
                          <IndianRupee className="w-10 h-10" />
                       </div>
                       <h3 className="text-2xl font-black text-black mb-1">Deposit Cash</h3>

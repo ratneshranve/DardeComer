@@ -488,8 +488,8 @@ export const useDeliveryNotifications = () => {
   }, [playNotificationSound, showBackgroundOrderNotification, startAlertLoop]);
 
   const recoverDeliveryState = useCallback(async () => {
-    if (!deliveryPartnerId) return;
-
+    // Do NOT return early if deliveryPartnerId is missing — we still want to
+    // attempt API recovery (e.g. app opened from a killed state via FCM tap).
     try {
       const [availableResult, currentTripResult] = await Promise.allSettled([
         deliveryAPI.getOrders({ limit: 20, page: 1 }),
@@ -553,7 +553,7 @@ export const useDeliveryNotifications = () => {
     } catch (error) {
       debugWarn('Delivery recovery sync failed:', error?.message || error);
     }
-  }, [deliveryPartnerId, handleIncomingOrderAlert, shouldSuppressIncomingCodAlert]);
+  }, [handleIncomingOrderAlert, shouldSuppressIncomingCodAlert]);
 
   const joinDeliveryRoomIfPossible = useCallback(() => {
     if (!socketRef.current?.connected || !deliveryPartnerId) {

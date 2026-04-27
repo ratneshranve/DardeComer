@@ -1020,7 +1020,17 @@ export default function OrdersMain() {
   const [acceptSwipeProgress, setAcceptSwipeProgress] = useState(0);
   const [isAcceptingOrder, setIsAcceptingOrder] = useState(false);
   const audioRef = useRef(null);
-  const shownOrdersRef = useRef(new Set()); // Track orders already shown in popup
+  // Track orders already shown in popup — loaded from localStorage (15-min TTL)
+  // so app re-open from background/overlay won't re-show already-handled orders.
+  const shownOrdersRef = useRef((() => {
+    try {
+      const stored = localStorage.getItem('restaurant_shown_orders');
+      if (!stored) return new Set();
+      const { keys, savedAt } = JSON.parse(stored);
+      if (Date.now() - savedAt > 15 * 60 * 1000) return new Set();
+      return new Set(Array.isArray(keys) ? keys : []);
+    } catch { return new Set(); }
+  })());
   const acceptSliderRef = useRef(null);
   const acceptSwipeStartXRef = useRef(0);
   const acceptSwipeActiveRef = useRef(false);
@@ -1049,6 +1059,14 @@ export default function OrdersMain() {
       .filter(Boolean);
 
     for (const k of keys) shownOrdersRef.current.add(k);
+
+    // Persist so re-opened app skips already-handled orders (15-min TTL).
+    try {
+      localStorage.setItem('restaurant_shown_orders', JSON.stringify({
+        keys: [...shownOrdersRef.current],
+        savedAt: Date.now(),
+      }));
+    } catch { /* storage quota — non-critical */ }
   };
 
   const hasOrderBeenShown = (orderLike) => {
@@ -1422,11 +1440,11 @@ export default function OrdersMain() {
           const targetOrders = response.data.data.orders.filter((order) => {
             if (hasOrderBeenShown(order)) return false;
 
-            const isConfirmed = order.status === "confirmed";
+            const isConfirmed = order.status === "confirmed" || order.status === "pending";
             const isCreatedScheduled =
-              order.status === "created" && order.scheduledAt;
+              (order.status === "created" || order.status === "pending") && order.scheduledAt;
 
-            if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed fallback
+            if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed/pending fallback
 
             if (
               order.scheduledAt &&
@@ -1485,11 +1503,27 @@ export default function OrdersMain() {
       }
     };
 
-    // Check once on mount, and then every minute
+    // Check once on mount, then every 15 s (was 60 s).
     checkOrdersToPopup();
-    const intervalId = setInterval(checkOrdersToPopup, 60000);
+    const intervalId = setInterval(checkOrdersToPopup, 15000);
 
-    return () => clearInterval(intervalId);
+    // When the app comes back to the foreground (overlay dismissed / tab focused),
+    // trigger an immediate check so the popup appears right away.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkOrdersToPopup();
+      }
+    };
+    const handleFocus = () => { checkOrdersToPopup(); };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Play audio when popup opens

@@ -13,15 +13,39 @@ export default function BottomNavbar({ onMenuClick }) {
     if (typeof window === "undefined") return
 
     const viewport = window.visualViewport
-    if (!viewport) return
-
+    
     const handleResize = () => {
-      const isVisible = window.innerHeight - viewport.height > 150
-      setKeyboardOpen(isVisible)
+      if (viewport) {
+        const isVisible = window.innerHeight - viewport.height > 150
+        setKeyboardOpen(isVisible)
+      }
     }
 
-    viewport.addEventListener("resize", handleResize)
-    return () => viewport.removeEventListener("resize", handleResize)
+    const handleFocusIn = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        setKeyboardOpen(true)
+      }
+    }
+
+    const handleFocusOut = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        setTimeout(() => {
+          if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            setKeyboardOpen(false)
+          }
+        }, 100)
+      }
+    }
+
+    if (viewport) viewport.addEventListener("resize", handleResize)
+    window.addEventListener("focusin", handleFocusIn)
+    window.addEventListener("focusout", handleFocusOut)
+
+    return () => {
+      if (viewport) viewport.removeEventListener("resize", handleResize)
+      window.removeEventListener("focusin", handleFocusIn)
+      window.removeEventListener("focusout", handleFocusOut)
+    }
   }, [])
 
   const isActive = (path) => {

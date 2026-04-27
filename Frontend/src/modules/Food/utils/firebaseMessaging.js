@@ -484,13 +484,15 @@ async function registerNativeWebViewFcmToken(moduleName) {
   }
 }
 
-function showForegroundNotification(payload = {}) {
+// options.fromSwRelay = true means the service worker already showed the system
+// notification; we should only show the in-app toast here to avoid duplicates.
+function showForegroundNotification(payload = {}, options = {}) {
   if (!isRecord(payload)) {
     pushDebugWarn(PUSH_DEBUG_PREFIX, "Ignoring malformed foreground notification payload", { payload });
     return;
   }
   const notificationKey = getNotificationKey(payload);
-  pushDebugLog(PUSH_DEBUG_PREFIX, "showForegroundNotification received", { notificationKey, payload });
+  pushDebugLog(PUSH_DEBUG_PREFIX, "showForegroundNotification received", { notificationKey, fromSwRelay: options.fromSwRelay, payload });
   if (wasRecentlyHandled(notificationKey)) {
     return;
   }
@@ -512,8 +514,10 @@ function showForegroundNotification(payload = {}) {
 
   playPushSound(payload);
 
-  // Force system notification even when the tab is in focus
-  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+  // Only show a system notification from the PAGE if this is NOT a SW relay.
+  // When it IS a SW relay the service worker already showed the notification —
+  // creating another one here would produce a duplicate.
+  if (!options.fromSwRelay && typeof Notification !== "undefined" && Notification.permission === "granted") {
     try {
       pushDebugLog(PUSH_DEBUG_PREFIX, "Showing browser notification from page", {
         title,
@@ -521,7 +525,6 @@ function showForegroundNotification(payload = {}) {
         image,
         notificationKey,
       });
-      // Use service worker to show native system notification to ensure it bypasses focus checks
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistration().then(registration => {
           if (registration) {
@@ -566,7 +569,7 @@ function showForegroundNotification(payload = {}) {
     }
   }
 
-  // Still show in-app toast for immediate context if we are in focus
+  // Show in-app toast if tab is visible.
   if (typeof document !== "undefined" && document.visibilityState === "visible") {
     // Cross-tab deduplication using BroadcastChannel and LocalStorage
     const notificationId = payload?.data?.broadcastId || payload?.data?.orderId || payload?.data?.id || (title + body).replace(/\s+/g, '');
@@ -610,7 +613,8 @@ function attachServiceWorkerMessageListener() {
         return;
       }
       pushDebugLog(PUSH_DEBUG_PREFIX, "Received service worker message in page", { payload: data.payload });
-      scheduleForegroundNotification(data.payload);
+      // fromSwRelay: true — SW already showed the system notification; only show toast.
+      scheduleForegroundNotification(data.payload, { fromSwRelay: true });
     });
   }
 
@@ -639,10 +643,10 @@ function attachServiceWorkerMessageListener() {
   serviceWorkerMessageListenerAttached = true;
 }
 
-function scheduleForegroundNotification(payload) {
+function scheduleForegroundNotification(payload, options = {}) {
   // Keep message handlers fast to avoid Chrome [Violation] warnings.
   // Defer heavier work (toast, audio) to idle time / next tick.
-  const run = () => showForegroundNotification(payload);
+  const run = () => showForegroundNotification(payload, options);
   try {
     if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
       window.requestIdleCallback(run, { timeout: 1000 });

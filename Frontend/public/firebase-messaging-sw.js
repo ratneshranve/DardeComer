@@ -145,9 +145,9 @@ async function loadFirebaseWebConfig() {
         icon: "/favicon.ico",
         image,
         tag: notificationKey,
-        renotify: false,
+        renotify: true,
         silent: false,
-        requireInteraction: false,
+        requireInteraction: true,
         vibrate: [200, 100, 200, 100, 300],
         data: payload?.data || {},
       });

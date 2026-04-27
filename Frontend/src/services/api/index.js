@@ -1208,14 +1208,14 @@ export const restaurantAPI = {
           // UI historically uses: order.status, order.address, order.total, order.paymentMethod
           const normalizeStatus = (s) => {
             const v = String(s || "").toLowerCase();
-            // Backend: created -> treat as confirmed/new in UI
-            if (v === "created") return "confirmed";
+            // Backend: created/cod_pending -> treat as pending/new in UI
+            if (v === "created" || v === "cod_pending" || v === "paid") return "pending";
             // Backend: ready_for_pickup -> ready
             if (v === "ready_for_pickup") return "ready";
             // Backend: picked_up -> out_for_delivery (restaurant handed over)
             if (v === "picked_up") return "out_for_delivery";
             if (v.includes("cancel")) return "cancelled";
-            return v || "confirmed";
+            return v || "pending";
           };
 
           const rows = rowsRaw.map((o) => {

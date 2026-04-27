@@ -273,7 +273,10 @@ export const useRestaurantNotifications = () => {
           });
 
         if (confirmed.length > 0) {
-          // Trigger alerts for newest confirmed orders (dedupe prevents spam).
+          // Also update newOrder state so OrdersMain/OrdersPage shows the popup.
+          // The hasOrderBeenShown guard in OrdersMain prevents re-showing handled orders.
+          setNewOrder(confirmed[0]);
+          // Trigger sound/background alerts (dedupe prevents spam).
           confirmed.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
         }
       } catch (error) {
@@ -285,9 +288,23 @@ export const useRestaurantNotifications = () => {
     pollOrders();
     const intervalId = setInterval(pollOrders, ALERT_POLL_MS);
 
+    // When app comes back to foreground from overlay/background, re-poll immediately
+    // so the popup appears right away instead of waiting up to ALERT_POLL_MS.
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        pollOrders();
+      }
+    };
+    const handleWindowFocus = () => { pollOrders(); };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
     return () => {
       isCancelled = true;
       clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
     };
   }, [restaurantId]);
 
