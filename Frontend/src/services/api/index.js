@@ -1356,7 +1356,9 @@ export const restaurantAPI = {
     if (!formData || !(formData instanceof FormData)) {
       return Promise.reject(new Error("FormData is required"));
     }
-    return apiClient.post("/food/restaurant/register", formData);
+    return apiClient.post("/food/restaurant/register", formData, {
+      timeout: 120000, // 2 minute timeout for large registration uploads
+    });
   },
   /** Public: list approved restaurants for user app */
   getRestaurants: (params = {}, config = {}) =>

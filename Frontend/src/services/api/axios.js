@@ -142,7 +142,13 @@ apiClient.interceptors.request.use(
     }
 
     const token = getAccessToken(config);
-    if (token) {
+    const normalized = (config.url || "").toLowerCase();
+    const isPublicRoute = 
+      normalized.includes("/register") || 
+      normalized.includes("/otp") || 
+      normalized.includes("/login");
+
+    if (token && !isPublicRoute) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
