@@ -109,10 +109,10 @@ export default function HomeHeader({
           <div className="group/loc flex flex-col min-w-0" onClick={handleLocationClick}>
             <div className="flex items-center gap-1 text-white/70 mb-0.5">
               <MapPin className="h-3 w-3 text-white/50" />
-              <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Your Location</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest leading-none">Your Location</span>
               <ChevronDown className="h-3 w-3 text-white/40 group-hover/loc:text-white transition-colors" />
             </div>
-            <h1 className="text-base font-bold text-white truncate leading-tight group-hover/loc:text-blue-100 transition-colors">
+            <h1 className="text-base font-semibold text-white truncate leading-tight group-hover/loc:text-blue-100 transition-colors">
               {(() => {
                 const mode = localStorage.getItem("deliveryAddressMode") || "current";
                 const addr = mode === "saved" && defaultAddress ? defaultAddress : location;

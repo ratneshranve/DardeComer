@@ -48,8 +48,12 @@ const SplashScreen = ({ children }) => {
     <>
       <div className={`splash ${exit ? 'exit' : ''}`}>
         <div className="center-box">
-          <h1 className="brand" data-text="DarDeComer">
-            DarDeComer
+          <h1 className="brand">
+            {"DarDeComer".split("").map((char, index) => (
+              <span key={index} style={{ "--index": index }}>
+                {char}
+              </span>
+            ))}
           </h1>
           <p className="tagline">
             Turning Fatty Liver Into Fatty Wallet

@@ -82,7 +82,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
           </motion.div>
 
           <div className="flex items-center gap-2">
-            <h2 className="text-5xl font-black text-white tracking-tight drop-shadow-[0_2px_15px_rgba(255,255,255,0.4)]">
+            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-[0.15em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
               DarDe<span className="text-amber-400">Comer</span>
             </h2>
           </div>
@@ -115,7 +115,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
           </motion.button>
 
           <div className="h-6 flex items-center justify-center overflow-hidden mt-3">
-            <span className="text-black font-bold text-sm mr-1.5 tracking-wide uppercase opacity-100">Satisfy your</span>
+            <span className="text-white font-bold text-sm mr-1.5 tracking-wide uppercase opacity-100">Satisfy your</span>
             <div className="relative inline-flex items-center">
               <AnimatePresence mode="wait">
                 <motion.span

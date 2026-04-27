@@ -1,151 +1,192 @@
-/* ===== MAIN ===== */
+/* ===== MAIN SPLASH CONTAINER ===== */
 .splash {
   position: fixed;
   inset: 0;
-  /* Premium Deep Blue - Simplified for performance but still rich */
-  background: linear-gradient(145deg, #0a2e6e 0%, #0d47a1 50%, #1565c0 100%);
+  /* Premium Mesh Gradient Background */
+  background: #001A94;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(225, 100%, 20%, 1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(215, 100%, 30%, 1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(205, 100%, 25%, 1) 0, transparent 50%), 
+    radial-gradient(at 0% 50%, hsla(230, 100%, 15%, 1) 0, transparent 50%), 
+    radial-gradient(at 100% 50%, hsla(220, 100%, 20%, 1) 0, transparent 50%), 
+    radial-gradient(at 50% 100%, hsla(225, 100%, 10%, 1) 0, transparent 50%);
+  background-size: 200% 200%;
+  animation: meshMove 10s ease infinite;
   
   display: flex;
   align-items: center;
   justify-content: center;
-  
   z-index: 99999;
   overflow: hidden;
   
-  /* Performance optimization */
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
   will-change: opacity, transform;
   
-  /* EXIT SYNC - Faster, snappier curve */
-  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
-              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== EXIT ===== */
+@keyframes meshMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .splash.exit {
   opacity: 0;
-  transform: scale(1.02); /* Slight scale is smoother than large scale + blur */
+  transform: scale(1.1);
   pointer-events: none;
 }
 
-/* ===== CENTER ===== */
+/* ===== BRAND TEXT SECTION ===== */
 .center-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
+  perspective: 1000px;
 }
 
-/* ===== BRAND TEXT ===== */
 .brand {
-  font-family: "Poppins", "Inter", sans-serif;
-  font-size: clamp(2.4rem, 6vw, 3.6rem);
-  font-weight: 700;
+  font-family: "Outfit", "Inter", sans-serif;
+  font-size: clamp(2.8rem, 8vw, 4.2rem);
+  font-weight: 900;
   color: #ffffff;
-  
   text-align: center;
   white-space: nowrap;
-  letter-spacing: 2px;
-  
+  letter-spacing: -0.02em;
   position: relative;
-  
-  opacity: 0;
-  /* Using translate3d for GPU acceleration */
-  transform: translate3d(0, 20px, 0);
-  
-  animation: slideFromLeft 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  display: flex;
+  gap: 0.05em;
 }
 
-/* ===== ENTRY ANIMATION ===== */
-@keyframes slideFromLeft {
+.brand span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(40px) rotateX(-90deg) scale(0.5);
+  filter: blur(12px);
+  animation: premiumReveal 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--index) * 0.08s);
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Specific styling for "Comer" part if needed, or just full white */
+.brand span:nth-child(n+6) {
+  color: #fbbf24; /* Amber-400 equivalent for "Comer" */
+}
+
+@keyframes premiumReveal {
   0% {
     opacity: 0;
-    transform: translate3d(-100px, 0, 0);
-    letter-spacing: 12px;
+    transform: translateY(40px) rotateX(-90deg) scale(0.5);
+    filter: blur(12px);
+  }
+  60% {
+    opacity: 0.8;
+    filter: blur(4px);
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
-    letter-spacing: 2px;
+    transform: translateY(0) rotateX(0deg) scale(1);
+    filter: blur(0);
   }
 }
 
-/* ===== SHINE EFFECT - OPTIMIZED ===== */
+/* Floating Animation after reveal */
+.brand span {
+  animation: premiumReveal 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+             float 4s ease-in-out infinite alternate;
+  animation-delay: calc(var(--index) * 0.08s), 1.5s;
+}
+
+@keyframes float {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-5px); }
+}
+
+/* ===== SHINE REFLECTION ===== */
 .brand::after {
-  content: "DarDeComer";
+  content: "";
   position: absolute;
   top: 0;
-  left: 0;
-  width: 100%;
+  left: -100%;
+  width: 50%;
   height: 100%;
-  color: transparent;
-  
-  /* Gradient overlay */
   background: linear-gradient(
-    110deg, 
-    transparent 20%, 
-    rgba(255, 255, 255, 0.4) 40%, 
-    rgba(255, 255, 255, 0.5) 50%, 
-    rgba(255, 255, 255, 0.4) 60%, 
-    transparent 80%
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
   );
-  
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  
-  /* Using background-position for the shine - much smoother than 'left' */
-  animation: shine 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  z-index: 1;
+  transform: skewX(-25deg);
+  animation: brandShine 3s infinite 2s;
+  pointer-events: none;
 }
 
-@keyframes shine {
-  0% {
-    background-position: 150% 0;
-  }
-  100% {
-    background-position: -50% 0;
-  }
+@keyframes brandShine {
+  0% { left: -100%; }
+  100% { left: 200%; }
 }
 
-/* Tagline Styling */
+/* ===== TAGLINE ===== */
 .tagline {
-  font-family: "Poppins", "Inter", sans-serif;
-  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+  font-family: "Outfit", "Inter", sans-serif;
+  font-size: clamp(0.85rem, 2.5vw, 1.1rem);
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.7);
   margin-top: 1.5rem;
   text-align: center;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   
   opacity: 0;
-  transform: translate3d(0, 15px, 0);
-  animation: fadeUpTagline 1s cubic-bezier(0.4, 0, 0.2, 1) 0.6s forwards;
+  transform: translateY(10px);
+  filter: blur(4px);
+  animation: revealTagline 1s cubic-bezier(0.4, 0, 0.2, 1) 1.2s forwards;
 }
 
-@keyframes fadeUpTagline {
+@keyframes revealTagline {
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translateY(0);
+    filter: blur(0);
   }
 }
 
-/* Sub-branding / Tagline Line - Enhanced prominence */
+/* Decorative Line */
 .brand::before {
   content: "";
   position: absolute;
-  bottom: -8px;
+  bottom: -15px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 1px;
-  animation: lineGrow 1s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+  animation: lineGrow 1.5s cubic-bezier(0.4, 0, 0.2, 1) 1s forwards;
 }
 
 @keyframes lineGrow {
-  to { width: 60px; }
+  to { width: 120px; }
+}
+
+/* Pulsing Glow behind the box */
+.center-box::before {
+  content: "";
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 70%);
+  z-index: -1;
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.5); opacity: 0.8; }
 }
