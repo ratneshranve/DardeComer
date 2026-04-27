@@ -93,6 +93,11 @@ export default function ReportSafetyEmergency() {
       return
     }
 
+    if (report.trim().length < 10) {
+      toast.error('Message must be at least 10 characters long')
+      return
+    }
+
     try {
       setIsSubmitting(true)
       const response = await userAPI.createSafetyEmergencyReport(report.trim())
