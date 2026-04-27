@@ -6,11 +6,11 @@ import { Card, CardContent } from "@food/components/ui/card"
 import { useState } from "react"
 import { authAPI } from "@food/api"
 import { firebaseAuth, ensureFirebaseInitialized } from "@food/firebase"
+import { clearModuleAuth } from "@food/utils/auth"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-const USER_SESSION_PREFERENCE_KEYS = ["userVegMode", "food-under-250-filters"]
-
 
 export default function Logout() {
   const navigate = useNavigate()
@@ -67,18 +67,8 @@ export default function Logout() {
         debugWarn("Firebase logout failed, continuing with local cleanup:", firebaseError)
       }
 
-      // Clear all authentication data from localStorage
-      localStorage.removeItem("accessToken")
-      localStorage.removeItem("user_authenticated")
-      localStorage.removeItem("user_user")
-      localStorage.removeItem("cart")
-      USER_SESSION_PREFERENCE_KEYS.forEach((key) => localStorage.removeItem(key))
-
-      // Clear sessionStorage
-      sessionStorage.removeItem("userAuthData")
-
-      // Dispatch auth change event to notify other components
-      window.dispatchEvent(new Event("userAuthChanged"))
+      // Clear all authentication data from localStorage using utility
+      clearModuleAuth("user")
 
       // Small delay for UX, then navigate to sign in
       setTimeout(() => {
@@ -89,13 +79,7 @@ export default function Logout() {
       debugError("Error during logout:", err)
       
       // Clear local data anyway
-      localStorage.removeItem("accessToken")
-      localStorage.removeItem("user_authenticated")
-      localStorage.removeItem("user_user")
-      localStorage.removeItem("cart")
-      USER_SESSION_PREFERENCE_KEYS.forEach((key) => localStorage.removeItem(key))
-      sessionStorage.removeItem("userAuthData")
-      window.dispatchEvent(new Event("userAuthChanged"))
+      clearModuleAuth("user")
 
       setError("An error occurred during logout, but you have been signed out locally.")
       
@@ -194,4 +178,3 @@ export default function Logout() {
     </AnimatedPage>
   )
 }
-

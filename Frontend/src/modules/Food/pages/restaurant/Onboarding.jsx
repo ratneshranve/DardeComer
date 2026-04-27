@@ -17,7 +17,7 @@ import { restaurantAPI, zoneAPI, uploadAPI, api } from "@food/api"
 import { MobileTimePicker } from "@mui/x-date-pickers/MobileTimePicker"
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
-import { determineStepToShow } from "@food/utils/onboardingUtils"
+import { determineStepToShow, getOnboardingStorageKey } from "@food/utils/onboardingUtils"
 import { toast } from "sonner"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
@@ -30,7 +30,7 @@ const debugError = (...args) => {}
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-const ONBOARDING_STORAGE_KEY = "restaurant_onboarding_data"
+// We use getOnboardingStorageKey() dynamically to support user switching without page refresh
 const PAN_NUMBER_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const GST_NUMBER_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
 const FSSAI_NUMBER_REGEX = /^\d{14}$/
@@ -223,6 +223,7 @@ const getTodayLocalYMD = () => formatDateToLocalYMD(new Date())
 
 // Helper functions for localStorage
 const saveOnboardingToLocalStorage = (step1, step2, step3, currentStep) => {
+  const storageKey = getOnboardingStorageKey()
   try {
     // Persist only stable URL-based values. File/Blob objects are not serializable and
     // restoring metadata-only placeholders breaks preview/upload flows.
@@ -264,15 +265,16 @@ const saveOnboardingToLocalStorage = (step1, step2, step3, currentStep) => {
       currentStep,
       timestamp: Date.now(),
     }
-    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(dataToSave))
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave))
   } catch (error) {
     debugError("Failed to save onboarding data to localStorage:", error)
   }
 }
 
 const loadOnboardingFromLocalStorage = () => {
+  const storageKey = getOnboardingStorageKey()
   try {
-    const stored = localStorage.getItem(ONBOARDING_STORAGE_KEY)
+    const stored = localStorage.getItem(storageKey)
     if (stored) {
       return JSON.parse(stored)
     }
@@ -283,8 +285,11 @@ const loadOnboardingFromLocalStorage = () => {
 }
 
 const clearOnboardingFromLocalStorage = () => {
+  const storageKey = getOnboardingStorageKey()
   try {
-    localStorage.removeItem(ONBOARDING_STORAGE_KEY)
+    localStorage.removeItem(storageKey)
+    // Always clear the legacy key too
+    localStorage.removeItem("restaurant_onboarding_data")
   } catch (error) {
     debugError("Failed to clear onboarding data from localStorage:", error)
   }
@@ -802,8 +807,8 @@ export default function RestaurantOnboarding() {
           const savedPhone = normalizePhoneDigits(localData.step1?.ownerPhone || "")
           const normalizedCurrent = normalizePhoneDigits(currentPhone)
           
-          if (savedPhone && normalizedCurrent && savedPhone !== normalizedCurrent) {
-             debugLog("? Phone mismatch, data belongs to different user. Clearing.")
+          if (normalizedCurrent && savedPhone !== normalizedCurrent) {
+             debugLog("⚠️ Phone mismatch or unverified data. Data belongs to different user. Clearing.")
              clearOnboardingFromLocalStorage()
              await clearAllFilesFromDB()
              return

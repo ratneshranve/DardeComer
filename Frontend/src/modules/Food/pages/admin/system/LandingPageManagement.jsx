@@ -1109,6 +1109,7 @@ export default function LandingPageManagement() {
 
       const response = await api.post('/food/hero-banners/landing/hero-video', formData, getAuthConfig({
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000, // 2 minute timeout for video uploads
       }))
 
       if (response.data.success) {
@@ -1118,7 +1119,9 @@ export default function LandingPageManagement() {
         setTimeout(() => setSuccess(null), 3000)
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to upload hero video.')
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Failed to upload hero video.'
+      setErrorSafely(errorMessage)
+      console.error('Video upload error:', err)
     } finally {
       setHeroVideoUploading(false)
     }

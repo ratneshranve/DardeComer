@@ -54,7 +54,7 @@ export const uploadVideoBuffer = async (buffer, folder = 'uploads') => {
 
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-            { folder, resource_type: 'video' },
+            { folder, resource_type: 'auto' },
             (error, result) => {
                 if (error) {
                     return reject(error);

@@ -4,7 +4,7 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 
-const getOnboardingStorageKey = () => {
+export const getOnboardingStorageKey = () => {
     try {
       const userStr = localStorage.getItem("restaurant_user")
       if (userStr) {

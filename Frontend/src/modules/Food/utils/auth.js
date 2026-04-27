@@ -182,21 +182,33 @@ export function clearUserSession() {
  * Clear restaurant-local cached UI data to prevent cross-account stale state.
  */
 export function clearRestaurantSessionCache() {
-  const keys = [
-    "restaurant_owner_contact",
-    "restaurant_onboarding",
-    "restaurant_onboarding_data",
-    "restaurant_invited_users",
-    "restaurant_schedule_off",
-    "restaurant_online_status",
-    "restaurant_outlet_timings",
-    "restaurant_hub_menu_active_tab",
-    "restaurant_name",
-    "restaurantName",
-    "restaurant_pendingPhone",
-  ];
+  // Clear all keys starting with 'restaurant_' to prevent data leakage between accounts
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('restaurant_') || key === 'restaurantName')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Clear legacy keys just in case
+    localStorage.removeItem("restaurant_onboarding");
+    localStorage.removeItem("restaurant_onboarding_data");
+    localStorage.removeItem("restaurant_pendingPhone");
 
-  keys.forEach((key) => localStorage.removeItem(key));
+    // Clear IndexedDB onboarding files
+    try {
+      if (typeof indexedDB !== 'undefined') {
+        indexedDB.deleteDatabase("RestaurantOnboardingFiles");
+      }
+    } catch (idbError) {
+      console.warn("Could not clear onboarding IndexedDB:", idbError);
+    }
+  } catch (e) {
+    console.error("Error clearing restaurant session cache:", e);
+  }
 }
 
 export function setRestaurantPendingPhone(phone) {
