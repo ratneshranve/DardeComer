@@ -25,7 +25,10 @@ export default function HomeHeader({
   handleLocationClick, 
   handleSearchFocus, 
   placeholderIndex, 
-  placeholders 
+  placeholders,
+  heroVideo,
+  isVegMode,
+  handleVegModeChange
 }) {
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem('food_user_notifications');
@@ -92,10 +95,14 @@ export default function HomeHeader({
   };
 
   return (
-    <header className="relative bg-[#001A94] pt-1 pb-2 px-0 space-y-0 shadow-xl overflow-hidden dark:bg-[#05051a] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+    <header className={`relative ${heroVideo ? 'bg-transparent' : 'bg-[#001A94]'} pt-1 pb-2 px-0 space-y-0 shadow-xl overflow-hidden dark:bg-[#05051a] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]`}>
       {/* Decorative Glows */}
-      <div className="absolute top-0 left-1/4 w-32 h-32 bg-white/10 blur-[60px] rounded-full pointer-events-none dark:bg-white/10" />
-      <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-blue-400/10 blur-[80px] rounded-full pointer-events-none dark:bg-[#001A94]/10" />
+      {!heroVideo && (
+        <>
+          <div className="absolute top-0 left-1/4 w-32 h-32 bg-white/10 blur-[60px] rounded-full pointer-events-none dark:bg-white/10" />
+          <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-blue-400/10 blur-[80px] rounded-full pointer-events-none dark:bg-[#001A94]/10" />
+        </>
+      )}
 
       <div className="relative px-4 pt-4 pb-2">
         <div className="flex items-center justify-between gap-4 mb-5">
@@ -226,17 +233,43 @@ export default function HomeHeader({
           </div>
         </div>
 
-        <div className="relative mb-2" onClick={handleSearchFocus}>
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-[#001A94]" />
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1" onClick={handleSearchFocus}>
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-[#001A94]" />
+            </div>
+            <div className="w-full h-12 bg-white rounded-2xl flex items-center pl-11 pr-4 shadow-xl shadow-[#001A94]/20 overflow-hidden">
+              <span className="text-[#001A94]/60 font-bold text-sm truncate">
+                {placeholders?.[placeholderIndex] || 'Search "pizza"'}
+              </span>
+            </div>
+            <div className="absolute inset-y-0 right-4 flex items-center pr-1 border-l border-gray-100 ml-3">
+               <Mic className="h-4 w-4 text-[#001A94] ml-3" />
+            </div>
           </div>
-          <div className="w-full h-12 bg-white rounded-2xl flex items-center pl-11 pr-4 shadow-xl shadow-[#001A94]/20 overflow-hidden">
-            <span className="text-[#001A94]/60 font-bold text-sm truncate">
-              {placeholders?.[placeholderIndex] || 'Search "pizza"'}
-            </span>
-          </div>
-          <div className="absolute inset-y-0 right-4 flex items-center pr-1 border-l border-gray-100 ml-3">
-             <Mic className="h-4 w-4 text-[#001A94] ml-3" />
+
+          {/* Veg Mode Toggle */}
+          <div 
+            className={`flex flex-col items-center justify-center min-w-[64px] h-12 rounded-2xl backdrop-blur-md border transition-all cursor-pointer ${
+              isVegMode 
+                ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]' 
+                : 'bg-white/10 border-white/20'
+            }`}
+            onClick={() => handleVegModeChange(!isVegMode)}
+          >
+            <div className="flex flex-col items-center leading-none mb-1">
+              <span className={`text-[10px] font-black tracking-tight ${isVegMode ? 'text-emerald-400' : 'text-white'}`}>VEG</span>
+              <span className={`text-[8px] font-bold tracking-[0.1em] opacity-80 ${isVegMode ? 'text-emerald-400/80' : 'text-white/60'}`}>MODE</span>
+            </div>
+            <div className={`relative w-9 h-4.5 rounded-full transition-colors ${isVegMode ? 'bg-emerald-500' : 'bg-white/20'}`}>
+              <motion.div 
+                animate={{ x: isVegMode ? 18 : 2 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="absolute top-0.5 left-0 w-3.5 h-3.5 bg-white rounded-full shadow-lg flex items-center justify-center"
+              >
+                <div className={`w-2 h-2 rounded-full ${isVegMode ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+              </motion.div>
+            </div>
           </div>
         </div>
 

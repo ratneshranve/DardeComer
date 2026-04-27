@@ -76,8 +76,7 @@ const resolveDeliveryPartnerIdFromClient = () => {
   try {
     const storedUser =
       safeReadJson('delivery_user') ||
-      safeReadJson('deliveryUser') ||
-      safeReadJson('user');
+      safeReadJson('deliveryUser');
 
     const nestedCandidate =
       storedUser?.id ||
@@ -92,9 +91,7 @@ const resolveDeliveryPartnerIdFromClient = () => {
 
     if (nestedCandidate) return String(nestedCandidate);
 
-    const token =
-      localStorage.getItem('delivery_accessToken') ||
-      localStorage.getItem('accessToken');
+    const token = localStorage.getItem('delivery_accessToken');
     const payload = decodeJwtPayload(token);
     const tokenCandidate =
       payload?.userId ||
@@ -279,6 +276,9 @@ export const useDeliveryNotifications = () => {
   };
 
   const refreshAvailableCashLimit = useCallback(async () => {
+    // Only refresh if we are authenticated as a delivery partner
+    if (!localStorage.getItem('delivery_accessToken')) return null;
+
     try {
       const walletResponse = await deliveryAPI.getWallet();
       availableCashLimitRef.current = extractAvailableCashLimit(walletResponse);
@@ -488,8 +488,12 @@ export const useDeliveryNotifications = () => {
   }, [playNotificationSound, showBackgroundOrderNotification, startAlertLoop]);
 
   const recoverDeliveryState = useCallback(async () => {
-    // Do NOT return early if deliveryPartnerId is missing — we still want to
-    // attempt API recovery (e.g. app opened from a killed state via FCM tap).
+    // Only attempt recovery if we have an active delivery session token.
+    // If no token exists, any delivery API call will result in a 401.
+    if (!localStorage.getItem('delivery_accessToken')) {
+      return;
+    }
+
     try {
       const [availableResult, currentTripResult] = await Promise.allSettled([
         deliveryAPI.getOrders({ limit: 20, page: 1 }),

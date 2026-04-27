@@ -47,3 +47,22 @@ export const uploadImageBufferDetailed = async (buffer, folder = 'uploads') => {
     });
 };
 
+export const uploadVideoBuffer = async (buffer, folder = 'uploads') => {
+    if (!buffer) {
+        throw new Error('File buffer is required');
+    }
+
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { folder, resource_type: 'video' },
+            (error, result) => {
+                if (error) {
+                    return reject(error);
+                }
+                return resolve(result.secure_url);
+            }
+        );
+
+        stream.end(buffer);
+    });
+};

@@ -9,7 +9,7 @@ const imgRight = "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w
 
 const actionWords = ["Cravings", "Hunger", "Taste buds", "Soul"];
 
-export default function FestBanner() {
+export default function FestBanner({ heroVideo, onOrderClick }) {
   const [wordIndex, setWordIndex] = useState(0);
 
   useEffect(() => {
@@ -21,10 +21,10 @@ export default function FestBanner() {
 
   return (
     <div 
-      className="relative px-4 pt-2 pb-12 overflow-hidden shadow-inner bg-gradient-to-r from-[#001A94] via-[#1034A6] to-[#000C45]"
+      className={`relative px-4 pt-2 pb-2 overflow-hidden shadow-inner ${heroVideo ? 'bg-transparent' : 'bg-gradient-to-r from-[#001A94] via-[#1034A6] to-[#000C45]'}`}
       style={{
         backgroundSize: '200% 200%',
-        animation: 'bannerGradientMove 8s ease infinite'
+        animation: heroVideo ? 'none' : 'bannerGradientMove 8s ease infinite'
       }}
     >
       <style>{`
@@ -36,43 +36,86 @@ export default function FestBanner() {
       `}</style>
       
       {/* Decorative Background Elements */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
-          <circle cx="15%" cy="20%" r="2" fill="white" className="animate-pulse" />
-          <circle cx="85%" cy="15%" r="1" fill="white" className="animate-ping" />
-          <circle cx="70%" cy="80%" r="1.5" fill="white" className="animate-pulse" />
-          <path d="M -10 30 Q 20 10 50 30 T 110 30" stroke="url(#grad1)" strokeWidth="0.5" fill="none" opacity="0.5" />
-          <path d="M -10 50 Q 20 60 50 40 T 110 50" stroke="url(#grad1)" strokeWidth="0.3" fill="none" opacity="0.3" />
-          <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ff7b00" stopOpacity="0" />
-              <stop offset="50%" stopColor="#ff7b00" stopOpacity="1" />
-              <stop offset="100%" stopColor="#ff7b00" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
+      {!heroVideo && (
+        <>
+          <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+              <circle cx="15%" cy="20%" r="2" fill="white" className="animate-pulse" />
+              <circle cx="85%" cy="15%" r="1" fill="white" className="animate-ping" />
+              <circle cx="70%" cy="80%" r="1.5" fill="white" className="animate-pulse" />
+              <path d="M -10 30 Q 20 10 50 30 T 110 30" stroke="url(#grad1)" strokeWidth="0.5" fill="none" opacity="0.5" />
+              <path d="M -10 50 Q 20 60 50 40 T 110 50" stroke="url(#grad1)" strokeWidth="0.3" fill="none" opacity="0.3" />
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ff7b00" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#ff7b00" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#ff7b00" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
 
-      {/* Mesh Glows */}
-      <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-cyan-400/30 blur-[80px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-purple-500/30 blur-[80px] rounded-full pointer-events-none" />
-      <div className="absolute top-[40%] left-[50%] w-48 h-48 bg-blue-300/20 blur-[60px] rounded-full pointer-events-none -translate-x-1/2" />
+          {/* Mesh Glows */}
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-cyan-400/30 blur-[80px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-purple-500/30 blur-[80px] rounded-full pointer-events-none" />
+          <div className="absolute top-[40%] left-[50%] w-48 h-48 bg-blue-300/20 blur-[60px] rounded-full pointer-events-none -translate-x-1/2" />
+        </>
+      )}
 
-      <div className="relative z-10 flex flex-col items-center text-center space-y-3 mt-2">
+      <div className="relative z-10 flex flex-col items-center text-center space-y-4 mt-20 sm:mt-24">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: "spring", damping: 12, stiffness: 100 }}
           className="flex flex-col items-center gap-1"
         >
+          {/* Funky Extra Text Badge */}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0, rotate: -5 }}
+            animate={{ scale: 1, opacity: 1, rotate: -3 }}
+            transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.3 }}
+            className="mb-1"
+          >
+            <span className="inline-block px-4 py-1 bg-amber-400 text-[#001A94] text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-[0_4px_20px_rgba(251,191,36,0.5)] transform -rotate-2">
+              Fuel Your Hunger
+            </span>
+          </motion.div>
+
           <div className="flex items-center gap-2">
-            <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]">
-              DarDeComer
+            <h2 className="text-5xl font-black text-white tracking-tight drop-shadow-[0_2px_15px_rgba(255,255,255,0.4)]">
+              DarDe<span className="text-amber-400">Comer</span>
             </h2>
           </div>
           
-          <div className="h-6 flex items-center justify-center overflow-hidden mt-1">
-            <span className="text-amber-100/90 text-sm font-medium mr-1.5 tracking-wide uppercase">Satisfy your</span>
+          {/* Order Now Button with Animated Arrow */}
+          <motion.button 
+            onClick={onOrderClick}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 bg-white hover:bg-gray-100 text-[#001A94] px-6 py-2 rounded-full font-black text-sm uppercase tracking-wider shadow-lg shadow-white/20 transition-colors mt-2"
+          >
+            Order Now
+            <motion.div
+              animate={{ x: [0, 5, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="3" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </motion.div>
+          </motion.button>
+          
+          <div className="h-6 flex items-center justify-center overflow-hidden mt-3">
+            <span className="text-white font-bold text-sm mr-1.5 tracking-wide uppercase opacity-100">Satisfy your</span>
             <div className="relative inline-flex items-center">
               <AnimatePresence mode="wait">
                 <motion.span
@@ -90,68 +133,7 @@ export default function FestBanner() {
           </div>
         </motion.div>
 
-        {/* Food Images Row - Dynamic Layout */}
-        <div className="flex items-center justify-center gap-2 sm:gap-4 pt-4 relative w-full max-w-sm mx-auto">
-          {/* Subtle glow behind center image */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-white/10 blur-[30px] rounded-full pointer-events-none" />
-          
-          {/* Left Pizza Image */}
-          <motion.div 
-            animate={{ 
-              y: [0, -8, 0],
-              rotate: [-15, -12, -15],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            whileHover={{ scale: 1.05 }}
-            className="w-24 h-24 sm:w-28 sm:h-28 z-10 transition-all duration-300"
-          >
-            <img src={imgLeft} alt="Pizza" className="w-full h-full object-cover rounded-2xl border-2 border-white/50 shadow-xl" />
-          </motion.div>
-
-          {/* Center Gourmet Image */}
-          <motion.div 
-            animate={{ 
-              y: [0, -12, 0],
-              scale: [1, 1.03, 1]
-            }}
-            transition={{
-              duration: 5,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 0.5
-            }}
-            whileHover={{ scale: 1.1, rotate: 2 }}
-            className="w-36 h-36 sm:w-40 sm:h-40 z-20 transition-all duration-500"
-            style={{ margin: "0 -10px" }} // Overlap effect
-          >
-            <div className="relative h-full w-full">
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-400 to-orange-500 blur-md rounded-full opacity-40 animate-pulse" />
-              <img src={imgCenter} alt="Gourmet" className="relative w-full h-full object-cover rounded-full border-[4px] border-white shadow-[0_20px_40px_rgba(0,0,0,0.4)]" />
-            </div>
-          </motion.div>
-
-          {/* Right Pasta Image */}
-          <motion.div 
-            animate={{ 
-              y: [0, -10, 0],
-              rotate: [15, 18, 15]
-            }}
-            transition={{
-              duration: 4.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 0.2
-            }}
-            whileHover={{ scale: 1.05 }}
-            className="w-24 h-24 sm:w-28 sm:h-28 z-10 transition-all duration-300"
-          >
-            <img src={imgRight} alt="Pasta" className="w-full h-full object-cover rounded-2xl border-2 border-white/50 shadow-xl" />
-          </motion.div>
-        </div>
+        {/* Food Images Row - Removed as requested */}
       </div>
     </div>
   );

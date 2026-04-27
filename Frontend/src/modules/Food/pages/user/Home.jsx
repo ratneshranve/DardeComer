@@ -545,6 +545,7 @@ export default function Home() {
   const { openLocationSelector } = useLocationSelector();
   const { vegMode, setVegMode: setVegModeContext } = useProfile();
   const [prevVegMode, setPrevVegMode] = useState(vegMode);
+  const [showVegModal, setShowVegModal] = useState(false);
   const [showVegModePopup, setShowVegModePopup] = useState(false);
   const [showSwitchOffPopup, setShowSwitchOffPopup] = useState(false);
   const [vegModeOption, setVegModeOption] = useState("all"); // "all" or "pure-veg"
@@ -561,10 +562,8 @@ export default function Home() {
   const [landingExploreMore, setLandingExploreMore] = useState([]);
   const [exploreMoreHeading, setExploreMoreHeading] = useState("Explore More");
   const [recommendedRestaurantIds, setRecommendedRestaurantIds] = useState([]);
-  const [
-    recommendedRestaurantsFromSettings,
-    setRecommendedRestaurantsFromSettings,
-  ] = useState([]);
+  const [recommendedRestaurantsFromSettings, setRecommendedRestaurantsFromSettings] = useState([]);
+  const [heroVideo, setHeroVideo] = useState(null);
   const [loadingLandingConfig, setLoadingLandingConfig] = useState(true);
   const [restaurantsData, setRestaurantsData] = useState([]);
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
@@ -580,6 +579,32 @@ export default function Home() {
     RESTAURANTS_BATCH_SIZE,
   );
   const restaurantLoadMoreRef = useRef(null);
+  const categoryScrollRef = useRef(null);
+
+  // Infinite scroll effect for categories
+  useEffect(() => {
+    const scrollContainer = categoryScrollRef.current;
+    if (!scrollContainer) return;
+
+    let animationFrameId;
+
+    const scroll = () => {
+      if (scrollContainer) {
+        scrollContainer.scrollLeft += 0.8; // Smooth slow scroll
+        // When we've scrolled past the first set of items, reset to beginning
+        if (scrollContainer.scrollLeft >= scrollContainer.scrollWidth / 2) {
+          scrollContainer.scrollLeft = 0;
+        }
+      }
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+
+    animationFrameId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [landingCategories]); // Re-run if categories change
   const publicCategoriesCacheRef = useRef(new Map());
   const publicCategoriesInFlightRef = useRef(new Map());
   const isHandlingSwitchOff = useRef(false);
@@ -906,37 +931,13 @@ export default function Home() {
       return;
     }
 
-    if (newValue && !prevVegMode) {
-      // Veg mode was just turned ON
-      // Calculate popup position relative to toggle
-      if (vegModeToggleRef.current) {
-        const rect = vegModeToggleRef.current.getBoundingClientRect();
-        const screenWidth = window.innerWidth;
-        const popupWidth = Math.min(screenWidth - 32, 320); // 320 is max-w-xs
-        
-        let left = rect.left + rect.width / 2 - popupWidth / 2;
-        left = Math.max(16, Math.min(left, screenWidth - popupWidth - 16));
-        
-        const triangleLeft = rect.left + rect.width / 2 - left;
-        
-        setPopupPosition({
-          top: rect.bottom + 10,
-          left: left,
-          triangleLeft: triangleLeft
-        });
-      }
-      setShowVegModePopup(true);
-      // Don't update context yet - wait for user to apply or cancel
-    } else if (!newValue && prevVegMode) {
-      // Veg mode was just turned OFF - show switch off confirmation popup
-      isHandlingSwitchOff.current = true;
-      setShowSwitchOffPopup(true);
-      // Don't update context yet - wait for user to confirm
-    } else {
-      // Normal state change - update context directly
-      setVegModeContext(newValue);
-      setPrevVegMode(newValue);
-    }
+    // Toggle the value in context immediately for better feedback
+    setVegModeContext(newValue);
+    setPrevVegMode(newValue);
+    
+    // Show the premium centered status modal
+    setShowVegModal(true);
+    setTimeout(() => setShowVegModal(false), 2000);
   };
 
   // Update popup position on scroll/resize
@@ -1040,6 +1041,7 @@ export default function Home() {
         const settings = settingsRes?.data?.data || {};
         setExploreMoreHeading(settings.exploreMoreHeading || "Explore More");
         setRecommendedRestaurantIds(settings.recommendedRestaurantIds || []);
+        setHeroVideo(settings.heroVideo || null);
         setRecommendedRestaurantsFromSettings(
           settings.recommendedRestaurants || [],
         );
@@ -1206,7 +1208,6 @@ export default function Home() {
   });
   const [isLoadingFilterResults, setIsLoadingFilterResults] = useState(false);
   const [activeFilterTab, setActiveFilterTab] = useState("sort");
-  const categoryScrollRef = useRef(null);
   const gsapAnimationsRef = useRef([]);
   // Show skeletons immediately while loading — delayed toggles caused visible layout swap (CLS).
   const showBannerSkeleton = loadingBanners;
@@ -2381,7 +2382,7 @@ export default function Home() {
         <div
           ref={heroShellRef}
           data-home-hero-shell="true"
-          className="relative w-full overflow-hidden aspect-[1.85/1] rounded-2xl shadow-sm group cursor-pointer bg-white"
+          className={`relative w-full overflow-hidden aspect-[1.85/1] rounded-2xl shadow-sm group cursor-pointer ${heroVideo ? "bg-transparent" : "bg-white"}`}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -2483,8 +2484,23 @@ export default function Home() {
         }>
         {/* Unified Background for Entire Page - Vibrant Food Theme */}
         <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none overflow-hidden z-0">
+          {/* Hero Video Background */}
+          {heroVideo && (
+            <div className="absolute top-0 md:-top-40 left-0 right-0 h-[600px] md:h-[700px] overflow-hidden">
+              <video 
+                src={heroVideo} 
+                autoPlay 
+                muted 
+                loop 
+                playsInline 
+                className="absolute inset-0 w-full h-full object-cover" 
+              />
+              {/* Overlay to ensure readability - slightly lighter */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-white dark:to-[#0a0a0a]" />
+            </div>
+          )}
           {/* Main Background */}
-          <div className="absolute inset-0 bg-white dark:bg-[#0a0a0a]"></div>
+          <div className={`absolute inset-0 ${heroVideo ? 'bg-transparent' : 'bg-white dark:bg-[#0a0a0a]'}`}></div>
           {/* Background Elements - Reduced to 2 blobs with CSS animations for better performance */}
           <div className="absolute inset-0 overflow-hidden opacity-20">
             {/* Top right blob - CSS animation */}
@@ -2602,69 +2618,162 @@ export default function Home() {
             handleSearchFocus={handleSearchFocus}
             placeholderIndex={placeholderIndex}
             placeholders={placeholders}
+            heroVideo={heroVideo}
+            isVegMode={vegMode}
+            handleVegModeChange={(val) => {
+              handleVegModeChange(val);
+              setShowVegModal(true);
+              setTimeout(() => setShowVegModal(false), 2000);
+            }}
           />
+
+          {/* Veg Mode Status Modal */}
+          <AnimatePresence>
+            {showVegModal && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center px-6 pointer-events-none"
+              >
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                  className="relative bg-white dark:bg-[#1a1a1a] rounded-[2.5rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 flex flex-col items-center text-center max-w-[280px] w-full"
+                >
+                  <div className={`w-20 h-20 rounded-full mb-4 flex items-center justify-center ${vegMode ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-rose-100 dark:bg-rose-900/40'}`}>
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+                    >
+                      {vegMode ? (
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-emerald-400 blur-md opacity-50 animate-pulse" />
+                          <img src="https://img.icons8.com/fluency/96/leaf.png" alt="Veg" className="w-12 h-12 relative" />
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-rose-400 blur-md opacity-50 animate-pulse" />
+                          <img src="https://img.icons8.com/3d-fluency/96/cancel.png" alt="All" className="w-12 h-12 relative" />
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white mb-1">
+                    {vegMode ? 'Veg Mode ON' : 'Veg Mode OFF'}
+                  </h3>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 leading-tight">
+                    {vegMode ? 'Showing only pure veg options' : 'Showing all food options'}
+                  </p>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {hasScrolledPastBanner && (
             <div
               ref={stickyHeaderRef}
               className="fixed top-0 inset-x-0 z-[80] px-4 pt-2 pb-2 bg-[#001A94]/95 backdrop-blur-md shadow-lg"
-              onClick={handleSearchFocus}
             >
-              <div className="relative max-w-[480px] mx-auto">
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-[#001A94]" />
+              <div className="flex items-center gap-2 max-w-[480px] mx-auto">
+                <div className="relative flex-1" onClick={handleSearchFocus}>
+                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-[#001A94]" />
+                  </div>
+                  <div className="w-full h-12 bg-white rounded-2xl flex items-center pl-11 pr-4 shadow-xl shadow-[#001A94]/20 overflow-hidden">
+                    <span className="text-[#001A94]/60 font-bold text-sm truncate">
+                      {placeholders?.[placeholderIndex] || 'Search "pizza"'}
+                    </span>
+                  </div>
+                  <div className="absolute inset-y-0 right-4 flex items-center pr-1 border-l border-gray-100 ml-3">
+                    <Mic className="h-4 w-4 text-[#001A94] ml-3" />
+                  </div>
                 </div>
-                <div className="w-full h-12 bg-white rounded-2xl flex items-center pl-11 pr-4 shadow-xl shadow-[#001A94]/20 overflow-hidden">
-                  <span className="text-[#001A94]/60 font-bold text-sm truncate">
-                    {placeholders?.[placeholderIndex] || 'Search "pizza"'}
-                  </span>
-                </div>
-                <div className="absolute inset-y-0 right-4 flex items-center pr-1 border-l border-gray-100 ml-3">
-                  <Mic className="h-4 w-4 text-[#001A94] ml-3" />
+
+                {/* Veg Mode Toggle in Sticky Header */}
+                <div 
+                  className={`flex flex-col items-center justify-center min-w-[64px] h-12 rounded-2xl backdrop-blur-md border transition-all cursor-pointer ${
+                    vegMode 
+                      ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]' 
+                      : 'bg-white/20 border-white/30'
+                  }`}
+                  onClick={() => handleVegModeChange(!vegMode)}
+                >
+                  <div className="flex flex-col items-center leading-none mb-1">
+                    <span className={`text-[10px] font-black tracking-tight ${vegMode ? 'text-emerald-400' : 'text-white'}`}>VEG</span>
+                    <span className={`text-[8px] font-bold tracking-[0.1em] opacity-80 ${vegMode ? 'text-emerald-400/80' : 'text-white/60'}`}>MODE</span>
+                  </div>
+                  <div className={`relative w-9 h-4.5 rounded-full transition-colors ${vegMode ? 'bg-emerald-500' : 'bg-white/30'}`}>
+                    <motion.div 
+                      animate={{ x: vegMode ? 18 : 2 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="absolute top-0.5 left-0 w-3.5 h-3.5 bg-white rounded-full shadow-lg flex items-center justify-center"
+                    >
+                      <div className={`w-2 h-2 rounded-full ${vegMode ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    </motion.div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="bg-white dark:bg-[#0a0a0a]">
+          <div className={`${heroVideo ? 'bg-transparent' : 'bg-white dark:bg-[#0a0a0a]'}`}>
             {/* Flavour Fest Banner */}
-            <FestBanner />
+            <FestBanner 
+              heroVideo={heroVideo} 
+              onOrderClick={() => {
+                const section = document.getElementById('restaurants-list-start');
+                if (section) {
+                  // Scroll with a small offset for the header
+                  const yOffset = -120; 
+                  const y = section.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+              }} 
+            />
 
-            {/* Promo Row */}
-            <div className="relative z-20 -mt-4">
-              <PromoRow 
-                handleVegModeChange={handleVegModeChange}
-                navigate={navigate}
-                isVegMode={vegMode}
-                toggleRef={vegModeToggleRef}
-              />
-            </div>
+            {/* Promo Row removed as requested */}
 
             {/* "What's on your mind today?" Section */}
-            <div className="px-4 py-6 space-y-6 bg-white dark:bg-[#0a0a0a]">
+            <div className={`px-4 pt-6 pb-2 ${heroVideo ? 'bg-transparent' : 'bg-white dark:bg-[#0a0a0a]'}`}>
               <div className="flex items-center gap-2 min-w-0">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white min-w-0 flex-shrink leading-tight">What's on your mind today?</h2>
                 <div className="h-[1px] bg-gray-100 dark:bg-gray-800 flex-1"></div>
                 <button
                   type="button"
                   onClick={() => setShowAllCategoriesModal(true)}
-                  className="text-sm font-bold text-gray-400 dark:text-gray-500 flex items-center gap-0.5 whitespace-nowrap shrink-0"
+                  className="text-sm font-bold text-gray-900 dark:text-gray-200 flex items-center gap-0.5 whitespace-nowrap shrink-0"
                 >
                   View All <ArrowDownUp className="h-3 w-3 rotate-90" />
                 </button>
               </div>
-              
-              <div
+            </div>
+
+            <div className="relative overflow-hidden py-2">
+              <div 
                 ref={categoryScrollRef}
-                className="overflow-x-auto overflow-y-hidden whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex overflow-x-auto scrollbar-hide select-none cursor-grab active:cursor-grabbing"
+                style={{ 
+                  scrollbarWidth: 'none', 
+                  msOverflowStyle: 'none',
+                  WebkitOverflowScrolling: 'touch'
+                }}
               >
-                <div className="inline-flex items-start gap-4 min-w-max pb-1">
-                  {displayCategories.map((category, index) => (
-                    <MemoizedCategoryItem
-                      key={category.id || index}
-                      category={category}
-                      index={index}
-                    />
+                <div className="flex gap-4 sm:gap-6 px-4">
+                  {/* Duplicate items twice for seamless JS-based infinite loop */}
+                  {[...Array(2)].map((_, i) => (
+                    <React.Fragment key={`batch-${i}`}>
+                      {displayCategories.map((category, index) => (
+                        <MemoizedCategoryItem
+                          key={`cat-${i}-${category.id || index}`}
+                          category={category}
+                          index={index}
+                        />
+                      ))}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>
@@ -2674,7 +2783,7 @@ export default function Home() {
             {HeroBannerSection}
 
             {/* Filters Sticky Sidebar Header */}
-            <section className="py-3 px-4 bg-white sticky top-[0px] z-[40] -mx-4 w-[calc(100%+2rem)] border-b border-gray-100 shadow-sm">
+            <section id="restaurants-list-start" className="py-3 px-4 bg-white sticky top-[0px] z-[40] -mx-4 w-[calc(100%+2rem)] border-b border-gray-100 shadow-sm">
               <div
                 className="flex items-center gap-2 overflow-x-auto scrollbar-hide px-4"
                 style={{
@@ -3373,226 +3482,7 @@ return <MemoizedHomeRestaurantCard
           )}
         </AnimatePresence>
 
-        {/* Veg Mode Popup */}
-        <AnimatePresence>
-          {showVegModePopup && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => {
-                  setShowVegModePopup(false);
-                  // Revert veg mode to OFF if popup is closed without applying
-                  setVegModeContext(false);
-                  setPrevVegMode(false);
-                }}
-                className="fixed inset-0 bg-black/30 z-[9998] backdrop-blur-sm"
-              />
-
-              {/* Popup */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                transition={{
-                  type: "spring",
-                  damping: 25,
-                  stiffness: 300,
-                  mass: 0.8,
-                }}
-                className="fixed z-[9999] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl p-4 w-[calc(100%-2rem)] max-w-xs"
-                style={{
-                  top: `${popupPosition.top}px`,
-                  left: `${popupPosition.left}px`,
-                }}
-                onClick={(e) => e.stopPropagation()}>
-                {/* Pointer Triangle */}
-                <div
-                  className="absolute -top-2 w-3 h-3 bg-white dark:bg-[#1a1a1a] transform rotate-45"
-                  style={{
-                    left: `${popupPosition.triangleLeft - 6}px`,
-                    boxShadow: "-2px -2px 4px rgba(0,0,0,0.1)",
-                  }}
-                />
-
-                {/* Title */}
-                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
-                  See veg dishes from
-                </h3>
-
-                {/* Radio Options */}
-                <div className="space-y-2 mb-4">
-                  {/* All restaurants */}
-                  <label
-                    className="flex items-center gap-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    onClick={() => setVegModeOption("all")}>
-                    <div className="relative flex items-center justify-center">
-                      <input
-                        type="radio"
-                        name="vegModeOption"
-                        value="all"
-                        checked={vegModeOption === "all"}
-                        onChange={() => setVegModeOption("all")}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                          vegModeOption === "all"
-                            ? "border-green-600 dark:border-green-500 bg-green-600 dark:bg-green-500"
-                            : "border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a]"
-                        }`}>
-                        {vegModeOption === "all" && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-white" />
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      All restaurants
-                    </span>
-                  </label>
-
-                  {/* Pure Veg restaurants only */}
-                  <label
-                    className="flex items-center gap-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    onClick={() => setVegModeOption("pure-veg")}>
-                    <div className="relative flex items-center justify-center">
-                      <input
-                        type="radio"
-                        name="vegModeOption"
-                        value="pure-veg"
-                        checked={vegModeOption === "pure-veg"}
-                        onChange={() => setVegModeOption("pure-veg")}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                          vegModeOption === "pure-veg"
-                            ? "border-green-600 dark:border-green-500 bg-green-600 dark:bg-green-500"
-                            : "border-gray-300 dark:border-gray-600 bg-white dark:bg-[#2a2a2a]"
-                        }`}>
-                        {vegModeOption === "pure-veg" && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-white" />
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Pure Veg restaurants only
-                    </span>
-                  </label>
-                </div>
-
-                {/* Apply Button */}
-                <button
-                  onClick={() => {
-                    setShowVegModePopup(false);
-                    setIsApplyingVegMode(true);
-                    // Confirm veg mode is ON by updating context and prevVegMode
-                    setVegModeContext(true);
-                    setPrevVegMode(true);
-                    // Simulate applying veg mode settings
-                    setTimeout(() => {
-                      setIsApplyingVegMode(false);
-                    }, 2000);
-                  }}
-                  className="w-full bg-[#001A94] text-white font-semibold py-2.5 rounded-xl hover:bg-[#00157A] transition-colors mb-2 text-sm">
-                  Apply
-                </button>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* Switch Off Veg Mode Popup */}
-        <AnimatePresence>
-          {showSwitchOffPopup && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => {
-                  setShowSwitchOffPopup(false);
-                  isHandlingSwitchOff.current = false;
-                  setVegModeContext(true);
-                  // prevVegMode stays true (from before), which is correct
-                }}
-                className="fixed inset-0 bg-black/50 z-[9998] backdrop-blur-sm"
-              />
-
-              {/* Popup */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{
-                  type: "spring",
-                  damping: 25,
-                  stiffness: 300,
-                  mass: 0.8,
-                }}
-                className="fixed inset-0 z-[9999] flex dark:bg-[#lalala] dark:text-white items-center justify-center p-4"
-                onClick={(e) => e.stopPropagation()}>
-                <div className="bg-white dark:bg-[#lalala] dark:text-white rounded-2xl shadow-2xl w-[85%] max-w-sm p-6">
-                  {/* Warning Icon */}
-                  <div className="flex justify-center mb-4">
-                    <div className="w-20 h-20 rounded-full bg-pink-100 flex items-center justify-center">
-                      <AlertCircle
-                        className="w-20 h-20 text-white bg-blue-500/90 rounded-full p-2"
-                        strokeWidth={2.5}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h2 className="text-2xl font-bold text-gray-900  text-center mb-2">
-                    Switch off Veg Mode?
-                  </h2>
-
-                  {/* Description */}
-                  <p className="text-gray-600 text-center mb-6 text-sm">
-                    You'll see all restaurants, including those serving non-veg
-                    dishes
-                  </p>
-
-                  {/* Buttons */}
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => {
-                        setShowSwitchOffPopup(false);
-                        setIsSwitchingOffVegMode(true);
-                        // Simulate switching off veg mode
-                        setTimeout(() => {
-                          setIsSwitchingOffVegMode(false);
-                          isHandlingSwitchOff.current = false;
-                          setVegModeContext(false);
-                          setPrevVegMode(false); // Set to false to match current state (veg mode is OFF)
-                        }, 2000);
-                      }}
-                      className="w-full bg-transparent text-blue-600 hover:bg-blue-50 transition-colors text-base">
-                      Switch off
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowSwitchOffPopup(false);
-                        isHandlingSwitchOff.current = false;
-                        setVegModeContext(true);
-                        // prevVegMode stays true (from before), which is correct
-                      }}
-                      className="w-full text-gray-900 font-normal py-1 text-center rounded-xl hover:bg-gray-200 transition-colors text-base">
-                      Keep using this mode
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+        {/* Redundant popups removed in favor of centered status modal */}
 
         {/* All Categories Modal */}
         <AnimatePresence>

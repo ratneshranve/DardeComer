@@ -40,6 +40,11 @@ export default defineConfig({
         target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
+      // Backend static files
+      '/uploads': {
+        target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 })

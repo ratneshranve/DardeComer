@@ -34,6 +34,10 @@ const foodLandingSettingsSchema = new mongoose.Schema(
         showGourmet: {
             type: Boolean,
             default: true
+        },
+        heroVideo: {
+            type: String,
+            default: null
         }
     },
     {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, UtensilsCrossed, ChefHat, Megaphone, Search } from "lucide-react"
+import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, UtensilsCrossed, ChefHat, Megaphone, Search, PlayCircle } from "lucide-react"
 import api from "@food/api"
 import { adminAPI } from "@food/api"
 import { getModuleToken } from "@food/utils/auth"
@@ -60,9 +60,12 @@ export default function LandingPageManagement() {
   const diningBannersFileInputRef = useRef(null)
 
   // Settings
-  const [settings, setSettings] = useState({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [] })
+  const [settings, setSettings] = useState({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], heroVideo: null })
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsSaving, setSettingsSaving] = useState(false)
+  const [heroVideoUploading, setHeroVideoUploading] = useState(false)
+  const [heroVideoDeleting, setHeroVideoDeleting] = useState(false)
+  const heroVideoFileInputRef = useRef(null)
   const [recommendedSearchQuery, setRecommendedSearchQuery] = useState("")
 
   const [allRestaurants, setAllRestaurants] = useState([])
@@ -1033,7 +1036,8 @@ export default function LandingPageManagement() {
         const nextSettings = response.data.data.settings || {}
         setSettings({
           exploreMoreHeading: nextSettings.exploreMoreHeading || "Explore More",
-          recommendedRestaurantIds: Array.isArray(nextSettings.recommendedRestaurantIds) ? nextSettings.recommendedRestaurantIds : []
+          recommendedRestaurantIds: Array.isArray(nextSettings.recommendedRestaurantIds) ? nextSettings.recommendedRestaurantIds : [],
+          heroVideo: nextSettings.heroVideo || null
         })
       }
     } catch (err) {
@@ -1058,7 +1062,8 @@ export default function LandingPageManagement() {
       setSuccess(null)
       const response = await api.patch('/food/hero-banners/landing/settings', {
         exploreMoreHeading: settings.exploreMoreHeading,
-        recommendedRestaurantIds: Array.isArray(settings.recommendedRestaurantIds) ? settings.recommendedRestaurantIds : []
+        recommendedRestaurantIds: Array.isArray(settings.recommendedRestaurantIds) ? settings.recommendedRestaurantIds : [],
+        heroVideo: settings.heroVideo
       }, getAuthConfig())
       if (response.data.success) {
         const savedSettings = response.data.data?.settings || {}
@@ -1067,7 +1072,8 @@ export default function LandingPageManagement() {
           exploreMoreHeading: savedSettings.exploreMoreHeading || prev.exploreMoreHeading,
           recommendedRestaurantIds: Array.isArray(savedSettings.recommendedRestaurantIds)
             ? savedSettings.recommendedRestaurantIds
-            : prev.recommendedRestaurantIds
+            : prev.recommendedRestaurantIds,
+          heroVideo: savedSettings.heroVideo || prev.heroVideo
         }))
         setSuccess('Settings saved successfully!')
         setTimeout(() => setSuccess(null), 3000)
@@ -1076,6 +1082,67 @@ export default function LandingPageManagement() {
       setErrorSafely(err.response?.data?.message || 'Failed to save settings.')
     } finally {
       setSettingsSaving(false)
+    }
+  }
+
+  const handleHeroVideoFileSelect = (e) => {
+    const file = e.target?.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('video/')) {
+      setError('Please select a video file')
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setError('Video file size exceeds 20MB')
+      return
+    }
+    uploadHeroVideo(file)
+  }
+
+  const uploadHeroVideo = async (file) => {
+    try {
+      setHeroVideoUploading(true)
+      setError(null)
+      setSuccess(null)
+      const formData = new FormData()
+      formData.append('video', file)
+
+      const response = await api.post('/food/hero-banners/landing/hero-video', formData, getAuthConfig({
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }))
+
+      if (response.data.success) {
+        setSuccess('Hero video uploaded successfully!')
+        setSettings(prev => ({ ...prev, heroVideo: response.data.data.heroVideo }))
+        if (heroVideoFileInputRef.current) heroVideoFileInputRef.current.value = ''
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to upload hero video.')
+    } finally {
+      setHeroVideoUploading(false)
+    }
+  }
+
+  const handleDeleteHeroVideo = async () => {
+    if (!window.confirm('Are you sure you want to remove the hero video?')) return
+    try {
+      setHeroVideoDeleting(true)
+      setError(null)
+      setSuccess(null)
+      // We just update settings to null for the video
+      const response = await api.patch('/food/hero-banners/landing/settings', {
+        heroVideo: null
+      }, getAuthConfig())
+      if (response.data.success) {
+        setSuccess('Hero video removed successfully!')
+        setSettings(prev => ({ ...prev, heroVideo: null }))
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to remove hero video.')
+    } finally {
+      setHeroVideoDeleting(false)
     }
   }
 
@@ -1208,6 +1275,7 @@ export default function LandingPageManagement() {
     { id: 'under-250', label: '250 Banner', icon: Tag },
     { id: 'dining', label: 'Dining', icon: UtensilsCrossed },
     { id: 'explore-more', label: 'Explore More', icon: Layout },
+    { id: 'hero-video', label: 'Hero Video', icon: PlayCircle },
   ]
 
   const exploreMoreTabs = [
@@ -1935,6 +2003,72 @@ export default function LandingPageManagement() {
               </>
             )}
           </>
+        )}
+        {/* Hero Video Tab */}
+        {activeTab === 'hero-video' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">Hero Background Video</h2>
+              <p className="text-sm text-slate-600 mb-6">
+                Upload a video to be used as the background for the hero section on the landing page.
+                If no video is uploaded, the default background or banners will be shown.
+              </p>
+
+              <div
+                className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+                onClick={() => heroVideoFileInputRef.current?.click()}
+              >
+                <input
+                  ref={heroVideoFileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleHeroVideoFileSelect}
+                  className="hidden"
+                  disabled={heroVideoUploading}
+                />
+                {heroVideoUploading ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                    <p className="text-blue-600 font-medium">Uploading video...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <PlayCircle className="w-12 h-12 text-blue-600" />
+                    <div>
+                      <button
+                        type="button"
+                        className="text-blue-600 font-medium hover:text-blue-700 underline"
+                      >
+                        Click to upload video
+                      </button>
+                      <span className="text-slate-600"> or drag and drop</span>
+                    </div>
+                    <p className="text-xs text-slate-500">MP4, WebM up to 20MB</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {settings.heroVideo && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 className="text-lg font-bold text-slate-900 mb-4">Current Hero Video</h2>
+                <div className="relative aspect-video max-w-2xl mx-auto rounded-lg overflow-hidden border border-slate-200 bg-black">
+                  <video
+                    src={settings.heroVideo}
+                    controls
+                    className="w-full h-full"
+                  />
+                  <button
+                    onClick={handleDeleteHeroVideo}
+                    disabled={heroVideoDeleting}
+                    className="absolute top-4 right-4 p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {heroVideoDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Restaurant Selection Modal */}
