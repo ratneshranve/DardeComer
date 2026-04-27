@@ -39,9 +39,9 @@ export default function RestaurantSignup() {
       return "Phone number is required"
     }
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, "")
-    const phoneRegex = /^\d{7,15}$/
+    const phoneRegex = /^\d{10}$/
     if (!phoneRegex.test(cleanPhone)) {
-      return "Phone number must be 7-15 digits"
+      return "Phone number must be exactly 10 digits"
     }
     return ""
   }
@@ -68,7 +68,9 @@ export default function RestaurantSignup() {
 
     // Real-time validation
     if (name === "phone") {
-      setErrors({ ...errors, phone: validatePhone(value) })
+      const val = value.replace(/\D/g, "").slice(0, 10)
+      setFormData({ ...formData, [name]: val })
+      setErrors({ ...errors, phone: validatePhone(val) })
     } else if (name === "name") {
       setErrors({ ...errors, name: validateName(value) })
     }
@@ -267,9 +269,10 @@ export default function RestaurantSignup() {
                       id="phone"
                       name="phone"
                       type="tel"
-                      placeholder="Enter phone number"
+                      placeholder="Enter 10-digit phone number"
                       value={formData.phone}
                       onChange={handleChange}
+                      maxLength={10}
                       className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-primary-orange focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.phone ? "border-red-500" : ""}`}
                       required
                     />

@@ -42,8 +42,7 @@ export default function RestaurantLogin() {
     if (!phone || phone.trim() === "") return "Phone number is required"
 
     const digitsOnly = phone.replace(/\D/g, "")
-    if (digitsOnly.length < 8) return "Phone number must be at least 8 digits"
-    if (digitsOnly.length > 15) return "Phone number is too long"
+    if (digitsOnly.length !== 10) return "Phone number must be exactly 10 digits"
 
     return ""
   }

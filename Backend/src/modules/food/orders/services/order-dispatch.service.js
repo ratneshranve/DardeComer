@@ -177,8 +177,13 @@ async function filterPartnersByCashLimit(order, partners = []) {
     const cashCollected = collectedMap.get(partnerId) || 0;
     const depositedCash = depositsMap.get(partnerId) || 0;
     const cashInHand = Math.max(0, cashCollected - depositedCash);
-    const availableCashLimit = Math.max(0, totalCashLimit - cashInHand);
+    
+    // If rider has already reached or exceeded their cash limit, they are blocked from all orders
+    if (cashInHand >= totalCashLimit) {
+      return false;
+    }
 
+    const availableCashLimit = Math.max(0, totalCashLimit - cashInHand);
     return availableCashLimit >= orderCashAmount;
   });
 }
@@ -437,20 +442,21 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
   // This ensures alerts reach riders even if tryAutoAssign's lock logic has issues.
   try {
     const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, { maxKm: 60, limit: 25 });
+    const eligible = await filterPartnersByCashLimit(order, partners);
     const io = getIO();
     const payload = buildDeliverySocketPayload(order, order.restaurantId);
 
-    if (io && partners.length > 0) {
-      logger.info(`[Resend] Direct broadcasting order ${order._id} to ${partners.length} riders via socket.`);
-      for (const p of partners) {
+    if (io && eligible.length > 0) {
+      logger.info(`[Resend] Direct broadcasting order ${order._id} to ${eligible.length} riders via socket.`);
+      for (const p of eligible) {
         const roomName = rooms.delivery(p.partnerId);
         io.to(roomName).emit('new_order', { ...payload, pickupDistanceKm: p.distanceKm });
         // Also emit play_notification_sound for maximum visibility
         io.to(roomName).emit('play_notification_sound', { ...payload, pickupDistanceKm: p.distanceKm });
       }
 
-      // Send FCM push notifications to all nearby riders
-      for (const p of partners) {
+      // Send FCM push notifications to all eligible riders
+      for (const p of eligible) {
         try {
           await notifyOwnerSafely(
             { ownerType: 'DELIVERY_PARTNER', ownerId: p.partnerId },
@@ -465,7 +471,7 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
         }
       }
     } else {
-      logger.warn(`[Resend] No online partners found or IO not initialized. Partners: ${partners.length}`);
+      logger.warn(`[Resend] No online/eligible partners found or IO not initialized. Eligible: ${eligible.length}`);
     }
   } catch (err) {
     logger.error(`[Resend] Direct broadcast failed: ${err.message}`);
