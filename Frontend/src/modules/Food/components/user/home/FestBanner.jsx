@@ -7,7 +7,7 @@ const imgLeft = "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=
 const imgCenter = "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop"; // Gourmet/Grill
 const imgRight = "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=300&h=300&fit=crop"; // Pasta
 
-const actionWords = ["Cravings", "Hunger", "Taste buds", "Soul"];
+const actionWords = ["Cravings", "Hunger", "Taste Buds", "Soul"];
 
 export default function FestBanner({ heroVideo, onOrderClick }) {
   const [wordIndex, setWordIndex] = useState(0);
@@ -20,7 +20,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
   }, []);
 
   return (
-    <div 
+    <div
       className={`relative px-4 pt-2 pb-2 overflow-hidden shadow-inner ${heroVideo ? 'bg-transparent' : 'bg-gradient-to-r from-[#001A94] via-[#1034A6] to-[#000C45]'}`}
       style={{
         backgroundSize: '200% 200%',
@@ -34,7 +34,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
           100% { background-position: 0% 50%; }
         }
       `}</style>
-      
+
       {/* Decorative Background Elements */}
       {!heroVideo && (
         <>
@@ -62,7 +62,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
         </>
       )}
 
-      <div className="relative z-10 flex flex-col items-center text-center space-y-4 mt-20 sm:mt-24">
+      <div className="relative z-10 flex flex-col items-center text-center space-y-4 mt-12 sm:mt-16 pb-12">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -86,9 +86,9 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
               DarDe<span className="text-amber-400">Comer</span>
             </h2>
           </div>
-          
+
           {/* Order Now Button with Animated Arrow */}
-          <motion.button 
+          <motion.button
             onClick={onOrderClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -99,23 +99,23 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
               animate={{ x: [0, 5, 0] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             >
-              <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="3" 
-                strokeLinecap="round" 
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M5 12h14M12 5l7 7-7 7"/>
+                <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </motion.div>
           </motion.button>
-          
+
           <div className="h-6 flex items-center justify-center overflow-hidden mt-3">
-            <span className="text-white font-bold text-sm mr-1.5 tracking-wide uppercase opacity-100">Satisfy your</span>
+            <span className="text-black font-bold text-sm mr-1.5 tracking-wide uppercase opacity-100">Satisfy your</span>
             <div className="relative inline-flex items-center">
               <AnimatePresence mode="wait">
                 <motion.span
@@ -124,7 +124,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -20, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="text-amber-400 font-bold text-sm tracking-wide uppercase drop-shadow-md"
+                  className="text-amber-600 font-bold text-sm tracking-wide uppercase drop-shadow-md"
                 >
                   {actionWords[wordIndex]}
                 </motion.span>

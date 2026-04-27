@@ -51,6 +51,9 @@ const SplashScreen = ({ children }) => {
           <h1 className="brand" data-text="DarDeComer">
             DarDeComer
           </h1>
+          <p className="tagline">
+            Turning Fatty Liver Into Fatty Wallet
+          </p>
         </div>
       </div>
       {/* Pre-render children in background for seamless transition */}
