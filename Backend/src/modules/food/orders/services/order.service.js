@@ -312,15 +312,15 @@ export async function createOrder(userId, dto) {
     customerPhone: dto.customerPhone || deliveryAddress.phone || "",
     pricing: normalizedPricing,
     payment,
-    orderStatus: "created",
+    orderStatus: paymentMethod === "razorpay" ? "payment_pending" : "created",
     dispatch: { modeAtCreation: dispatchMode, status: "unassigned" },
     statusHistory: [
       {
         at: new Date(),
         byRole: "SYSTEM",
         from: "",
-        to: "created",
-        note: "Order placed",
+        to: paymentMethod === "razorpay" ? "payment_pending" : "created",
+        note: paymentMethod === "razorpay" ? "Awaiting online payment" : "Order placed",
       },
     ],
     deliveryType,
@@ -458,13 +458,14 @@ export async function verifyPayment(userId, dto) {
   );
   if (!valid) throw new ValidationError("Payment verification failed");
 
+  order.orderStatus = "created";
   order.payment.status = "paid";
   order.payment.razorpay.paymentId = dto.razorpayPaymentId;
   order.payment.razorpay.signature = dto.razorpaySignature;
   pushStatusHistory(order, {
     byRole: "USER",
     byId: userId,
-    from: order.orderStatus,
+    from: "payment_pending",
     to: "created",
     note: "Payment verified",
   });
@@ -520,7 +521,10 @@ export async function processDispatchTimeout(orderId, partnerId, options = {}) {
 // ----- User: list, get, cancel -----
 export async function listOrdersUser(userId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
-  const filter = { userId: new mongoose.Types.ObjectId(userId) };
+  const filter = { 
+    userId: new mongoose.Types.ObjectId(userId),
+    orderStatus: { $ne: "payment_pending" }
+  };
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)
       .populate(
@@ -558,6 +562,9 @@ export async function getOrderById(
     .select("+deliveryOtp")
     .lean();
   if (!order) throw new NotFoundError("Order not found");
+  if (order.orderStatus === "payment_pending" && !admin && !userId) {
+    throw new NotFoundError("Order not found");
+  }
 
   if (admin) return normalizeOrderForClient(order);
 

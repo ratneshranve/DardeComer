@@ -1597,7 +1597,7 @@ export default function HubMenu() {
                       { id: "2-hours", label: "2 Hours" },
                       { id: "4-hours", label: "4 Hours" },
                       { id: "next-business-day", label: "Next business day" },
-                      { id: "custom", label: "Custom date & time (upto 7 days)" },
+                      /* { id: "custom", label: "Custom date & time (upto 7 days)" }, */
                     ].map((option) => (
                       <div key={option.id}>
                         <label
@@ -1614,7 +1614,7 @@ export default function HubMenu() {
                           />
                           <span className="text-sm font-medium text-gray-900">{option.label}</span>
                         </label>
-                        {option.id === "custom" && availabilityReason === "custom" && (
+                        {/* {option.id === "custom" && availabilityReason === "custom" && (
                           <div className="ml-8 mt-2 mb-4">
                             <input
                               type="datetime-local"
@@ -1626,7 +1626,7 @@ export default function HubMenu() {
                               required
                             />
                           </div>
-                        )}
+                        )} */}
                       </div>
                     ))}
                   </div>

@@ -2603,8 +2603,7 @@ export default function Inventory() {
                     </div>
                   </label>
 
-                  {/* Option 3: Custom date & time */}
-                  <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
+                  {/* <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
                     <div className="flex items-center gap-3 flex-1">
                     
                       <span className="text-base text-gray-900">Custom date & time</span>
@@ -2617,8 +2616,8 @@ export default function Inventory() {
                         className="ml-auto w-5 h-5 text-gray-900 border-gray-300 focus:ring-black"
                       />
                     </div>
-                  </label>
-                  {selectedOption === "custom-date-time" && (
+                  </label> */}
+                  {/* {selectedOption === "custom-date-time" && (
                     <div className="ml-auto py-3 flex items-center justify-center gap-4">
                       <button
                         onClick={() => setShowCalendar(true)}
@@ -2635,7 +2634,7 @@ export default function Inventory() {
                         <ChevronDown className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Option 4: Manual */}
                   <label className="flex items-center justify-between py-4 cursor-pointer">

@@ -249,6 +249,7 @@ const orderSchema = new mongoose.Schema(
         orderStatus: {
             type: String,
             enum: [
+                'payment_pending',
                 'created',
                 'confirmed',
                 'preparing',

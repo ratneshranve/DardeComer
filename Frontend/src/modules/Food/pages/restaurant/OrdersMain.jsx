@@ -2432,7 +2432,7 @@ export default function OrdersMain() {
                 {/* Content */}
                 <div className="px-4 pt-4 pb-4 flex-1 overflow-y-auto min-h-0">
                   {/* Scheduled Indicator */}
-                  {(popupOrder || newOrder)?.scheduledAt && (
+                  {/* {(popupOrder || newOrder)?.scheduledAt && (
                     <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                         <Calendar className="w-4 h-4 text-green-600" />
@@ -2455,7 +2455,7 @@ export default function OrdersMain() {
                         </p>
                       </div>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Customer info */}
                   <div className="mb-4">

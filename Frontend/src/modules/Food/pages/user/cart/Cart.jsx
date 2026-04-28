@@ -1889,6 +1889,7 @@ export default function Cart() {
         },
         onClose: () => {
           debugLog("?? Payment modal closed by user")
+          toast.error("Payment not completed. Please try again to place your order.")
           setIsPlacingOrder(false)
         }
       })
@@ -2375,15 +2376,15 @@ export default function Cart() {
                       <span className="text-green-600 font-bold">{restaurantData?.estimatedDeliveryTime || "15-20 mins"}</span>
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
-                      Want this later?
+{/* Want this later? */}
                       <button onClick={() => setIsScheduled(!isScheduled)} className="border-b border-dashed border-gray-500 font-medium outline-none">
-                        Schedule it
+{/* Schedule it */}
                       </button>
                     </p>
                   </div>
                 </div>
 
-                {isScheduled && (
+                {/* {isScheduled && (
                   <div className="mt-5 flex flex-col sm:flex-row gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex-1">
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Date (Up to Tomorrow)</label>
@@ -2418,7 +2419,7 @@ export default function Cart() {
                       )}
                     </div>
                   </div>
-                )}
+                )} */}
               </div>
 
               {/* Delivery Address / Pickup */}

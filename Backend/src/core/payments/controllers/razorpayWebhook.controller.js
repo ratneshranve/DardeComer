@@ -4,6 +4,7 @@ import { FoodOrder } from '../../../modules/food/orders/models/order.model.js';
 import * as foodTransactionService from '../../../modules/food/orders/services/foodTransaction.service.js';
 import { config } from '../../../config/env.js';
 import { logger } from '../../../utils/logger.js';
+import * as orderHelpers from '../../../modules/food/orders/services/order.helpers.js';
 
 /**
  * ✅ NEW: Centralized Razorpay Webhook Handler (Core Layer)
@@ -48,7 +49,8 @@ export const handleRazorpayWebhook = async (req, res) => {
                 { 
                     $set: { 
                         "payment.status": 'paid', 
-                        "payment.razorpay.paymentId": rzPaymentId 
+                        "payment.razorpay.paymentId": rzPaymentId,
+                        "orderStatus": "created" 
                     } 
                 },
                 { new: true }
@@ -66,6 +68,13 @@ export const handleRazorpayWebhook = async (req, res) => {
                     logger.error(`Webhook Ledger Error (Order ${order.orderId}): ${ledgerErr.message}`);
                 }
                 logger.info(`Webhook [payment.captured]: Synced Order ${order.orderId} (Status=paid)`);
+                
+                // Notify restaurant if this was a new order being finalized
+                try {
+                    await orderHelpers.notifyRestaurantNewOrder(order);
+                } catch (notifyErr) {
+                    logger.error(`Webhook Notification Error (Order ${order.orderId}): ${notifyErr.message}`);
+                }
             } else {
                 // ✅ ADDED: Log warn if order not found but payment was captured
                 logger.warn(`Webhook [payment.captured]: Order not found or already paid for RZ-Order: ${rzOrderId}`);
