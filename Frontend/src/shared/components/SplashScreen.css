@@ -74,7 +74,7 @@
 }
 
 /* Specific styling for "Comer" part if needed, or just full white */
-.brand span:nth-child(n+6) {
+.brand span:nth-child(n+8) {
   color: #fbbf24; /* Amber-400 equivalent for "Comer" */
 }
 

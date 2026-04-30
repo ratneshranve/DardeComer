@@ -283,7 +283,7 @@ export default function UnifiedOTPFastLogin() {
   const hotelIcon = "/super-app/hotel.png"
 
   const services = [
-    { id: 'food', name: 'Food Delivery', icon: foodIcon, label: 'Zomato', color: 'bg-red-500', shadow: 'shadow-red-200' },
+    { id: 'food', name: 'Food Delivery', icon: foodIcon, label: 'Dar De Comer', color: 'bg-red-500', shadow: 'shadow-red-200' },
     { id: 'taxi', name: 'Taxi', icon: taxiIcon, label: 'Taxi', color: 'bg-yellow-400', shadow: 'shadow-yellow-200' },
     { id: 'grocery', name: 'Quick Commerce', icon: groceryIcon, label: 'Blinkit', color: 'bg-green-500', shadow: 'shadow-green-200' },
     { id: 'hotels', name: 'Hotels', icon: hotelIcon, label: 'Hotels', color: 'bg-blue-500', shadow: 'shadow-blue-200' },
@@ -313,7 +313,7 @@ export default function UnifiedOTPFastLogin() {
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl md:text-5xl font-medium tracking-tight mb-1"
           >
-            {companyName || "DarDeComer"}
+            {companyName || "Dar De Comer"}
           </motion.h1>
           <p className="text-xs md:text-base font-medium text-white/90 tracking-[0.2em] uppercase">
             Taste the best, forget the rest

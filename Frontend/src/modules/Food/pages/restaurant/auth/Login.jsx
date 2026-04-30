@@ -114,7 +114,7 @@ export default function RestaurantLogin() {
 
         <div className="relative z-10 flex flex-col items-center">
           <h1 className="text-2xl md:text-5xl font-normal tracking-tight mb-1">
-            <span className="font-bold">DarDeComer</span>{" "}
+            <span className="font-bold">Dar De Comer</span>{" "}
             <span className="font-normal">Restaurant</span>
           </h1>
           <p className="text-xs md:text-base font-medium text-white/90 tracking-[0.2em] uppercase">

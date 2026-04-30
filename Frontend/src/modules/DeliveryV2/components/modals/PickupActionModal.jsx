@@ -30,6 +30,32 @@ export const PickupActionModal = ({
   const [billImageUrl, setBillImageUrl] = useState(null);
   const cameraInputRef = useRef(null);
 
+  // Persistence: Restore state on mount to survive camera-induced reloads
+  useEffect(() => {
+    const saved = sessionStorage.getItem(`delivery_pickup_bill_${order.orderId || order._id}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.url) {
+          setBillImageUrl(parsed.url);
+          setBillImageUploaded(true);
+        }
+      } catch (e) {
+        console.error('Error restoring bill state:', e);
+      }
+    }
+  }, [order.orderId, order._id]);
+
+  // Persistence: Save state whenever it changes
+  useEffect(() => {
+    const key = `delivery_pickup_bill_${order.orderId || order._id}`;
+    if (billImageUploaded && billImageUrl) {
+      sessionStorage.setItem(key, JSON.stringify({ url: billImageUrl }));
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  }, [billImageUploaded, billImageUrl, order.orderId, order._id]);
+
   if (!order) return null;
 
   const handleBillImageSelect = async (file) => {
@@ -44,7 +70,8 @@ export const PickupActionModal = ({
     try {
       const res = await uploadAPI.uploadMedia(file, { folder: 'appzeto/delivery/bills' });
       if (res?.data?.success && res?.data?.data) {
-        setBillImageUrl(res.data.data.url || res.data.data.secure_url);
+        const url = res.data.data.url || res.data.data.secure_url;
+        setBillImageUrl(url);
         setBillImageUploaded(true);
         // toast.success('Bill image uploaded!');
       } else {

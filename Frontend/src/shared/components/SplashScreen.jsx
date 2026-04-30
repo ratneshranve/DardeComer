@@ -49,7 +49,7 @@ const SplashScreen = ({ children }) => {
       <div className={`splash ${exit ? 'exit' : ''}`}>
         <div className="center-box">
           <h1 className="brand">
-            {"DarDeComer".split("").map((char, index) => (
+            {"Dar De Comer".split("").map((char, index) => (
               <span key={index} style={{ "--index": index }}>
                 {char}
               </span>

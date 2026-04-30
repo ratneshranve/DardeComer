@@ -58,10 +58,16 @@ export default function PrivacyPolicyV2() {
             </div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-              <div
-                className="prose prose-sm prose-orange dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                dangerouslySetInnerHTML={{ __html: content }}
-              />
+              {content ? (
+                <div
+                  className="prose prose-sm prose-orange dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+                  dangerouslySetInnerHTML={{ __html: content }}
+                />
+              ) : (
+                <div className="text-center py-20">
+                  <p className="text-gray-500 font-medium">No privacy policy content available at the moment.</p>
+                </div>
+              )}
               {lastUpdated && (
                 <div className="mt-12 pt-6 border-t border-gray-100">
                   <p className="text-gray-400 text-xs italic">Last updated: {formatDate(lastUpdated)}</p>

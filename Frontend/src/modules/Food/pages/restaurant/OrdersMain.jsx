@@ -1295,6 +1295,16 @@ export default function OrdersMain() {
     };
   }, []);
 
+  const calculateRemainingCountdown = (order) => {
+    const timestamp = order?.createdAt || order?.updatedAt || order?.timestamp;
+    if (!timestamp) return 240;
+    const createdTime = new Date(timestamp).getTime();
+    if (isNaN(createdTime)) return 240;
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - createdTime) / 1000);
+    return Math.max(0, 240 - elapsedSeconds);
+  };
+
   // Show new order popup when real order notification arrives from Socket.IO
   useEffect(() => {
     if (newOrder) {
@@ -1318,7 +1328,7 @@ export default function OrdersMain() {
         markOrderAsShown(newOrder);
         setPopupOrder(newOrder);
         setShowNewOrderPopup(true);
-        setCountdown(240); // Reset countdown to 4 minutes
+        setCountdown(calculateRemainingCountdown(newOrder));
         requestOrdersRefresh();
       }
     }
@@ -1438,11 +1448,11 @@ export default function OrdersMain() {
 
           // Find orders that should trigger the popup
           const targetOrders = response.data.data.orders.filter((order) => {
-            if (hasOrderBeenShown(order)) return false;
-
-            const isConfirmed = order.status === "confirmed" || order.status === "pending";
+            const isConfirmed =
+              order.status === "confirmed" || order.status === "pending";
             const isCreatedScheduled =
-              (order.status === "created" || order.status === "pending") && order.scheduledAt;
+              (order.status === "created" || order.status === "pending") &&
+              order.scheduledAt;
 
             if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed/pending fallback
 
@@ -1493,7 +1503,7 @@ export default function OrdersMain() {
             markOrderAsShown({ orderId, _id: orderToPopup._id });
             setPopupOrder(orderForPopup);
             setShowNewOrderPopup(true);
-            setCountdown(240);
+            setCountdown(calculateRemainingCountdown(orderToPopup));
           }
         }
       } catch (error) {
@@ -1546,11 +1556,15 @@ export default function OrdersMain() {
 
   // Countdown timer
   useEffect(() => {
-    if (showNewOrderPopup && countdown > 0) {
-      const timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
+    if (showNewOrderPopup) {
+      if (countdown > 0) {
+        const timer = setInterval(() => {
+          setCountdown((prev) => prev - 1);
+        }, 1000);
+        return () => clearInterval(timer);
+      } else {
+        handleAutoReject();
+      }
     }
   }, [showNewOrderPopup, countdown]);
 
@@ -1657,6 +1671,27 @@ export default function OrdersMain() {
     }
 
     setAcceptSwipeProgress(0);
+  };
+
+  const handleAutoReject = async () => {
+    const orderToReject = popupOrder || newOrder;
+    if (orderToReject?.orderMongoId || orderToReject?.orderId) {
+      const orderId = orderToReject.orderMongoId || orderToReject.orderId;
+      try {
+        await restaurantAPI.rejectOrder(orderId, "No response from restaurant");
+        debugLog("? Order auto-rejected due to timeout:", orderId);
+        requestOrdersRefresh();
+      } catch (error) {
+        debugError("? Error auto-rejecting order:", orderId);
+      }
+    }
+
+    stopRestaurantAlertSound();
+    setShowNewOrderPopup(false);
+    setPopupOrder(null);
+    clearNewOrder();
+    setCountdown(240);
+    setPrepTime(11);
   };
 
   // Handle accept order

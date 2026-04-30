@@ -83,7 +83,7 @@ export default function FestBanner({ heroVideo, onOrderClick }) {
 
           <div className="flex items-center gap-2">
             <h2 className="text-3xl sm:text-4xl font-black text-white tracking-[0.15em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
-              DarDe<span className="text-amber-400">Comer</span>
+              Dar De <span className="text-amber-400">Comer</span>
             </h2>
           </div>
 

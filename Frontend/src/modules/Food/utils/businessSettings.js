@@ -140,7 +140,7 @@ export const getCachedSettings = () => {
  */
 export const getCompanyName = () => {
   const settings = getCachedSettings();
-  return settings?.companyName || "DarDeComer";
+  return settings?.companyName || "Dar De Comer";
 };
 
 /**
@@ -150,9 +150,9 @@ export const getCompanyName = () => {
 export const getCompanyNameAsync = async () => {
   try {
     const settings = await loadBusinessSettings();
-    return settings?.companyName || "DarDeComer";
+    return settings?.companyName || "Dar De Comer";
   } catch (error) {
-    return "DarDeComer";
+    return "Dar De Comer";
   }
 };
 

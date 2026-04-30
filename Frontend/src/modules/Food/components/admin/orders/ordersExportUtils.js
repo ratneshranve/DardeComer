@@ -237,7 +237,7 @@ export const exportToPDF = async (orders, filename = "orders") => {
     doc.setFontSize(22)
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
     doc.setFont('helvetica', 'bold')
-    doc.text("DARDECOMER", 14, 20)
+    doc.text("DAR DE COMER", 14, 20)
     
     doc.setFontSize(14)
     const title = (filename.charAt(0).toUpperCase() + filename.slice(1).replace(/_/g, ' ')) + " Report"
@@ -370,7 +370,7 @@ export const exportToPDF = async (orders, filename = "orders") => {
         const pageCount = doc.internal.getNumberOfPages()
         const pageCurrent = doc.internal.getCurrentPageInfo().pageNumber
         doc.text(`Page ${pageCurrent} of ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10)
-        doc.text("DardeComer - Order Management System", doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' })
+        doc.text("Dar De Comer - Order Management System", doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 10, { align: 'right' })
       }
     })
 

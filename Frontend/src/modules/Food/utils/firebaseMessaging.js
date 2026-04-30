@@ -587,10 +587,26 @@ function showForegroundNotification(payload = {}, options = {}) {
     channel.postMessage({ type: "HANDLED" });
     channel.close();
 
+    const isNewOrder = 
+      title.toLowerCase().includes("order") || 
+      body.toLowerCase().includes("order") || 
+      payload?.data?.orderId;
+
     if (body) {
-      toast.success(`${title}: ${body}`);
+      toast(title, {
+        description: body,
+        duration: isNewOrder ? 15000 : 6000,
+        important: isNewOrder,
+        action: payload?.data?.targetUrl ? {
+          label: 'View',
+          onClick: () => window.location.href = payload.data.targetUrl
+        } : undefined
+      });
     } else {
-      toast.success(title);
+      toast(title, {
+        duration: isNewOrder ? 15000 : 6000,
+        important: isNewOrder
+      });
     }
   }
 }

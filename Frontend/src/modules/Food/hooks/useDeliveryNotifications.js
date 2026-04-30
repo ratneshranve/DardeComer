@@ -482,8 +482,24 @@ export const useDeliveryNotifications = () => {
     playNotificationSound(orderData);
     startAlertLoop(playNotificationSound);
 
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-      showBackgroundOrderNotification(orderData);
+    if (typeof document !== 'undefined') {
+      if (document.visibilityState === 'hidden') {
+        showBackgroundOrderNotification(orderData);
+      } else {
+        // Show a prominent foreground alert for delivery boys
+        toast.message("New Order Assigned!", {
+          description: `Order ID: ${orderData.orderId || orderData._id}. Open the app to view details.`,
+          duration: 10000,
+          important: true,
+          action: {
+            label: 'Open',
+            onClick: () => {
+               // If already open, the DeliveryHomeV2 will handle showing the modal 
+               // because setNewOrder was called in the socket listener.
+            }
+          }
+        });
+      }
     }
   }, [playNotificationSound, showBackgroundOrderNotification, startAlertLoop]);
 

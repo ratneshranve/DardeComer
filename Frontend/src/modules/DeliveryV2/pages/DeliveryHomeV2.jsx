@@ -469,7 +469,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     return () => clearInterval(pingInterval);
   }, [isOnline]);
 
-  useEffect(() => { if (newOrder) setIncomingOrder(newOrder); }, [newOrder]);
+  useEffect(() => { 
+    if (newOrder) {
+      setIncomingOrder(newOrder);
+      setIsModalMinimized(false);
+    } 
+  }, [newOrder]);
 
   // On mount: restore any order that was persisted to localStorage while the app was killed.
   // This covers the scenario where a FCM push arrived, app was closed, and the user taps the
@@ -809,7 +814,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       </div>
 
       {/* OVERLAYS (Persistent if active) - Outside flex container to avoid clipping and z-index issues */}
-      {(currentTab === 'feed' || activeOrder) && (
+      {(currentTab === 'feed' || activeOrder || incomingOrder) && (
         <AnimatePresence>
           {!isModalMinimized && (
             <motion.div

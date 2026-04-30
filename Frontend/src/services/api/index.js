@@ -48,11 +48,11 @@ const emptyDataStub = () =>
   });
 
 export const api = {
-  get: (_url, _config) => emptyDataStub(),
-  post: (_url, _data, _config) => emptyDataStub(),
-  put: (_url, _data, _config) => emptyDataStub(),
-  patch: (_url, _data, _config) => emptyDataStub(),
-  delete: (_url, _config) => emptyDataStub(),
+  get: (url, config) => apiClient.get(url, config),
+  post: (url, data, config) => apiClient.post(url, data, config),
+  put: (url, data, config) => apiClient.put(url, data, config),
+  patch: (url, data, config) => apiClient.patch(url, data, config),
+  delete: (url, config) => apiClient.delete(url, config),
 };
 
 /** Single in-flight + short cache for user /auth/me - avoids duplicate calls. */
@@ -2714,4 +2714,7 @@ export const diningAPI = {
   },
 };
 export const heroBannerAPI = createStubAPI();
-export const publicAPI = createStubAPI();
+export const publicAPI = {
+  getPrivacy: () => apiClient.get(API_ENDPOINTS.ADMIN.PRIVACY_PUBLIC),
+  getTerms: (params) => apiClient.get(API_ENDPOINTS.ADMIN.TERMS_PUBLIC, { params }),
+};

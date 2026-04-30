@@ -115,6 +115,8 @@ export const openBrowserCameraFallback = (onSelectFile) => {
     openTransientImageInput({
       onSelectFile,
       accept: "image/*",
+      // Completely disable 'capture' on Android WebView to prevent OS-level page reloads
+      // that destroy React state. Standard file picker still allows camera access.
       capture: isAndroidWebView ? undefined : "environment",
     })
   } catch (error) {
