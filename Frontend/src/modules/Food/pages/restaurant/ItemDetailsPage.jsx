@@ -766,10 +766,29 @@ export default function ItemDetailsPage() {
     setVariants((prev) => prev.filter((variant) => variant.localId !== localId))
   }
 
-  const handleDelete = () => {
-    // Delete logic here
-    debugLog("Deleting item:", id)
-    goBack()
+  const handleDelete = async () => {
+    if (isNewItem) {
+      goBack()
+      return
+    }
+
+    if (!window.confirm("Are you sure you want to delete this food item? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      setUploadingImages(true) // Reuse this state to show loading
+      await restaurantAPI.deleteFood(id)
+      toast.success("Food item deleted successfully")
+      window.dispatchEvent(new CustomEvent('foodDeleted'))
+      window.dispatchEvent(new CustomEvent('foodsChanged'))
+      navigate("/food/restaurant/inventory", { replace: true })
+    } catch (error) {
+      debugError("Error deleting food item:", error)
+      toast.error(error?.response?.data?.message || "Failed to delete food item")
+    } finally {
+      setUploadingImages(false)
+    }
   }
 
   return (
@@ -791,7 +810,16 @@ export default function ItemDetailsPage() {
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Item details</h1>
+          <h1 className="text-xl font-bold text-gray-900 flex-1">Item details</h1>
+          {!isNewItem && (
+            <button
+              onClick={handleDelete}
+              className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+              title="Delete Item"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1344,10 +1372,10 @@ export default function ItemDetailsPage() {
           <div className={`flex gap-3 px-4 py-4 ${isNewItem ? 'justify-end' : ''}`}>
             {!isNewItem && (
               <button
-                onClick={handleDelete}
+                onClick={goBack}
                 className="flex-1 py-3 px-4 border border-black rounded-lg text-sm font-semibold text-gray-900 bg-white hover:bg-gray-50 transition-colors"
               >
-                Delete
+                Cancel
               </button>
             )}
             <button

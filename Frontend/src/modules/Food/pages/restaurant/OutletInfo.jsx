@@ -489,6 +489,23 @@ export default function OutletInfo() {
             </div>
           </div>
 
+          {/* Delivery Zone */}
+          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 font-normal mb-1">Delivery zone</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {loading ? "Loading..." : (
+                    restaurantData?.zone || 
+                    (typeof restaurantData?.zoneId === "object" ? (restaurantData?.zoneId?.name || restaurantData?.zoneId?.zoneName) : "") || 
+                    "Not set"
+                  )}
+                </p>
+              </div>
+              <button onClick={() => navigate("/food/restaurant/zone-setup")} className="text-blue-600 text-sm font-normal">Update</button>
+            </div>
+          </div>
+
           {/* Address */}
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
             <div className="flex items-start justify-between">
@@ -496,7 +513,7 @@ export default function OutletInfo() {
                 <p className="text-xs text-gray-500 font-normal mb-1">Restaurant address</p>
                 <p className="text-sm font-semibold text-gray-900">{loading ? "Loading..." : (address || "Not set")}</p>
               </div>
-              <button onClick={() => navigate("/food/restaurant/edit-address")} className="text-blue-600 text-sm font-normal">Edit</button>
+              <button onClick={() => navigate("/food/restaurant/zone-setup")} className="text-blue-600 text-sm font-normal">Edit</button>
             </div>
           </div>
 

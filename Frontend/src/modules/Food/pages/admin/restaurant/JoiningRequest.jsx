@@ -811,6 +811,22 @@ export default function JoiningRequest() {
                             </span>
                           </div>
                         )}
+                        {(() => {
+                          const zid = r?.zoneId
+                          const zoneName =
+                            (typeof zid === "object" ? (zid?.name || zid?.zoneName) : "") ||
+                            r?.zone ||
+                            "N/A"
+                          return (
+                            <div className="flex items-center gap-3">
+                              <MapPin className="w-5 h-5 text-slate-400" />
+                              <div>
+                                <p className="text-xs text-slate-500">Delivery Zone</p>
+                                <p className="text-sm font-medium text-slate-900">{zoneName}</p>
+                              </div>
+                            </div>
+                          )
+                        })()}
                         {(r?.primaryContactNumber || r?.phone) && (
                           <div className="flex items-center gap-3">
                             <Phone className="w-5 h-5 text-slate-400" />

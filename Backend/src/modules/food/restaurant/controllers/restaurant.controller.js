@@ -13,6 +13,7 @@ import {
     listPublicOffers,
     getRestaurantComplaints
 } from '../services/restaurant.service.js';
+import { getZones } from '../../admin/services/admin.service.js';
 import { validateRestaurantRegisterDto } from '../validators/restaurant.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
 
@@ -140,6 +141,17 @@ export const getRestaurantComplaintsController = async (req, res, next) => {
         const restaurantId = req.user?.userId;
         const data = await getRestaurantComplaints(restaurantId, req.query || {});
         return sendResponse(res, 200, 'Complaints fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getZonesController = async (req, res, next) => {
+    try {
+        // Restaurants can see all active zones to know where they can operate.
+        const query = { ...req.query, isActive: 'true' };
+        const data = await getZones(query);
+        return sendResponse(res, 200, 'Zones fetched successfully', data);
     } catch (error) {
         next(error);
     }

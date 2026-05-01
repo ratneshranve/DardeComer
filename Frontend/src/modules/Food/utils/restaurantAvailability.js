@@ -217,8 +217,20 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     ? getMinutesUntilClosing(nowMinutes, openingMinutes, closingMinutes)
     : null
 
+  const getMessage = (reason, isWithinTimings) => {
+    switch (reason) {
+      case "not-accepting-orders": return "Currently Offline";
+      case "inactive": return "Temporarily Closed";
+      case "day-closed": return "Closed for Today";
+      case "outside-hours": return "Closed Now";
+      case "no-timings": return "Opening Soon";
+      case "closed-day": return "Closed Today";
+      default: return isWithinTimings ? "Open Now" : "Opening Soon";
+    }
+  }
+
   return {
-    isOpen: isWithinTimings,
+    isOpen: isWithinTimings && isAcceptingOrders && isActive,
     isActive,
     isAcceptingOrders,
     isWithinTimings,
@@ -229,7 +241,11 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
       ? formatClosingCountdown(minutesUntilClose, closingTime)
       : null,
     reason: isWithinTimings
-      ? (isAcceptingOrders ? "open" : "open-by-timings")
+      ? (isAcceptingOrders ? "open" : "not-accepting-orders")
       : (hasExplicitWindow ? "outside-hours" : "no-timings"),
+    message: getMessage(
+      !isActive ? "inactive" : (!isAcceptingOrders ? "not-accepting-orders" : (isWithinTimings ? "open" : (hasExplicitWindow ? "outside-hours" : "no-timings"))),
+      isWithinTimings
+    )
   }
 }

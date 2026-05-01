@@ -310,3 +310,15 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
 
     return updated;
 }
+
+export async function deleteRestaurantFood(restaurantId, foodId) {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
+        throw new ValidationError('Invalid restaurant id');
+    }
+    if (!foodId || !mongoose.Types.ObjectId.isValid(String(foodId))) {
+        throw new ValidationError('Invalid food id');
+    }
+
+    const result = await FoodItem.deleteOne({ _id: foodId, restaurantId });
+    return result.deletedCount > 0;
+}

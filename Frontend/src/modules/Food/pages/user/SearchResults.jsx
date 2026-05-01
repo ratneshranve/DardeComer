@@ -12,6 +12,7 @@ import { useZone } from "@food/hooks/useZone"
 import { restaurantAPI, adminAPI } from "@food/api"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getSourceMeta } from "@food/utils/sourceType"
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -909,28 +910,6 @@ export default function SearchResults() {
                     to={`/user/restaurants/${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, '-')}`}
                     className="block"
                   >
-                    <div className={`group ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>
-                      {/* Image Container */}
-                      <div className="relative aspect-square rounded-xl overflow-hidden mb-2 bg-gray-200 dark:bg-gray-800">
-                        {restaurant.image ? (
-                          <img
-                            src={restaurant.image}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-2xl">???</span>
-                          </div>
-                        )}
-                        {/* Offer Badge - Only show if offer exists */}
-                        {restaurant.offer && (
-                          <div className="absolute top-1.5 left-1.5 bg-gradient-to-r from-[#EB590E] to-[#D94F0C] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
-                            {restaurant.offer}
-                          </div>
                         )}
                       </div>
 
@@ -960,7 +939,9 @@ export default function SearchResults() {
                         </div>
                       )}
                     </div>
-                  </Link>
+                  )
+                })()}
+              </Link>
                 )
               })}
             </div>
@@ -981,24 +962,36 @@ export default function SearchResults() {
 
               return (
                 <Link key={restaurant.id} to={`/user/restaurants/${restaurant.slug || restaurantSlug}`} className="h-full flex">
-                  <Card className={`overflow-hidden cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md hover:shadow-xl transition-all duration-300 py-0 rounded-md flex flex-col h-full w-full ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
-                    }`}>
-                    {/* Image Section */}
-                    <div className="relative h-44 sm:h-52 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-md flex-shrink-0 bg-gray-200 dark:bg-gray-800">
-                      {restaurant.image ? (
-                        <img
-                          src={restaurant.image}
-                          alt={restaurant.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800">
-                          <span className="text-4xl">???</span>
-                        </div>
-                      )}
+                  {(() => {
+                    const availability = getRestaurantAvailabilityStatus(restaurant)
+                    const isOffline = !availability.isOpen
+                    return (
+                      <Card className={`overflow-hidden cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md hover:shadow-xl transition-all duration-300 py-0 rounded-md flex flex-col h-full w-full ${(shouldShowGrayscale || isOffline) ? 'grayscale opacity-75' : ''
+                        }`}>
+                        {/* Image Section */}
+                        <div className="relative h-44 sm:h-52 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-md flex-shrink-0 bg-gray-200 dark:bg-gray-800">
+                          {restaurant.image ? (
+                            <img
+                              src={restaurant.image}
+                              alt={restaurant.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-800">
+                              <span className="text-4xl">???</span>
+                            </div>
+                          )}
+
+                          {isOffline && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10 flex items-center justify-center p-4">
+                              <div className="bg-white/95 px-5 py-2.5 rounded-xl border-l-4 border-orange-600 shadow-2xl transform -rotate-1">
+                                <span className="text-orange-600 font-bold uppercase tracking-tighter text-sm italic">{availability.message || "Offline"}</span>
+                              </div>
+                            </div>
+                          )}
 
                       {/* Featured Dish Badge - Top Left - Only show if data exists */}
                       {(() => {
@@ -1097,7 +1090,9 @@ export default function SearchResults() {
                       )}
                     </CardContent>
                   </Card>
-                </Link>
+                )
+              })()}
+            </Link>
               )
             })}
 

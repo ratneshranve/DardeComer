@@ -360,7 +360,7 @@ export default function MenuCategoriesPage() {
                     <button
                       onClick={() => handleDeleteCategory(category)}
                       className="rounded-xl bg-rose-50 p-2 text-rose-700 disabled:opacity-50"
-                      disabled={!category?.canDelete}
+                      disabled={isGlobal}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

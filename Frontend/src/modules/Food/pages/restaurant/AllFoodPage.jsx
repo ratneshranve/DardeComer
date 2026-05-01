@@ -8,8 +8,10 @@ import {
   Search,
   Filter,
   Plus,
-  Star
+  Star,
+  Trash2
 } from "lucide-react"
+import { toast } from "sonner"
 import BottomNavbar from "@food/components/restaurant/BottomNavbar"
 import MenuOverlay from "@food/components/restaurant/MenuOverlay"
 import { formatCurrency } from "@food/utils/currency"
@@ -151,6 +153,22 @@ export default function AllFoodPage() {
     setShowFilterModal(false)
   }
 
+  const handleDeleteFood = async (e, food) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!window.confirm(`Delete "${food.name}"?`)) return
+
+    try {
+      await restaurantAPI.deleteFood(food.id)
+      toast.success("Food item deleted successfully")
+      // Emit event to refresh list (handled by useEffect listener)
+      window.dispatchEvent(new CustomEvent('foodDeleted'))
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to delete food item")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f6e9dc] pb-20">
       {/* Header */}
@@ -274,8 +292,16 @@ export default function AllFoodPage() {
               </div>
 
               {/* Food Details */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{food.name}</h3>
+              <div className="flex-1 min-w-0 relative">
+                <div className="absolute top-0 right-0">
+                  <button
+                    onClick={(e) => handleDeleteFood(e, food)}
+                    className="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 mb-1 pr-8 line-clamp-1">{food.name}</h3>
                 <p className="text-xs text-gray-600 mb-2">{food.category}</p>
                 
                 {/* Rating */}
@@ -458,4 +484,3 @@ export default function AllFoodPage() {
     </div>
   )
 }
-

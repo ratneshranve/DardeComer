@@ -25,8 +25,7 @@ const HomeRestaurantCard = React.memo(({
 
   const availability = getRestaurantAvailabilityStatus(
     restaurant,
-    new Date(availabilityTick),
-    { ignoreOperationalStatus: true }
+    new Date(availabilityTick)
   );
   const sourceMeta = getSourceMeta(restaurant);
 

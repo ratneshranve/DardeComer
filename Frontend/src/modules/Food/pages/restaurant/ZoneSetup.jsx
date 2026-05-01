@@ -58,6 +58,8 @@ export default function ZoneSetup() {
   const markerRef = useRef(null)
   const autocompleteInputRef = useRef(null)
   const autocompleteRef = useRef(null)
+  const vertexMarkersRef = useRef([])
+  const zonePolygonsRef = useRef([]) // Store actual polygon objects for detection
   
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
@@ -66,9 +68,13 @@ export default function ZoneSetup() {
   const [locationSearch, setLocationSearch] = useState("")
   const [selectedLocation, setSelectedLocation] = useState(null)
   const [selectedAddress, setSelectedAddress] = useState("")
+  const [zones, setZones] = useState([])
+  const [polygons, setPolygons] = useState([])
+  const [selectedZone, setSelectedZone] = useState(null)
 
   useEffect(() => {
     fetchRestaurantData()
+    fetchZones()
     loadGoogleMaps()
   }, [])
 
@@ -128,6 +134,16 @@ export default function ZoneSetup() {
       }
     }
   }, [restaurantData, mapLoading])
+
+  const fetchZones = async () => {
+    try {
+      const response = await restaurantAPI.getZones()
+      const data = response?.data?.data?.zones || response?.data?.zones || []
+      setZones(data)
+    } catch (error) {
+      debugError("Error fetching zones:", error)
+    }
+  }
 
   const fetchRestaurantData = async () => {
     try {
@@ -204,7 +220,7 @@ export default function ZoneSetup() {
         const loader = new Loader({
           apiKey: apiKey,
           version: "weekly",
-          libraries: ["places"]
+          libraries: ["places", "geometry"]
         })
 
         const google = await loader.load()
@@ -259,12 +275,7 @@ export default function ZoneSetup() {
       map.addListener('click', (event) => {
         const lat = event.latLng.lat()
         const lng = event.latLng.lng()
-        // Maps geocode API disabled - use coordinates as address (no external API call)
-        const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-        setLocationSearch(address)
-        setSelectedAddress(address)
-        setSelectedLocation({ lat, lng, address })
-        updateMarker(lat, lng, address)
+        handleLocationUpdate(lat, lng)
       })
 
       setMapLoading(false)
@@ -275,6 +286,150 @@ export default function ZoneSetup() {
       alert("Failed to initialize map. Please refresh the page.")
     }
   }
+
+  const findZoneForLocation = (lat, lng) => {
+    if (!window.google?.maps?.geometry?.poly) {
+      debugWarn("Google Maps Geometry library not loaded")
+      return null
+    }
+
+    const point = new window.google.maps.LatLng(lat, lng)
+    
+    // Use the stored polygon objects for more reliable detection
+    for (const zoneObj of zonePolygonsRef.current) {
+      if (window.google.maps.geometry.poly.containsLocation(point, zoneObj.polygon)) {
+        return zoneObj.zone
+      }
+    }
+
+    // Fallback to coordinate-based check if objects aren't ready
+    for (const zone of zones) {
+      if (zone.coordinates && zone.coordinates.length >= 3) {
+        const polygonCoords = zone.coordinates.map(c => {
+          const latVal = Number(c.latitude)
+          const lngVal = Number(c.longitude)
+          if (isNaN(latVal) || isNaN(lngVal)) return null
+          return { lat: latVal, lng: lngVal }
+        }).filter(Boolean)
+
+        if (polygonCoords.length < 3) continue
+
+        const tempPolygon = new window.google.maps.Polygon({ paths: polygonCoords })
+        if (window.google.maps.geometry.poly.containsLocation(point, tempPolygon)) {
+          return zone
+        }
+      }
+    }
+    return null
+  }
+
+  const getAddressFromCoords = async (lat, lng) => {
+    if (window.google?.maps?.Geocoder) {
+      const geocoder = new window.google.maps.Geocoder()
+      try {
+        const response = await geocoder.geocode({ location: { lat, lng } })
+        if (response.results && response.results[0]) {
+          return response.results[0].formatted_address
+        }
+      } catch (error) {
+        debugWarn("Geocoding failed:", error)
+      }
+    }
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+  }
+
+  const handleLocationUpdate = async (lat, lng) => {
+    // 1. Update with coordinates immediately for responsiveness
+    const tempAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    const zone = findZoneForLocation(lat, lng)
+    
+    setLocationSearch(tempAddress)
+    setSelectedAddress(tempAddress)
+    setSelectedLocation({ lat, lng, address: tempAddress })
+    setSelectedZone(zone)
+    updateMarker(lat, lng, tempAddress)
+
+    // 2. Fetch real address in background
+    const address = await getAddressFromCoords(lat, lng)
+    
+    // 3. Update with real address if it's different
+    if (address !== tempAddress) {
+      setLocationSearch(address)
+      setSelectedAddress(address)
+      setSelectedLocation(prev => prev ? { ...prev, address } : { lat, lng, address })
+      updateMarker(lat, lng, address)
+    }
+  }
+
+  // Render zones as polygons when zones or map is ready
+  useEffect(() => {
+    if (!mapLoading && mapInstanceRef.current && window.google && zones.length > 0) {
+      // Clear existing polygons
+      polygons.forEach(p => p.setMap(null))
+      zonePolygonsRef.current = []
+      
+      // Clear existing vertex markers
+      vertexMarkersRef.current.forEach(m => m.setMap(null))
+      vertexMarkersRef.current = []
+      
+      const newVertexMarkers = []
+      const newPolygons = zones.map(zone => {
+        if (!zone.coordinates || zone.coordinates.length < 3) return null
+
+        const polygonCoords = zone.coordinates.map(coord => ({
+          lat: Number(coord.latitude),
+          lng: Number(coord.longitude)
+        }))
+
+        // Create the polygon with purple theme
+        const polygon = new window.google.maps.Polygon({
+          paths: polygonCoords,
+          strokeColor: "#9333EA", // Purple-600
+          strokeOpacity: 0.9,
+          strokeWeight: 3,
+          fillColor: "#9333EA",
+          fillOpacity: 0.35,
+          map: mapInstanceRef.current,
+          zIndex: 1,
+          clickable: true // Enable clicking to handle it explicitly
+        })
+
+        // Store in ref for detection
+        zonePolygonsRef.current.push({ zone, polygon })
+
+        // Explicitly handle click on polygon to pinpoint
+        polygon.addListener('click', (event) => {
+          if (event.latLng) {
+            handleLocationUpdate(event.latLng.lat(), event.latLng.lng())
+          }
+        })
+
+        // Add markers at each vertex (corner)
+        polygonCoords.forEach(coord => {
+          const marker = new window.google.maps.Marker({
+            position: coord,
+            map: mapInstanceRef.current,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 5,
+              fillColor: "#9333EA",
+              fillOpacity: 1,
+              strokeColor: "#FFFFFF",
+              strokeWeight: 2
+            },
+            clickable: false,
+            zIndex: 100
+          })
+          newVertexMarkers.push(marker)
+        })
+
+        return polygon
+      }).filter(Boolean)
+      
+      vertexMarkersRef.current = newVertexMarkers
+      setPolygons(newPolygons)
+    }
+  }, [zones, mapLoading])
 
   const updateMarker = (lat, lng, address) => {
     if (!mapInstanceRef.current || !window.google) return
@@ -290,7 +445,8 @@ export default function ZoneSetup() {
       map: mapInstanceRef.current,
       draggable: true,
       animation: window.google.maps.Animation.DROP,
-      title: address || "Restaurant Location"
+      title: address || "Restaurant Location",
+      zIndex: 1000 // Ensure marker is above polygons
     })
 
     // Add info window
@@ -311,11 +467,7 @@ export default function ZoneSetup() {
     marker.addListener('dragend', (event) => {
       const newLat = event.latLng.lat()
       const newLng = event.latLng.lng()
-      // Maps geocode API disabled - use coordinates as address (no external API call)
-      const newAddress = `${newLat.toFixed(6)}, ${newLng.toFixed(6)}`
-      setLocationSearch(newAddress)
-      setSelectedAddress(newAddress)
-      setSelectedLocation({ lat: newLat, lng: newLng, address: newAddress })
+      handleLocationUpdate(newLat, newLng)
     })
 
     markerRef.current = marker
@@ -349,13 +501,19 @@ export default function ZoneSetup() {
       return
     }
 
+    if (!selectedZone) {
+      alert("Selected location is outside of all delivery zones. Please select a location inside a zone.")
+      return
+    }
+
     try {
       setSaving(true)
       
       const { lat, lng, address } = selectedLocation
       
-      // Update restaurant location
+      // Update restaurant location and zone
       const response = await restaurantAPI.updateProfile({
+        zoneId: selectedZone?._id || restaurantData?.zoneId,
         location: {
           ...(restaurantData?.location || {}),
           latitude: lat,
@@ -423,7 +581,7 @@ export default function ZoneSetup() {
             </div>
             <button
               onClick={handleSaveLocation}
-              disabled={!selectedLocation || saving}
+              disabled={!selectedLocation || !selectedZone || saving}
               className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {saving ? (
@@ -447,6 +605,15 @@ export default function ZoneSetup() {
               <p className="text-xs text-gray-500 mt-1">
                 Coordinates: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
               </p>
+              {selectedZone ? (
+                <p className="text-sm text-purple-700 mt-2 font-semibold">
+                  Detected Zone: {selectedZone.name || selectedZone.zoneName}
+                </p>
+              ) : (
+                <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-red-700 text-sm font-semibold">
+                  Warning: This location is outside all delivery zones. You cannot save this location.
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -458,7 +625,8 @@ export default function ZoneSetup() {
             <li>Search for your location using the search bar above, or</li>
             <li>Click anywhere on the map to place a pin at that location</li>
             <li>You can drag the pin to adjust the exact position</li>
-            <li>Click "Save Location" to save your restaurant location</li>
+            <li><strong>Delivery Zone:</strong> The system will automatically detect which zone you are in</li>
+            <li>Click "Save Location" to save your restaurant location and assigned zone</li>
           </ul>
         </div>
 

@@ -934,6 +934,11 @@ export const restaurantAPI = {
       contextModule: "restaurant",
       params: params || {},
     }),
+  getZones: (params = {}) =>
+    apiClient.get("/food/restaurant/zones", {
+      params: { limit: 1000, ...params },
+      contextModule: "restaurant",
+    }),
   /** Fetch restaurant by owner (stub for missing backend endpoint). */
   getRestaurantByOwner: () =>
     Promise.resolve({
@@ -1168,6 +1173,10 @@ export const restaurantAPI = {
     }),
   updateFood: (id, body) =>
     apiClient.patch(`/food/restaurant/foods/${String(id)}`, body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  deleteFood: (id) =>
+    apiClient.delete(`/food/restaurant/foods/${String(id)}`, {
       contextModule: "restaurant",
     }),
   /** Orders (restaurant dashboard) */

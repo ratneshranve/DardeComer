@@ -164,6 +164,12 @@ export default function ViewOrderDetectDeliveryDialog({ isOpen, onOpenChange, or
                     <span>Rs. {order.originalOrder.pricing.packagingFee.toFixed(2)}</span>
                   </div>
                 )}
+                {(order.originalOrder?.pricing?.platformFee > 0) && (
+                  <div className="flex justify-between w-full max-w-[250px] text-sm text-slate-600">
+                    <span>Platform Fee</span>
+                    <span>Rs. {order.originalOrder.pricing.platformFee.toFixed(2)}</span>
+                  </div>
+                )}
                 {(order.originalOrder?.pricing?.tax > 0) && (
                   <div className="flex justify-between w-full max-w-[250px] text-sm text-slate-600">
                     <span>Tax</span>

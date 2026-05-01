@@ -436,10 +436,23 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           }).catch(() => {});
         }
       }
-    }, () => toast.error('GPS Needed!'), { 
+    }, (error) => {
+      // Professional GPS Error Handling: Avoid spamming the user if it's just a temporary timeout
+      const hasLocation = !!useDeliveryStore.getState().riderLocation;
+      
+      if (error.code === 1) { // PERMISSION_DENIED
+        toast.error('GPS Permission Denied', { description: 'Please enable location access in settings.' });
+      } else if (error.code === 3 && hasLocation) {
+        // Just a timeout but we have a recent position, ignore silently to prevent UI flicker
+        console.warn('[GPS] Position fetch timeout, using last known coordinate.');
+      } else if (!hasLocation) {
+        // Only show "GPS Needed" if we truly have nothing
+        toast.error('GPS Needed!', { description: 'Please ensure location is ON.' });
+      }
+    }, { 
       enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 5000
+      maximumAge: 30000, // Accept a cached position from the last 30 seconds
+      timeout: 15000     // Wait up to 15 seconds for a fresh fix
     });
     
     return () => navigator.geolocation.clearWatch(watchId);
@@ -637,9 +650,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                  toggleOnline(); // Store action
                  if (nextState) {
                     // Try to get location and sync immediately so we are visible for dispatch right away
-                    navigator.geolocation.getCurrentPosition((pos) => {
-                        deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => {});
-                    }, (err) => console.warn('Online sync position failed:', err), { enableHighAccuracy: true });
+                     navigator.geolocation.getCurrentPosition((pos) => {
+                         deliveryAPI.updateLocation(pos.coords.latitude, pos.coords.longitude, true).catch(() => {});
+                     }, (err) => console.warn('Online sync position failed:', err), { 
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 30000 
+                     });
                  } else {
                     deliveryAPI.updateOnlineStatus(false).catch(() => {});
                  }

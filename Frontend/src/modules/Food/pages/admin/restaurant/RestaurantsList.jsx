@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, Users, UserPlus, LayoutGrid, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus } from "lucide-react"
 import { adminAPI, restaurantAPI, uploadAPI } from "@food/api"
 import { clearModuleAuth } from "@food/utils/auth"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -1661,6 +1661,22 @@ export default function RestaurantsList() {
                             Location editor is shown at the bottom of this details modal.
                           </p>
                         )}
+                        {(() => {
+                          const zid = r?.zoneId
+                          const zoneName =
+                            (typeof zid === "object" ? (zid?.name || zid?.zoneName) : "") ||
+                            r?.zone ||
+                            "N/A"
+                          return (
+                            <div className="flex items-center gap-3">
+                              <MapPin className="w-5 h-5 text-slate-400" />
+                              <div>
+                                <p className="text-xs text-slate-500">Delivery Zone</p>
+                                <p className="text-sm font-medium text-slate-900">{zoneName}</p>
+                              </div>
+                            </div>
+                          )
+                        })()}
                         {(r?.primaryContactNumber || r?.phone) && (
                           <div className="flex items-center gap-3">
                             <Phone className="w-5 h-5 text-slate-400" />

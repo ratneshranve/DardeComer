@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { Search, Menu, ChevronRight, MapPin, X, Bell } from "lucide-react"
 import { restaurantAPI } from "@food/api"
@@ -146,6 +146,82 @@ export default function RestaurantNavbar({
     setLocation(newLocation)
   }, [restaurantData, propLocation])
 
+  // Automatic Status Toggle based on Outlet Timings
+  const [outletTimings, setOutletTimings] = useState(null)
+  const autoSyncLock = useRef(false)
+
+  useEffect(() => {
+    const fetchTimings = async () => {
+      try {
+        const res = await restaurantAPI.getOutletTimings()
+        const data = res?.data?.data?.outletTimings || res?.data?.outletTimings
+        if (data) setOutletTimings(data)
+      } catch (err) {
+        debugError("Error loading timings in Navbar:", err)
+      }
+    }
+    fetchTimings()
+    window.addEventListener("outletTimingsUpdated", fetchTimings)
+    return () => window.removeEventListener("outletTimingsUpdated", fetchTimings)
+  }, [])
+
+  useEffect(() => {
+    if (!outletTimings || autoSyncLock.current) return
+
+    const checkAndSyncStatus = async () => {
+      const now = new Date()
+      const currentDayFull = now.toLocaleDateString('en-US', { weekday: 'long' })
+      const currentHour = now.getHours()
+      const currentMinute = now.getMinutes()
+      const currentTimeInMinutes = currentHour * 60 + currentMinute
+
+      const dayData = outletTimings[currentDayFull]
+      if (!dayData) return
+
+      let shouldBeOnline = false
+      if (dayData.isOpen !== false && dayData.openingTime && dayData.closingTime) {
+        const [openHour, openMinute] = dayData.openingTime.split(':').map(Number)
+        const [closeHour, closeMinute] = dayData.closingTime.split(':').map(Number)
+        const openingTimeInMinutes = openHour * 60 + openMinute
+        const closingTimeInMinutes = closeHour * 60 + closeMinute
+
+        if (closingTimeInMinutes > openingTimeInMinutes) {
+          shouldBeOnline = currentTimeInMinutes >= openingTimeInMinutes && currentTimeInMinutes < closingTimeInMinutes
+        } else {
+          shouldBeOnline = currentTimeInMinutes >= openingTimeInMinutes || currentTimeInMinutes < closingTimeInMinutes
+        }
+      }
+
+      // Only sync if the calculated status differs from our current local state
+      const currentIsOnline = status === "Online"
+      if (shouldBeOnline !== currentIsOnline) {
+        autoSyncLock.current = true
+        try {
+          debugLog(`[AutoStatus] Switching to ${shouldBeOnline ? 'Online' : 'Offline'} based on timings`)
+          await restaurantAPI.updateAcceptingOrders(shouldBeOnline)
+          
+          localStorage.setItem('restaurant_online_status', JSON.stringify(shouldBeOnline))
+          setStatus(shouldBeOnline ? "Online" : "Offline")
+          
+          // Notify other components (like RestaurantStatus page)
+          window.dispatchEvent(new CustomEvent('restaurantStatusChanged', { 
+            detail: { isOnline: shouldBeOnline, source: 'auto_timing' } 
+          }))
+        } catch (error) {
+          debugError("Auto status sync failed:", error)
+        } finally {
+          autoSyncLock.current = false
+        }
+      }
+    }
+
+    // Check every 30 seconds
+    const interval = setInterval(checkAndSyncStatus, 30000)
+    checkAndSyncStatus() // Run immediately on timing load
+    
+    return () => clearInterval(interval)
+  }, [outletTimings, status])
+
   useEffect(() => {
     const updateStatus = () => {
       try {
@@ -165,6 +241,7 @@ export default function RestaurantNavbar({
     }
     updateStatus()
     const handleStatusChange = (event) => {
+      // If it's an auto-sync, we already updated local state, but let's be safe
       const isOnline = event.detail?.isOnline || false
       setStatus(isOnline ? "Online" : "Offline")
     }

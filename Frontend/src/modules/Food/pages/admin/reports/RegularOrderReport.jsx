@@ -154,10 +154,11 @@ export default function RegularOrderReport() {
 
             const deliveryCharge = Number(pricing.deliveryFee || 0)
             const platformFee = Number(pricing.platformFee || 0)
+            const packagingFee = Number(pricing.packagingFee || 0)
             const vatTax = Number(pricing.tax || 0)
             const couponDiscount = Number(pricing.discount || 0)
             const computedTotal =
-              subtotal + deliveryCharge + platformFee + vatTax - couponDiscount
+              subtotal + deliveryCharge + platformFee + packagingFee + vatTax - couponDiscount
 
             const totalAmount =
               pricing.total != null
@@ -199,6 +200,7 @@ export default function RegularOrderReport() {
               vatTax,
               deliveryCharge,
               platformFee,
+              packagingFee,
               totalAmount,
               orderStatus: displayStatus,
             }
@@ -240,6 +242,7 @@ export default function RegularOrderReport() {
       { key: "restaurant", label: "Restaurant" },
       { key: "customerName", label: "Customer Name" },
       { key: "totalItemAmount", label: "Total Item Amount" },
+      { key: "packagingFee", label: "Packaging Fee" },
       { key: "couponDiscount", label: "Coupon Discount" },
       { key: "vatTax", label: "VAT/Tax" },
       { key: "deliveryCharge", label: "Delivery Charge" },
@@ -558,6 +561,9 @@ export default function RegularOrderReport() {
                     Total Item Amount
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "7%" }}>
+                    Packaging Fee
+                  </th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "7%" }}>
                     Coupon Discount
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
@@ -605,7 +611,10 @@ export default function RegularOrderReport() {
                         <span className="text-[10px] text-slate-700 truncate block">{order.customerName}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatAmount(order.totalAmount)}</span>
+                        <span className="text-[10px] text-slate-700">{formatAmount(order.totalItemAmount)}</span>
+                      </td>
+                      <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-slate-700">{formatAmount(order.packagingFee)}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{formatAmount(order.couponDiscount)}</span>
@@ -620,7 +629,7 @@ export default function RegularOrderReport() {
                         <span className="text-[10px] text-slate-700">{formatAmount(order.platformFee)}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] font-medium text-slate-900">{formatAmount(order.totalAmount || order.totalItemAmount)}</span>
+                        <span className="text-[10px] font-medium text-slate-900">{formatAmount(order.totalAmount)}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-700">

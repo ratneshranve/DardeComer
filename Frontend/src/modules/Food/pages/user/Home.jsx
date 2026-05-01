@@ -395,7 +395,7 @@ const MemoizedHomeRestaurantCard = React.memo(({
 }) => {
   const isOutOfService = false;
   const restaurantSlug = typeof restaurant?.slug === "string" && restaurant.slug.trim() ? restaurant.slug.trim() : fallbackSlugSource.toLowerCase().replace(/\s+/g, "-");
-  const availability = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick), { ignoreOperationalStatus: true });
+  const availability = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick));
 
   const handleToggle = React.useCallback((e) => {
     e.preventDefault();
