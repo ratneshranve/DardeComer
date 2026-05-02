@@ -1236,9 +1236,8 @@ export default function OrdersMain() {
       // Trigger profile refresh event
       window.dispatchEvent(new Event("restaurantProfileRefresh"));
 
-      alert(
-        "Restaurant reverified successfully! Verification will be done in 24 hours.",
-      );
+      // Navigate to onboarding so they can fix/review data before resubmitting
+      navigate("/restaurant/onboarding?step=1", { replace: true });
     } catch (error) {
       // Don't log network/timeout errors (backend might be down)
       if (
@@ -2367,8 +2366,8 @@ export default function OrdersMain() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-700 mb-3">
-                    Please correct the above issues and click "Reverify" to
-                    resubmit your request for approval.
+                    Please correct the above issues and click "Re-apply" to
+                    fix your details and resubmit for approval.
                   </p>
                   <button
                     onClick={handleReverify}
@@ -2377,10 +2376,10 @@ export default function OrdersMain() {
                     {isReverifying ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Submitting...
+                        Processing...
                       </>
                     ) : (
-                      "Reverify"
+                      "Re-apply"
                     )}
                   </button>
                 </>

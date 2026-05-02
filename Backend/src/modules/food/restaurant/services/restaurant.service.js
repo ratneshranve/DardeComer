@@ -212,9 +212,9 @@ const toRestaurantProfile = (doc) => {
         status: doc.status || null,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
-        pendingDiningSettings: doc.pendingDiningSettings || null,
-        rating: normalizeRatingValue(doc.rating),
-        totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
+        totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
+        pendingUpdate: doc.pendingUpdate || null,
+        rejectionReason: doc.rejectionReason || null
     };
 };
 
@@ -422,6 +422,7 @@ export const registerRestaurant = async (payload, files) => {
             accountHolderName,
             accountType,
             businessModel: normalizeBusinessModel(vendorType, businessModel),
+            isAcceptingOrders: false,
             menuImages,
             ...images
         });
@@ -491,7 +492,9 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'isAcceptingOrders',
                 'status',
                 'createdAt',
-                'updatedAt'
+                'updatedAt',
+                'pendingUpdate',
+                'rejectionReason'
             ].join(' ')
         )
         .lean();
@@ -1014,15 +1017,89 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
     const keys = Object.keys(update);
     const isOnlyDiningRequest = keys.length === 1 && keys[0] === 'pendingDiningSettings';
 
-    if (!isOnlyDiningRequest) {
-        update.status = 'pending';
+    // If the restaurant is already approved, we don't apply updates immediately.
+    // Instead, we store them in pendingUpdate so the restaurant stays at the old address/name
+    // until admin approves.
+    if (currentRestaurant.status === 'approved') {
+        try {
+            const doc = await FoodRestaurant.findByIdAndUpdate(
+                restaurantId,
+                {
+                    $set: { pendingUpdate: update }
+                },
+                {
+                    new: true,
+                    runValidators: true,
+                    projection: [
+                        'restaurantName',
+                        'cuisines',
+                        'location',
+                        'addressLine1',
+                        'addressLine2',
+                        'area',
+                        'city',
+                        'state',
+                        'pincode',
+                        'landmark',
+                        'ownerName',
+                        'ownerEmail',
+                        'ownerPhone',
+                        'primaryContactNumber',
+                        'businessModel',
+                        'pureVegRestaurant',
+                        'profileImage',
+                        'coverImages',
+                        'menuImages',
+                        'openingTime',
+                        'closingTime',
+                        'openDays',
+                        'diningSettings',
+                        'pendingDiningSettings',
+                        'status',
+                        'createdAt',
+                        'updatedAt',
+                        'panNumber',
+                        'nameOnPan',
+                        'panImage',
+                        'gstRegistered',
+                        'gstNumber',
+                        'gstLegalName',
+                        'gstAddress',
+                        'gstImage',
+                        'fssaiNumber',
+                        'fssaiExpiry',
+                        'fssaiImage',
+                        'accountNumber',
+                        'ifscCode',
+                        'accountHolderName',
+                        'accountType',
+                        'upiId',
+                        'upiQrImage',
+                        'estimatedDeliveryTime',
+                        'estimatedDeliveryTimeMinutes',
+                        'zoneId',
+                        'pendingUpdate'
+                    ].join(' ')
+                }
+            ).lean();
+
+            void notifyAdminsAboutRestaurantProfileReview(restaurantId, currentRestaurant.restaurantName);
+
+            return toRestaurantProfile(doc);
+        } catch (err) {
+            if (err && err.code === 11000) {
+                throw new ValidationError('A restaurant with this name and phone already exists');
+            }
+            throw err;
+        }
     }
 
+    // Default behavior for non-approved (pending/rejected) restaurants: apply updates immediately
     try {
         const doc = await FoodRestaurant.findByIdAndUpdate(
             restaurantId,
             {
-                $set: update,
+                $set: { ...update, status: 'pending' },
                 $unset: {
                     approvedAt: 1,
                     rejectedAt: 1,
@@ -1047,11 +1124,11 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
                     'ownerEmail',
                     'ownerPhone',
                     'primaryContactNumber',
-                'businessModel',
-                'pureVegRestaurant',
-                'profileImage',
-                'coverImages',
-                'menuImages',
+                    'businessModel',
+                    'pureVegRestaurant',
+                    'profileImage',
+                    'coverImages',
+                    'menuImages',
                     'openingTime',
                     'closingTime',
                     'openDays',
@@ -1079,7 +1156,8 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
                     'upiQrImage',
                     'estimatedDeliveryTime',
                     'estimatedDeliveryTimeMinutes',
-                    'zoneId'
+                    'zoneId',
+                    'pendingUpdate'
                 ].join(' ')
             }
         ).lean();
@@ -1565,5 +1643,31 @@ export const listPublicOffers = async () => {
 export const getRestaurantComplaints = async (restaurantId, query = {}) => {
     const { getRestaurantComplaints: getComplaintsInternal } = await import('../../admin/services/admin.service.js');
     return getComplaintsInternal({ ...query, restaurantId });
+};
+
+/**
+ * Reset a rejected restaurant to pending status to allow re-application.
+ */
+export const reverifyRestaurant = async (restaurantId) => {
+    const restaurant = await FoodRestaurant.findById(restaurantId);
+    if (!restaurant) throw new Error('Restaurant not found');
+
+    // Only allow reverification if status is 'rejected' or has a rejection reason
+    if (restaurant.status !== 'rejected' && !restaurant.rejectionReason) {
+        return restaurant; // Already in a valid state or pending
+    }
+
+    restaurant.status = 'pending';
+    restaurant.rejectionReason = null;
+    restaurant.rejectedAt = null;
+    restaurant.isAcceptingOrders = false;
+
+    // Reset onboarding steps so they can fix data
+    if (restaurant.onboarding) {
+        restaurant.onboarding.completedSteps = 3;
+    }
+
+    await restaurant.save();
+    return toRestaurantProfile(restaurant);
 };
 

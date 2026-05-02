@@ -2252,7 +2252,12 @@ export async function updateRestaurantMenuById(id, menu) {
 }
 
 export async function getPendingRestaurants() {
-    const restaurants = await FoodRestaurant.find({ status: { $in: ['pending', 'rejected'] } })
+    const restaurants = await FoodRestaurant.find({ 
+        $or: [
+            { status: { $in: ['pending', 'rejected'] } },
+            { pendingUpdate: { $ne: null } }
+        ]
+    })
         .populate('zoneId', 'name zoneName')
         .sort({ createdAt: -1 })
         .lean();
@@ -3286,16 +3291,31 @@ export async function createRestaurantByAdmin(body) {
 
 export async function approveRestaurant(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    
+    const restaurant = await FoodRestaurant.findById(id).lean();
+    if (!restaurant) return null;
+
+    const updateQuery = {
+        $set: {
+            status: 'approved',
+            approvedAt: new Date(),
+            rejectedAt: undefined,
+            rejectionReason: undefined
+        }
+    };
+
+    // Apply pending profile updates if any (e.g. address/zone changes)
+    if (restaurant.pendingUpdate && typeof restaurant.pendingUpdate === 'object') {
+        const pending = restaurant.pendingUpdate;
+        Object.keys(pending).forEach(key => {
+            updateQuery.$set[key] = pending[key];
+        });
+        updateQuery.$unset = { pendingUpdate: 1 };
+    }
+
     const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
-        {
-            $set: {
-                status: 'approved',
-                approvedAt: new Date(),
-                rejectedAt: undefined,
-                rejectionReason: undefined
-            }
-        },
+        updateQuery,
         { new: true, runValidators: false }
     ).lean();
 
@@ -3323,30 +3343,47 @@ export async function approveRestaurant(id) {
 
 export async function rejectRestaurant(id, reason) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    const restaurant = await FoodRestaurant.findById(id).lean();
+    if (!restaurant) return null;
+
+    const isUpdateOnly = restaurant.status === 'approved';
+    const updateQuery = {
+        $set: {
+            rejectionReason: typeof reason === 'string' ? reason.trim() : undefined,
+        }
+    };
+
+    if (isUpdateOnly) {
+        updateQuery.$set.pendingUpdate = null;
+    } else {
+        updateQuery.$set.status = 'rejected';
+        updateQuery.$set.rejectedAt = new Date();
+        updateQuery.$set.approvedAt = null;
+    }
+
     const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
-        {
-            $set: {
-                status: 'rejected',
-                rejectedAt: new Date(),
-                rejectionReason: typeof reason === 'string' ? reason.trim() : undefined,
-                approvedAt: null
-            }
-        },
+        updateQuery,
         { new: true, runValidators: false }
     ).lean();
 
     if (updated) {
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
+            const title = isUpdateOnly ? 'Profile Update Rejected ❌' : 'Update on Registration 📝';
+            const body = isUpdateOnly 
+                ? `Your profile update request for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Invalid data'}.`
+                : `Your restaurant registration for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Incomplete documents'}.`;
+
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated._id }],
                 {
-                    title: 'Update on Registration ðŸ“‹',
-                    body: `Your restaurant registration for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Incomplete documents'}.`,
+                    title,
+                    body,
                     image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
                     data: {
-                        type: 'restaurant_rejected',
+                        type: isUpdateOnly ? 'restaurant_update_rejected' : 'restaurant_rejected',
                         restaurantId: String(updated._id),
                         reason: reason || ''
                     }

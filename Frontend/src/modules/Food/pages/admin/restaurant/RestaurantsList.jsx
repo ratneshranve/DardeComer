@@ -2447,8 +2447,8 @@ export default function RestaurantsList() {
 
               <p className="text-sm text-slate-700 mb-6">
                 {banConfirmDialog.action === 'ban'
-                  ? 'Are you sure you want to ban this restaurant? They will not be able to receive orders or access their account.'
-                  : 'Are you sure you want to unban this restaurant? They will be able to receive orders and access their account again.'
+                  ? 'Are you sure you want to ban this restaurant? They will not be able to receive orders, but will still be able to access their account to view status and re-apply.'
+                  : 'Are you sure you want to unban this restaurant? They will be able to receive orders and access their full dashboard features again.'
                 }
               </p>
 

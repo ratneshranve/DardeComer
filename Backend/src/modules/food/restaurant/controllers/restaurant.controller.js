@@ -11,7 +11,8 @@ import {
     uploadRestaurantCoverImages,
     uploadRestaurantMenuImages,
     listPublicOffers,
-    getRestaurantComplaints
+    getRestaurantComplaints,
+    reverifyRestaurant
 } from '../services/restaurant.service.js';
 import { getZones } from '../../admin/services/admin.service.js';
 import { validateRestaurantRegisterDto } from '../validators/restaurant.validator.js';
@@ -152,6 +153,16 @@ export const getZonesController = async (req, res, next) => {
         const query = { ...req.query, isActive: 'true' };
         const data = await getZones(query);
         return sendResponse(res, 200, 'Zones fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const reverifyRestaurantController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        const restaurant = await reverifyRestaurant(restaurantId);
+        return sendResponse(res, 200, 'Restaurant reverified successfully', { restaurant });
     } catch (error) {
         next(error);
     }

@@ -1409,6 +1409,9 @@ export const restaurantAPI = {
       params,
       contextModule: "restaurant",
     }),
+  /** Reset status and clear rejection reason to re-apply. */
+  reverify: () =>
+    apiClient.post("/food/restaurant/reverify", {}, { contextModule: "restaurant" }),
 };
 
 function stableStringify(value) {

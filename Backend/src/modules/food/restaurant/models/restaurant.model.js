@@ -123,7 +123,7 @@ const restaurantSchema = new mongoose.Schema(
      */,
     isAcceptingOrders: {
       type: Boolean,
-      default: true,
+      default: false,
       index: true,
     },
     panNumber: {
@@ -258,6 +258,10 @@ const restaurantSchema = new mongoose.Schema(
       maxGuests: { type: Number },
       diningType: { type: String },
       updatedAt: { type: Date }
+    },
+    pendingUpdate: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
   },
   {

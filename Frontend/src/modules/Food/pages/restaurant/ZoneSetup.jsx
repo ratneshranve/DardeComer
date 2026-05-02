@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
-import { MapPin, Search, Save, Loader2, ArrowLeft } from "lucide-react"
+import { MapPin, Search, Save, Loader2, ArrowLeft, AlertTriangle } from "lucide-react"
 import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar"
 import { restaurantAPI } from "@food/api"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
@@ -548,6 +548,32 @@ export default function ZoneSetup() {
             </div>
           </div>
         </div>
+
+        {/* Pending Notifications */}
+        {restaurantData?.pendingUpdate && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5" />
+            <div>
+              <h3 className="text-amber-800 font-semibold text-sm">Address Update Pending</h3>
+              <p className="text-amber-700 text-sm">
+                Your request to change address/zone is waiting for admin approval. 
+                Your restaurant will continue to show at its <strong>current address</strong> until approved.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {restaurantData?.status === 'pending' && !restaurantData?.pendingUpdate && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin mt-0.5" />
+            <div>
+              <h3 className="text-blue-800 font-semibold text-sm">Registration Pending</h3>
+              <p className="text-blue-700 text-sm">
+                Your restaurant registration is currently under review by our team.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
