@@ -15,6 +15,18 @@ import { subscribeOrderTracking } from '@food/realtimeTracking';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Navigation, Info, Circle } from 'lucide-react';
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from '@food/utils/googleMapsLoader';
+import { saveOrderEta, normalizeLookupId } from '@food/utils/orderEtaStore';
+
+const haversineMinutes = (from, to) => {
+  if (!from || !to) return null;
+  const R = 6371;
+  const dLat = (to.lat - from.lat) * Math.PI / 180;
+  const dLon = (to.lng - from.lng) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.max(1, Math.ceil(dist * 3)); // 3 min/km urban estimate
+};
 
 const RIDER_BIKE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">
   <circle cx="30" cy="30" r="28" fill="white" stroke="#ff8100" stroke-width="4" />
@@ -147,6 +159,23 @@ const DeliveryTrackingMap = ({
       socketRef.current?.disconnect();
     };
   }, [trackingIds, backendUrl, smoothLocation, riderLocation]);
+
+  // Real-time ETA from rider distance (runs on every location update, no Google Maps wait)
+  useEffect(() => {
+    if (!riderLocation || !onEtaUpdate) return;
+
+    const dest = isOrderPickedUp ? customerCoords : restaurantCoords;
+    const mins = haversineMinutes(riderLocation, dest);
+    if (mins === null) return;
+
+    setCurrentEta(`${mins} mins`);
+    onEtaUpdate(mins);
+
+    // Also write directly to shared store for home strip
+    const ids = [orderId, ...(Array.isArray(orderTrackingIds) ? orderTrackingIds : [])]
+      .map(id => normalizeLookupId(id)).filter(Boolean);
+    ids.forEach(id => saveOrderEta(id, mins));
+  }, [riderLocation?.lat, riderLocation?.lng, customerCoords, restaurantCoords, isOrderPickedUp, orderId, orderTrackingIds]);
 
   // 3. Smooth Animation Loop (60 FPS Glide)
   useEffect(() => {
@@ -344,9 +373,9 @@ const DeliveryTrackingMap = ({
           />
         )}
 
-        {riderLocation && (
+        {displayRiderLocation && (
           <OverlayView
-            position={riderLocation}
+            position={displayRiderLocation}
             mapPaneName={OverlayView.MARKER_LAYER}
           >
             <div className="relative w-[72px] h-[72px] -translate-x-1/2 -translate-y-1/2">
@@ -355,7 +384,7 @@ const DeliveryTrackingMap = ({
                 alt="Rider"
                 className="w-full h-full object-contain"
                 style={{
-                  transform: `rotate(${riderLocation.heading || 0}deg)`,
+                  transform: `rotate(${displayRiderLocation.heading || 0}deg)`,
                   transition: 'transform 0.5s linear'
                 }}
               />

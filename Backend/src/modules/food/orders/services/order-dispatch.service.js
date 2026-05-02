@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import { logger } from '../../../../utils/logger.js';
@@ -31,13 +32,18 @@ async function listNearbyOnlineDeliveryPartners(
       status: "approved",
       availabilityStatus: "online",
     })
-      .select("_id status name")
+      .select("_id status name lastLat lastLng")
       .limit(Math.max(1, limit))
       .lean();
 
     return {
       restaurant: null,
-      partners: partners.map((p) => ({ partnerId: p._id, distanceKm: null })),
+      partners: partners.map((p) => ({ 
+        partnerId: p._id, 
+        distanceKm: null,
+        lastLat: p.lastLat,
+        lastLng: p.lastLng
+      })),
     };
   }
 
@@ -61,6 +67,8 @@ async function listNearbyOnlineDeliveryPartners(
         partnerId: p._id, 
         distanceKm: 999, 
         status: p.status,
+        lastLat: p.lastLat,
+        lastLng: p.lastLng,
         reason: p.lastLat == null ? 'no_lat' : (isStale ? 'stale_gps' : 'unknown')
       });
       continue;
@@ -68,7 +76,13 @@ async function listNearbyOnlineDeliveryPartners(
 
     const d = haversineKm(rLat, rLng, p.lastLat, p.lastLng);
     if (Number.isFinite(d) && d <= maxKm) {
-      scored.push({ partnerId: p._id, distanceKm: d, status: p.status });
+      scored.push({ 
+        partnerId: p._id, 
+        distanceKm: d, 
+        status: p.status,
+        lastLat: p.lastLat,
+        lastLng: p.lastLng
+      });
     }
   }
 
@@ -80,7 +94,7 @@ async function listNearbyOnlineDeliveryPartners(
       status: { $in: allowedStatuses },
       availabilityStatus: "online",
     })
-      .select("_id status name")
+      .select("_id status name lastLat lastLng")
       .limit(Math.max(1, limit))
       .lean();
 
@@ -89,6 +103,8 @@ async function listNearbyOnlineDeliveryPartners(
         partnerId: p._id,
         distanceKm: null,
         status: p.status,
+        lastLat: p.lastLat,
+        lastLng: p.lastLng,
       })),
     };
   }
@@ -99,6 +115,45 @@ async function listNearbyOnlineDeliveryPartners(
 
   logger.info(`[Dispatch] Found ${final.length} nearby online partners (max ${maxKm}km).`);
   return { partners: final };
+}
+
+const toFinite = (v) => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : null;
+};
+
+// Ray-casting point-in-polygon for lat/lng polygons.
+const isPointInPolygon = (lat, lng, polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].longitude;
+    const yi = polygon[i].latitude;
+    const xj = polygon[j].longitude;
+    const yj = polygon[j].latitude;
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 0.0) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+async function filterPartnersByZone(order, partners = []) {
+  if (!Array.isArray(partners) || partners.length === 0) return [];
+
+  const zoneId = order?.zoneId || order?.restaurantId?.zoneId;
+  if (!zoneId) return partners;
+
+  const zone = await FoodZone.findById(zoneId).select('coordinates isActive').lean();
+  if (!zone || zone.isActive === false) return partners;
+
+  return partners.filter((partner) => {
+    const lat = toFinite(partner?.lastLat);
+    const lng = toFinite(partner?.lastLng);
+    if (lat === null || lng === null) return false;
+    return isPointInPolygon(lat, lng, zone.coordinates);
+  });
 }
 
 async function filterPartnersByCashLimit(order, partners = []) {
@@ -277,7 +332,8 @@ export async function tryAutoAssign(orderId, options = {}) {
     }
 
     const prelimEligible = partners.filter(p => !offeredIds.includes(p.partnerId.toString()));
-    const eligible = await filterPartnersByCashLimit(order, prelimEligible);
+    const zoneEligible = await filterPartnersByZone(order, prelimEligible);
+    const eligible = await filterPartnersByCashLimit(order, zoneEligible);
 
     if (eligible.length === 0) {
       logger.info(`tryAutoAssign: No NEW eligible partners in ${maxKm}km for order ${order._id} after cash-limit filter. Restarting hunt...`);
@@ -285,7 +341,8 @@ export async function tryAutoAssign(orderId, options = {}) {
       // If we ran out of new eligible partners, we might want to re-offer to everyone (Phase 2 style)
       const io = getIO();
       if (io && prelimEligible.length > 0) {
-        const fallbackEligible = await filterPartnersByCashLimit(order, prelimEligible);
+        const fallbackZoneEligible = await filterPartnersByZone(order, prelimEligible);
+        const fallbackEligible = await filterPartnersByCashLimit(order, fallbackZoneEligible);
         const payload = buildDeliverySocketPayload(order, order.restaurantId);
         for (const p of fallbackEligible) {
           const roomName = rooms.delivery(p.partnerId);
@@ -442,7 +499,8 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
   // This ensures alerts reach riders even if tryAutoAssign's lock logic has issues.
   try {
     const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, { maxKm: 60, limit: 25 });
-    const eligible = await filterPartnersByCashLimit(order, partners);
+    const zoneEligible = await filterPartnersByZone(order, partners);
+    const eligible = await filterPartnersByCashLimit(order, zoneEligible);
     const io = getIO();
     const payload = buildDeliverySocketPayload(order, order.restaurantId);
 

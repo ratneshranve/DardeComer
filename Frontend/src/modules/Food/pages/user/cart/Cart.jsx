@@ -1470,7 +1470,7 @@ export default function Cart() {
     }
 
     if (cart.length === 0) {
-      alert("Your cart is empty")
+      toast.error("Your cart is empty", { duration: 3000 })
       return
     }
 
@@ -1553,7 +1553,7 @@ export default function Cart() {
             restaurantId: item.restaurantId
           }))
         });
-        alert('Error: Restaurant information is missing. Please refresh the page and try again.');
+        toast.error('Error: Restaurant information is missing. Please refresh the page and try again.', { duration: 3000 });
         setIsPlacingOrder(false);
         return;
       }
@@ -1640,7 +1640,7 @@ export default function Cart() {
             restaurantDataName: restaurantData?.name,
             cartRestaurantName: cartRestaurantNames[0]
           });
-          alert(`Error: Cart items belong to "${cartRestaurantNames[0] || 'Unknown Restaurant'}" but restaurant data doesn't match. Please refresh the page and try again.`);
+          toast.error(`Error: Cart items belong to "${cartRestaurantNames[0] || 'Unknown Restaurant'}" but restaurant data doesn't match. Please refresh the page and try again.`, { duration: 3000 });
           setIsPlacingOrder(false);
           return;
         }
@@ -1654,7 +1654,7 @@ export default function Cart() {
             cartRestaurantName: cartRestaurantName,
             finalRestaurantName: finalRestaurantName
           });
-          alert(`Error: Cart items belong to "${cartRestaurantName}" but restaurant data shows "${finalRestaurantName}". Please refresh the page and try again.`);
+          toast.error(`Error: Cart items belong to "${cartRestaurantName}" but restaurant data shows "${finalRestaurantName}". Please refresh the page and try again.`, { duration: 3000 });
           setIsPlacingOrder(false);
           return;
         }
@@ -1684,7 +1684,7 @@ export default function Cart() {
           cartRestaurantName: cart[0]?.restaurant,
           finalRestaurantName: finalRestaurantName
         });
-        alert('Error: Restaurant information mismatch detected. Please refresh the page and try again.');
+        toast.error('Error: Restaurant information mismatch detected. Please refresh the page and try again.', { duration: 3000 });
         setIsPlacingOrder(false);
         return;
       }
@@ -1874,7 +1874,7 @@ export default function Cart() {
               error?.response?.data?.errors?.[0]?.message ||
               error?.message ||
               "Payment verification failed. Please contact support."
-            alert(errorMessage)
+            toast.error(errorMessage, { duration: 3000 })
             setIsPlacingOrder(false)
           }
         },
@@ -1883,7 +1883,7 @@ export default function Cart() {
           // Don't show alert for user cancellation
           if (error?.code !== 'PAYMENT_CANCELLED' && error?.message !== 'PAYMENT_CANCELLED') {
             const errorMessage = error?.description || error?.message || "Payment failed. Please try again."
-            alert(errorMessage)
+            toast.error(errorMessage, { duration: 3000 })
           }
           setIsPlacingOrder(false)
         },
@@ -1939,7 +1939,7 @@ export default function Cart() {
         errorMessage = error.message
       }
 
-      alert(errorMessage)
+      toast.error(errorMessage, { duration: 3000 })
       setIsPlacingOrder(false)
     }
   }

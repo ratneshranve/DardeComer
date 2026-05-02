@@ -97,6 +97,28 @@ function buildTakeAwayAddressFallback(dto, restaurant) {
   };
 }
 
+const toFinite = (v) => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : null;
+};
+
+// Ray-casting point-in-polygon for lat/lng polygons.
+const isPointInPolygon = (lat, lng, polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].longitude;
+    const yi = polygon[i].latitude;
+    const xj = polygon[j].longitude;
+    const yj = polygon[j].latitude;
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 0.0) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
 
 
 
@@ -188,6 +210,8 @@ export async function createOrder(userId, dto) {
   const isTakeAway = deliveryType === 'Take Away';
   const isHomeKitchen = isHomeKitchenBusinessModel(restaurant?.businessModel);
 
+  const restaurantZoneId = restaurant?.zoneId ? String(restaurant.zoneId) : null;
+
   if (isTakeAway && !isHomeKitchen) {
     throw new ValidationError('Take Away is available only for Home Kitchen orders');
   }
@@ -208,6 +232,30 @@ export async function createOrder(userId, dto) {
           ? { type: "Point", coordinates: dto.address.location.coordinates }
           : undefined,
       };
+
+  if (!isTakeAway && restaurantZoneId) {
+    if (dto?.zoneId && String(dto.zoneId) !== restaurantZoneId) {
+      throw new ValidationError('Delivery address must be within the restaurant zone');
+    }
+
+    const coords = dto?.address?.location?.coordinates;
+    const dLng = Array.isArray(coords) ? toFinite(coords[0]) : null;
+    const dLat = Array.isArray(coords) ? toFinite(coords[1]) : null;
+    if (dLng === null || dLat === null) {
+      throw new ValidationError('Delivery address location is required');
+    }
+
+    const zone = await FoodZone.findById(restaurant.zoneId)
+      .select('coordinates isActive')
+      .lean();
+    if (!zone || zone.isActive === false) {
+      throw new ValidationError('Restaurant zone is not available');
+    }
+
+    if (!isPointInPolygon(dLat, dLng, zone.coordinates)) {
+      throw new ValidationError('Delivery address is outside the restaurant zone');
+    }
+  }
 
   const paymentMethod =
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
@@ -1232,19 +1280,19 @@ export async function updateOrderStatusRestaurant(
     if (io) {
       // On accept (confirmed or preparing) -> request delivery partners via central logic
       if (
-        (String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && 
+        (String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") &&
         (String(from) !== "preparing" && String(from) !== "confirmed")
       ) {
         console.log(
-          `[DEBUG] Order ${order._id.toString()} status changed to '${orderStatus}'. Triggering central delivery dispatch.`,
+          `[DEBUG] Order ${order._id.toString()} status changed to '${orderStatus}'. Triggering delivery partner alerts.`,
         );
-        
+
         try {
-            await tryAutoAssign(order._id);
-            // Refresh local order state after assignment search
-            order = await FoodOrder.findById(order._id); 
+          await dispatchService.resendDeliveryNotificationRestaurant(order._id, restaurantId);
+          // Refresh local order state after assignment search
+          order = await FoodOrder.findById(order._id);
         } catch (err) {
-            console.error(`[DEBUG] Auto-assign in updateOrderStatusRestaurant failed:`, err);
+          console.error(`[DEBUG] Dispatch alert in updateOrderStatusRestaurant failed:`, err);
         }
       }
 

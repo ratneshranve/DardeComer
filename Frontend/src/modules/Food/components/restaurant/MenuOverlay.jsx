@@ -89,11 +89,38 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
 
   const handleRestaurantLogout = async () => {
     try {
-      await restaurantAPI.logout()
+      let fcmToken = null
+      let platform = "web"
+      try {
+        if (typeof window !== "undefined" && window.flutter_inappwebview) {
+          platform = "mobile"
+          const handlerNames = [
+            "getFcmToken",
+            "getFCMToken",
+            "getPushToken",
+            "getFirebaseToken",
+          ]
+          for (const handlerName of handlerNames) {
+            try {
+              const t = await window.flutter_inappwebview.callHandler(handlerName, {
+                module: "restaurant",
+              })
+              if (t && typeof t === "string" && t.length > 20) {
+                fcmToken = t.trim()
+                break
+              }
+            } catch (e) {}
+          }
+        } else {
+          fcmToken = localStorage.getItem("fcm_web_registered_token_restaurant") || null
+        }
+      } catch (e) {}
+      await restaurantAPI.logout(null, fcmToken, platform)
     } catch (_) {}
     clearModuleAuth("restaurant")
     setIsAuthenticated(false)
     window.dispatchEvent(new Event("restaurantAuthChanged"))
+    localStorage.removeItem("fcm_web_registered_token_restaurant")
     toast.success("Logged out successfully")
     navigate("/restaurant/login", { replace: true })
   }

@@ -113,7 +113,7 @@ export default function ZoneSetup() {
     }
   }, [mapLoading])
 
-  // Load existing restaurant location when data is fetched
+  // Load existing restaurant location when data is fetched, and detect its zone
   useEffect(() => {
     if (restaurantData?.location && mapInstanceRef.current && !mapLoading && window.google) {
       const location = restaurantData.location
@@ -129,11 +129,18 @@ export default function ZoneSetup() {
         setLocationSearch(address)
         setSelectedAddress(address)
         setSelectedLocation({ lat, lng, address })
-        
         updateMarker(lat, lng, address)
+
+        // Detect and set the zone for the saved location so the warning is suppressed
+        // for valid inside-zone coordinates loaded on page init / after save+reload.
+        // We only do this when zones are already loaded (zones.length > 0).
+        if (zones.length > 0) {
+          const detectedZone = findZoneForLocation(lat, lng)
+          setSelectedZone(detectedZone)
+        }
       }
     }
-  }, [restaurantData, mapLoading])
+  }, [restaurantData, mapLoading, zones])
 
   const fetchZones = async () => {
     try {
@@ -159,82 +166,52 @@ export default function ZoneSetup() {
 
   const loadGoogleMaps = async () => {
     try {
-      debugLog("?? Starting Google Maps load...")
-      
       // Fetch API key from database
       let apiKey = null
       try {
         apiKey = await getGoogleMapsApiKey()
-        debugLog("?? API Key received:", apiKey ? `Yes (${apiKey.substring(0, 10)}...)` : "No")
-        
         if (!apiKey || apiKey.trim() === "") {
-          debugError("? API key is empty or not found in database")
           setMapLoading(false)
           alert("Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in frontend .env.")
           return
         }
       } catch (apiKeyError) {
-        debugError("? Error fetching API key from database:", apiKeyError)
         setMapLoading(false)
-        alert("Failed to fetch Google Maps API key from database. Please check your connection or contact administrator.")
+        alert("Failed to fetch Google Maps API key. Please check your connection or contact administrator.")
         return
       }
-      
-      setGoogleMapsApiKey(apiKey)
-      
-      // Wait for Google Maps to be loaded from main.jsx if it's loading
-      let retries = 0
-      const maxRetries = 100 // Wait up to 10 seconds
-      
-      debugLog("?? Waiting for Google Maps to load from main.jsx...")
-      while (!window.google && retries < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        retries++
-      }
 
-      // Wait for mapRef to be available (retry mechanism)
+      setGoogleMapsApiKey(apiKey)
+
+      // Always use the Loader — it is idempotent: if Maps is already loaded it
+      // resolves immediately without re-loading the script. This eliminates the
+      // race condition where window.google exists but window.google.maps is not
+      // yet fully initialized on the first page visit.
+      const loader = new Loader({
+        apiKey: apiKey,
+        version: "weekly",
+        libraries: ["places", "geometry"]
+      })
+
+      const google = await loader.load()
+
+      // Wait for the map container ref to be in the DOM
       let refRetries = 0
-      const maxRefRetries = 50 // Wait up to 5 seconds for ref
-      while (!mapRef.current && refRetries < maxRefRetries) {
+      while (!mapRef.current && refRetries < 50) {
         await new Promise(resolve => setTimeout(resolve, 100))
         refRetries++
       }
 
       if (!mapRef.current) {
-        debugError("? mapRef.current is still null after waiting")
         setMapLoading(false)
         alert("Failed to initialize map container. Please refresh the page.")
         return
       }
 
-      // If Google Maps is already loaded, use it directly
-      if (window.google && window.google.maps) {
-        debugLog("? Google Maps already loaded from main.jsx, initializing map...")
-        initializeMap(window.google)
-        return
-      }
-
-      // If Google Maps is not loaded yet and we have an API key, use Loader as fallback
-      if (apiKey) {
-        debugLog("?? Google Maps not loaded from main.jsx, loading with Loader...")
-        const loader = new Loader({
-          apiKey: apiKey,
-          version: "weekly",
-          libraries: ["places", "geometry"]
-        })
-
-        const google = await loader.load()
-        debugLog("? Google Maps loaded via Loader, initializing map...")
-        initializeMap(google)
-      } else {
-        debugError("? No API key available")
-        setMapLoading(false)
-        alert("Google Maps API key not found. Please contact administrator.")
-      }
+      initializeMap(google)
     } catch (error) {
-      debugError("? Error loading Google Maps:", error)
       setMapLoading(false)
-      alert(`Failed to load Google Maps: ${error.message}. Please refresh the page or contact administrator.`)
+      alert(`Failed to load Google Maps: ${error.message}. Please refresh the page.`)
     }
   }
 
@@ -287,37 +264,39 @@ export default function ZoneSetup() {
     }
   }
 
+  // Pure JS ray-casting point-in-polygon — works directly from zones state,
+  // no dependency on Google Maps geometry library or polygon ref timing.
+  const pointInPolygon = (lat, lng, polygonCoords) => {
+    let inside = false
+    const n = polygonCoords.length
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const xi = polygonCoords[i].lat, yi = polygonCoords[i].lng
+      const xj = polygonCoords[j].lat, yj = polygonCoords[j].lng
+      const intersect = ((yi > lng) !== (yj > lng)) &&
+        (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi)
+      if (intersect) inside = !inside
+    }
+    return inside
+  }
+
   const findZoneForLocation = (lat, lng) => {
-    if (!window.google?.maps?.geometry?.poly) {
-      debugWarn("Google Maps Geometry library not loaded")
-      return null
-    }
-
-    const point = new window.google.maps.LatLng(lat, lng)
-    
-    // Use the stored polygon objects for more reliable detection
-    for (const zoneObj of zonePolygonsRef.current) {
-      if (window.google.maps.geometry.poly.containsLocation(point, zoneObj.polygon)) {
-        return zoneObj.zone
-      }
-    }
-
-    // Fallback to coordinate-based check if objects aren't ready
     for (const zone of zones) {
-      if (zone.coordinates && zone.coordinates.length >= 3) {
-        const polygonCoords = zone.coordinates.map(c => {
+      if (!zone.coordinates || zone.coordinates.length < 3) continue
+
+      const polygonCoords = zone.coordinates
+        .map(c => {
           const latVal = Number(c.latitude)
           const lngVal = Number(c.longitude)
-          if (isNaN(latVal) || isNaN(lngVal)) return null
-          return { lat: latVal, lng: lngVal }
-        }).filter(Boolean)
+          return (Number.isFinite(latVal) && Number.isFinite(lngVal))
+            ? { lat: latVal, lng: lngVal }
+            : null
+        })
+        .filter(Boolean)
 
-        if (polygonCoords.length < 3) continue
+      if (polygonCoords.length < 3) continue
 
-        const tempPolygon = new window.google.maps.Polygon({ paths: polygonCoords })
-        if (window.google.maps.geometry.poly.containsLocation(point, tempPolygon)) {
-          return zone
-        }
+      if (pointInPolygon(lat, lng, polygonCoords)) {
+        return zone
       }
     }
     return null
@@ -359,6 +338,11 @@ export default function ZoneSetup() {
       setSelectedLocation(prev => prev ? { ...prev, address } : { lat, lng, address })
       updateMarker(lat, lng, address)
     }
+
+    // 4. Re-detect zone after address resolves — zones may have been empty on first click
+    //    (API still loading). This prevents false "outside zone" warnings for valid locations.
+    const confirmedZone = findZoneForLocation(lat, lng)
+    setSelectedZone(confirmedZone)
   }
 
   // Render zones as polygons when zones or map is ready

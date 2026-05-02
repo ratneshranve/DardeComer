@@ -102,24 +102,12 @@ export const verifyUserOtpAndLogin = async (
 
   // Update FCM token if provided
   if (fcmToken) {
-    let isModified = false;
     if (platform === "mobile") {
-      if (!userDoc.fcmTokenMobile) userDoc.fcmTokenMobile = [];
-      if (!userDoc.fcmTokenMobile.includes(fcmToken)) {
-        userDoc.fcmTokenMobile.push(fcmToken);
-        isModified = true;
-      }
+      userDoc.fcmTokenMobile = [fcmToken];
     } else {
-      // Default to web if not explicitly mobile
-      if (!userDoc.fcmTokens) userDoc.fcmTokens = [];
-      if (!userDoc.fcmTokens.includes(fcmToken)) {
-        userDoc.fcmTokens.push(fcmToken);
-        isModified = true;
-      }
+      userDoc.fcmTokens = [fcmToken];
     }
-    if (isModified) {
-      await userDoc.save();
-    }
+    await userDoc.save();
   }
 
   // Ensure referralCode exists (used for share links on older accounts).
@@ -389,23 +377,12 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
   // Update FCM token if provided - CRITICAL: do this BEFORE returning pendingApproval
   // so we can notify them when approved.
   if (fcmToken) {
-    let isModified = false;
     if (platform === "mobile") {
-      if (!deliveryPartner.fcmTokenMobile) deliveryPartner.fcmTokenMobile = [];
-      if (!deliveryPartner.fcmTokenMobile.includes(fcmToken)) {
-        deliveryPartner.fcmTokenMobile.push(fcmToken);
-        isModified = true;
-      }
+      deliveryPartner.fcmTokenMobile = [fcmToken];
     } else {
-      if (!deliveryPartner.fcmTokens) deliveryPartner.fcmTokens = [];
-      if (!deliveryPartner.fcmTokens.includes(fcmToken)) {
-        deliveryPartner.fcmTokens.push(fcmToken);
-        isModified = true;
-      }
+      deliveryPartner.fcmTokens = [fcmToken];
     }
-    if (isModified) {
-      await deliveryPartner.save();
-    }
+    await deliveryPartner.save();
   }
 
   if (deliveryPartner.status && deliveryPartner.status !== "approved") {

@@ -853,13 +853,24 @@ export const useDeliveryNotifications = () => {
     if (!payload) return;
     const data = payload.data || payload;
     const orderId = data.orderId || data.order_id || data.orderMongoId;
-    
-    if (orderId && !activeOrderRef.current) {
+
+    if (!orderId || activeOrderRef.current) return;
+
+    void (async () => {
+      if (await shouldSuppressIncomingCodAlert(data)) {
+        debugLog('Native push alert suppressed due to cash-limit check', {
+          orderId: data?.orderId || data?.orderMongoId || data?._id,
+          orderAmount: getOrderAmount(data),
+          availableCashLimit: availableCashLimitRef.current,
+        });
+        return;
+      }
+
       debugLog('Native push notification received, triggering alert', data);
       setNewOrder(data);
       handleIncomingOrderAlert(data);
-    }
-  }, [handleIncomingOrderAlert]);
+    })();
+  }, [handleIncomingOrderAlert, shouldSuppressIncomingCodAlert]);
 
   // Socket connection effect (no backend when API_BASE_URL is empty)
   useEffect(() => {
@@ -1108,15 +1119,9 @@ export const useDeliveryNotifications = () => {
         debugLog('play_notification_sound received', {
           orderId: normalizedData?.orderId || normalizedData?.orderMongoId || normalizedData?.order_id,
         });
-        
-        // Force immediate buzz for notification events, even if dedupe would skip.
-        activeOrderRef.current = normalizedData || { id: Date.now() };
-        playNotificationSound(normalizedData);
-        startAlertLoop(playNotificationSound);
 
-        // Ensure the modal shows up! 
-        // If we received a sound event but the modal state is empty, fill it.
-        setNewOrder(prev => {
+        // Ensure the modal shows up if needed.
+        setNewOrder((prev) => {
           if (!prev) {
             debugLog('Setting newOrder from play_notification_sound event as it was missing.');
             return normalizedData;
@@ -1124,9 +1129,6 @@ export const useDeliveryNotifications = () => {
           return prev;
         });
 
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-          showBackgroundOrderNotification(normalizedData);
-        }
         handleIncomingOrderAlert(normalizedData);
       })();
     });

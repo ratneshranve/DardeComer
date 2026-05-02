@@ -16,35 +16,54 @@ export default function BottomNavbar({ onMenuClick }) {
     
     const handleResize = () => {
       if (viewport) {
-        const isVisible = window.innerHeight - viewport.height > 150
-        setKeyboardOpen(isVisible)
+        // More robust detection: check for height difference or significant height reduction
+        const isKeyboard = (window.innerHeight - viewport.height > 150) || 
+                          (viewport.height < window.innerHeight * 0.85);
+        setKeyboardOpen(isKeyboard)
       }
     }
 
     const handleFocusIn = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      const isInput = e.target.tagName === 'INPUT' || 
+                     e.target.tagName === 'TEXTAREA' || 
+                     e.target.getAttribute('contenteditable') === 'true';
+      if (isInput) {
         setKeyboardOpen(true)
       }
     }
 
     const handleFocusOut = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        setTimeout(() => {
-          if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      // Short delay to avoid flickering when moving between inputs
+      setTimeout(() => {
+        const activeEl = document.activeElement;
+        const isInputFocused = activeEl && (
+          activeEl.tagName === 'INPUT' || 
+          activeEl.tagName === 'TEXTAREA' || 
+          activeEl.getAttribute('contenteditable') === 'true'
+        );
+        if (!isInputFocused) {
+          // Double check with viewport height if available
+          if (viewport) {
+            const isKeyboard = (window.innerHeight - viewport.height > 150) || 
+                              (viewport.height < window.innerHeight * 0.85);
+            setKeyboardOpen(isKeyboard);
+          } else {
             setKeyboardOpen(false)
           }
-        }, 100)
-      }
+        }
+      }, 150)
     }
 
     if (viewport) viewport.addEventListener("resize", handleResize)
     window.addEventListener("focusin", handleFocusIn)
     window.addEventListener("focusout", handleFocusOut)
+    window.addEventListener("resize", handleResize)
 
     return () => {
       if (viewport) viewport.removeEventListener("resize", handleResize)
       window.removeEventListener("focusin", handleFocusIn)
       window.removeEventListener("focusout", handleFocusOut)
+      window.removeEventListener("resize", handleResize)
     }
   }, [])
 

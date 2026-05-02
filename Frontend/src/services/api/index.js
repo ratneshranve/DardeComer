@@ -1330,7 +1330,7 @@ export const restaurantAPI = {
     apiClient.delete(`/food/restaurant/addons/${String(id)}`, {
       contextModule: "restaurant",
     }),
-  logout: (refreshToken) => {
+  logout: (refreshToken, fcmToken = null, platform = "web") => {
     restaurantCurrentInFlight = null;
     restaurantCurrentCached = null;
     restaurantCurrentCacheTime = 0;
@@ -1339,8 +1339,8 @@ export const restaurantAPI = {
       (typeof localStorage !== "undefined"
         ? localStorage.getItem("restaurant_refreshToken")
         : null);
-    const fcmToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_restaurant") : null;
-    return authService.logout(token, fcmToken, "web");
+    const fallbackToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_restaurant") : null;
+    return authService.logout(token, fcmToken || fallbackToken, platform);
   },
   deleteAccount: (refreshToken) => {
     const token =
@@ -1635,7 +1635,7 @@ export const deliveryAPI = {
     apiClient.get("/food/delivery/referrals/stats", {
       contextModule: "delivery",
     }),
-  logout: (refreshToken) => {
+  logout: (refreshToken, fcmToken = null, platform = "web") => {
     deliveryMeCached = null;
     deliveryMeCacheTime = 0;
     try {
@@ -1646,8 +1646,8 @@ export const deliveryAPI = {
       (typeof localStorage !== "undefined"
         ? localStorage.getItem("delivery_refreshToken")
         : null);
-    const fcmToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_delivery") : null;
-    return authService.logout(token, fcmToken, "web");
+    const fallbackToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_delivery") : null;
+    return authService.logout(token, fcmToken || fallbackToken, platform);
   },
   deleteAccount: (refreshToken) => {
     const token =

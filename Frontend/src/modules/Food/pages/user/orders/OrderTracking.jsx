@@ -11,7 +11,6 @@ import {
   ChevronRight,
   MapPin,
   Home as HomeIcon,
-  MessageSquare,
   X,
   Check,
   Shield,
@@ -44,6 +43,11 @@ const DEFAULT_CUSTOMER_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48"
 const SAFE_CUSTOMER_PIN = typeof CUSTOMER_PIN_SVG !== 'undefined' ? CUSTOMER_PIN_SVG : DEFAULT_CUSTOMER_PIN;
 const DEFAULT_RESTAURANT_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#001A94"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
 const SAFE_RESTAURANT_PIN = typeof RESTAURANT_PIN_SVG !== 'undefined' ? RESTAURANT_PIN_SVG : DEFAULT_RESTAURANT_PIN;
+
+import { calculateOrderEta, normalizeLookupId } from "../../../utils/orderEta";
+import { saveOrderEta } from "../../../utils/orderEtaStore";
+
+const calculateFallbackEta = (order) => calculateOrderEta(order);
 
 const debugLog = (...args) => console.log('[OrderTracking]', ...args)
 const debugWarn = (...args) => console.warn('[OrderTracking]', ...args)
@@ -352,7 +356,8 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     assignmentInfo: apiOrder?.assignmentInfo || previousOrder?.assignmentInfo || null,
     tracking: apiOrder?.tracking || previousOrder?.tracking || {},
     deliveryState: apiOrder?.deliveryState || previousOrder?.deliveryState || null,
-    createdAt: apiOrder?.createdAt || previousOrder?.createdAt || null,
+    createdAt: apiOrder?.createdAt || apiOrder?.orderDate || apiOrder?.created_at || apiOrder?.date || previousOrder?.createdAt || null,
+    orderDate: apiOrder?.orderDate || apiOrder?.date || previousOrder?.orderDate || null,
     totalAmount: apiOrder?.pricing?.total || apiOrder?.totalAmount || previousOrder?.totalAmount || 0,
     deliveryFee: apiOrder?.pricing?.deliveryFee || apiOrder?.deliveryFee || previousOrder?.deliveryFee || 0,
     gst: apiOrder?.pricing?.tax || apiOrder?.pricing?.gst || apiOrder?.gst || apiOrder?.tax || previousOrder?.gst || 0,
@@ -363,6 +368,15 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     paymentMethod: apiOrder?.paymentMethod || apiOrder?.payment?.method || previousOrder?.paymentMethod || null,
     payment: apiOrder?.payment || previousOrder?.payment || null,
     deliveryType: apiOrder?.deliveryType || previousOrder?.deliveryType || 'Home Delivery',
+    estimatedDeliveryTime: 
+      apiOrder?.estimatedDeliveryTime || 
+      apiOrder?.estimatedTime || 
+      apiOrder?.restaurantId?.estimatedDeliveryTimeMinutes || 
+      (typeof apiOrder?.restaurantId?.estimatedDeliveryTime === 'string' ? parseInt(apiOrder.restaurantId.estimatedDeliveryTime) : 0) || 
+      apiOrder?.restaurant?.estimatedDeliveryTimeMinutes ||
+      (typeof apiOrder?.restaurant?.estimatedDeliveryTime === 'string' ? parseInt(apiOrder.restaurant.estimatedDeliveryTime) : 0) ||
+      previousOrder?.estimatedDeliveryTime || 
+      35,
     // Preserve delivery OTP code received via socket event.
     // API responses intentionally strip the secret code for security,
     // so without preserving it the UI would lose the OTP on each poll refresh.
@@ -444,12 +458,7 @@ function isFoodOrderCancelledStatus(statusRaw) {
   return s === "cancelled" || s.includes("cancelled")
 }
 
-function normalizeLookupId(value) {
-  if (value == null) return ""
-  const raw = String(value).trim()
-  if (!raw || raw === "undefined" || raw === "null") return ""
-  return raw
-}
+
 
 export default function OrderTracking() {
   const companyName = useCompanyName()
@@ -470,19 +479,36 @@ export default function OrderTracking() {
 
   const [showConfirmation, setShowConfirmation] = useState(confirmed)
   const [orderStatus, setOrderStatus] = useState('placed')
-  const [estimatedTime, setEstimatedTime] = useState(29)
+  const [estimatedTime, setEstimatedTime] = useState(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
   const [refundDestination, setRefundDestination] = useState("source")
   const [isCancelling, setIsCancelling] = useState(false)
-  const [isInstructionsModalOpen, setIsInstructionsModalOpen] = useState(false)
-  const [deliveryInstructions, setDeliveryInstructions] = useState("")
-  const [isUpdatingInstructions, setIsUpdatingInstructions] = useState(false)
   const [resolvedLookupId, setResolvedLookupId] = useState("")
   const [timerNow, setTimerNow] = useState(Date.now())
-  const handleEtaUpdate = useCallback((newEta) => setEstimatedTime(newEta), [])
+  const handleEtaUpdate = useCallback((newEta) => {
+    // Parse ETA — accept "16 mins" (string from Google Maps) or numeric
+    let numericEta = newEta;
+    if (typeof newEta === 'string') {
+      const match = newEta.match(/(\d+)/);
+      if (match) numericEta = parseInt(match[1]);
+    }
+    if (typeof numericEta !== 'number' || isNaN(numericEta)) return;
+
+    setEstimatedTime(numericEta);
+
+    // Write to shared store — this propagates to the home strip automatically
+    const ids = [
+      normalizeLookupId(orderId),
+      normalizeLookupId(order?._id),
+      normalizeLookupId(order?.orderId),
+      normalizeLookupId(order?.id),
+    ].filter(Boolean);
+
+    ids.forEach(id => saveOrderEta(id, numericEta));
+  }, [orderId, order?._id, order?.orderId, order?.id])
   const lastRealtimeRefreshRef = useRef(0)
   const trackingOrderIdsRef = useRef(new Set())
   const terminalPollStopRef = useRef(false)
@@ -725,10 +751,31 @@ export default function OrderTracking() {
   useEffect(() => {
     if (!order) return
     setOrderStatus(mapOrderToTrackingUiStatus(order))
+
+    // Initialize or update fallback ETA if not already set by map
+    if (estimatedTime === null || typeof estimatedTime === 'number') {
+      const fallback = calculateFallbackEta(order)
+      if (fallback !== null) {
+        setEstimatedTime(prev => {
+          const next = (typeof prev === 'number' && Math.abs(prev - fallback) <= 2) ? prev : fallback
+          // Write the canonical ETA to shared store so home strip shows same value
+          const ids = [
+            normalizeLookupId(orderId),
+            normalizeLookupId(order?._id),
+            normalizeLookupId(order?.orderId),
+            normalizeLookupId(order?.id),
+          ].filter(Boolean)
+          ids.forEach(id => saveOrderEta(id, next))
+          return next
+        })
+      }
+    }
   }, [
     order?.status,
     order?.deliveryState?.currentPhase,
     order?.deliveryState?.status,
+    order?.createdAt,
+    order?.estimatedDeliveryTime
   ])
 
   const acceptedAtMs = useMemo(() => {
@@ -991,7 +1038,12 @@ export default function OrderTracking() {
   // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => {
-      setEstimatedTime((prev) => Math.max(0, prev - 1))
+      setEstimatedTime((prev) => {
+        if (typeof prev === 'number' && prev > 0) {
+          return prev - 1
+        }
+        return prev
+      })
     }, 60000)
     return () => clearInterval(timer)
   }, [])
@@ -1139,28 +1191,6 @@ export default function OrderTracking() {
     }
   };
 
-  const handleUpdateInstructions = async () => {
-    try {
-      setIsUpdatingInstructions(true);
-      const response = await orderAPI.updateOrderInstructions(resolvedLookupId || orderId, deliveryInstructions);
-      if (response.data?.success) {
-        toast.success("Delivery instructions updated");
-        setIsInstructionsModalOpen(false);
-        const updatedOrder = response.data.data?.order;
-        if (updatedOrder) {
-          setOrder(prev => transformOrderForTracking(updatedOrder, prev));
-        } else {
-          setOrder(prev => ({ ...prev, note: deliveryInstructions }));
-        }
-      } else {
-        toast.error(response.data?.message || "Failed to update instructions");
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update instructions");
-    } finally {
-      setIsUpdatingInstructions(false);
-    }
-  };
 
   const handleShare = async () => {
     try {
@@ -1286,7 +1316,9 @@ export default function OrderTracking() {
     },
     preparing: {
       title: "Food is being prepared",
-      subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Cooking your meal",
+      subtitle: estimatedTime 
+        ? (typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : `Arriving in ${estimatedTime}`)
+        : "Cooking your meal",
       color: "bg-blue-600",
       iconType: 'food'
     },
@@ -1310,7 +1342,9 @@ export default function OrderTracking() {
     },
     on_way: {
       title: "Out for delivery",
-      subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Rider is out for delivery",
+      subtitle: estimatedTime 
+        ? (typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : `Arriving in ${estimatedTime}`)
+        : "Rider is out for delivery",
       color: "bg-blue-600",
       iconType: 'rider'
     },
@@ -1625,32 +1659,8 @@ export default function OrderTracking() {
                 <Phone className="w-5 h-5 text-blue-600" />
               </motion.button>
             </div>
-            {order?.note && (
-              <div className="bg-blue-50/50 p-3 mx-4 mb-4 rounded-lg flex items-start gap-2 border border-blue-100">
-                <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Instruction for Rider</p>
-                  <p className="text-xs text-gray-700 leading-relaxed font-medium">"{order.note}"</p>
-                </div>
-              </div>
-            )}
           </motion.div>
         )}
-
-        {/* Delivery Partner Safety */}
-        {!isTakeAwayOrder && <motion.button
-          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          whileTap={{ scale: 0.99 }}
-        >
-          <Shield className="w-6 h-6 text-gray-600" />
-          <span className="flex-1 text-left font-medium text-gray-900">
-            Learn about delivery partner safety
-          </span>
-          <ChevronRight className="w-5 h-5 text-gray-400" />
-        </motion.button>}
 
         {/* Delivery Details Banner */}
         {!isTakeAwayOrder && <motion.div
@@ -1738,15 +1748,6 @@ export default function OrderTracking() {
               return 'Add delivery address'
             })()}
             showArrow={false}
-          />}
-          {!isTakeAwayOrder && <SectionItem
-            icon={MessageSquare}
-            title={order?.note ? "Edit delivery instructions" : "Add delivery instructions"}
-            subtitle={order?.note ? order.note.substring(0, 35) + (order.note.length > 35 ? "..." : "") : ""}
-            onClick={() => {
-              setDeliveryInstructions(order?.note || "");
-              setIsInstructionsModalOpen(true);
-            }}
           />}
           {isTakeAwayOrder && <SectionItem
             iconNode={
@@ -1958,19 +1959,6 @@ export default function OrderTracking() {
               </div>
             </div>
 
-            {/* Delivery Instructions Section */}
-            {!isTakeAwayOrder && order?.note && (
-              <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 flex gap-3">
-                <MessageSquare className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">Delivery Instructions</p>
-                  <p className="text-sm text-gray-800 leading-relaxed font-medium capitalize">
-                    {order.note}
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Items Section */}
             <div>
               <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Order Items</p>
@@ -2066,34 +2054,6 @@ export default function OrderTracking() {
         </DialogContent>
       </Dialog>
 
-      {/* Delivery Instructions Modal */}
-      {!isTakeAwayOrder && <Dialog open={isInstructionsModalOpen} onOpenChange={setIsInstructionsModalOpen}>
-        <DialogContent className="sm:max-w-md w-[95vw] rounded-3xl p-6 border-0 shadow-2xl bg-white max-h-[90vh] overflow-y-auto z-[200]">
-          <DialogHeader className="mb-2">
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-              Delivery Instructions
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-              Add instructions for the delivery partner to help them find your address or know where to leave your order.
-            </p>
-            <Textarea
-              value={deliveryInstructions}
-              onChange={(e) => setDeliveryInstructions(e.target.value)}
-              placeholder="E.g. Ring the doorbell, leave at the front desk..."
-              className="min-h-[120px] resize-none border-gray-200 focus:ring-blue-500 rounded-xl bg-gray-50 text-base"
-            />
-            <Button
-              onClick={handleUpdateInstructions}
-              disabled={isUpdatingInstructions}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold h-12 rounded-xl border-none"
-            >
-              {isUpdatingInstructions ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Instructions"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>}
     </div>
   )
 }

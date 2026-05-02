@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { 
   Search, Filter, Eye, Check, X, UtensilsCrossed, ArrowUpDown, Loader2,
-  FileText, Image as ImageIcon, ExternalLink, CreditCard, Calendar, Star, Building2, User, Phone, Mail, MapPin, Clock
+  FileText, Image as ImageIcon, ExternalLink, CreditCard, Calendar, Star, Building2, User, Phone, Mail, MapPin, Clock, ArrowRight
 } from "lucide-react"
 import { adminAPI, restaurantAPI } from "@food/api"
 const debugLog = (...args) => {}
@@ -65,7 +65,7 @@ export default function JoiningRequest() {
       const response = await adminAPI.getPendingRestaurants()
       const list = response?.data?.data || []
       if (activeTab === "pending") {
-        setPendingRequests(list.filter((r) => r.status === "pending"))
+        setPendingRequests(list.filter((r) => r.status === "pending" || (r.status === "approved" && r.pendingUpdate)))
       } else {
         setRejectedRequests(list.filter((r) => r.status === "rejected"))
       }
@@ -352,6 +352,11 @@ export default function JoiningRequest() {
                   </th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-1">
+                      <span>Type</span>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
                       <span>Restaurant Info</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     </div>
@@ -406,6 +411,15 @@ export default function JoiningRequest() {
                     <tr key={request._id || index} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{request.sl ?? index + 1}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          request.pendingUpdate 
+                            ? "bg-purple-100 text-purple-700 border border-purple-200" 
+                            : "bg-blue-100 text-blue-700 border border-blue-200"
+                        }`}>
+                          {request.pendingUpdate ? "Update" : "New"}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -747,6 +761,166 @@ export default function JoiningRequest() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Update Request Comparison */}
+                  {r.pendingUpdate && (
+                    <div className="bg-purple-50 border border-purple-100 rounded-xl p-6 space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-white" />
+                        </div>
+                        <h4 className="text-lg font-bold text-purple-900">Comparison of Changes</h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-4">
+                        {/* Name Change */}
+                        {r.pendingUpdate.restaurantName && r.pendingUpdate.restaurantName !== r.restaurantName && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Restaurant Name</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                              <div className="flex-1 p-2 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase">Old Name</p>
+                                <p className="text-sm font-medium text-slate-700">{r.restaurantName}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <ArrowRight className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="flex-1 p-2 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase">New Name</p>
+                                <p className="text-sm font-medium text-slate-900 font-bold">{r.pendingUpdate.restaurantName}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Phone Change */}
+                        {r.pendingUpdate.ownerPhone && r.pendingUpdate.ownerPhone !== r.ownerPhone && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Phone Number</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                              <div className="flex-1 p-2 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase">Old Phone</p>
+                                <p className="text-sm font-medium text-slate-700">{r.ownerPhone}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <ArrowRight className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="flex-1 p-2 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase">New Phone</p>
+                                <p className="text-sm font-medium text-slate-900 font-bold">{r.pendingUpdate.ownerPhone}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Pure Veg Change */}
+                        {r.pendingUpdate.pureVegRestaurant !== undefined && r.pendingUpdate.pureVegRestaurant !== r.pureVegRestaurant && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Veg Status</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                              <div className="flex-1 p-2 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase">Old Status</p>
+                                <p className="text-sm font-medium text-slate-700">{r.pureVegRestaurant ? "Pure Veg" : "Non-Veg/Mixed"}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <ArrowRight className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="flex-1 p-2 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase">New Status</p>
+                                <p className="text-sm font-medium text-slate-900 font-bold">{r.pendingUpdate.pureVegRestaurant ? "Pure Veg" : "Non-Veg/Mixed"}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Address Change */}
+                        {r.pendingUpdate.location && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Location / Address</p>
+                            <div className="flex flex-col gap-4">
+                              <div className="p-3 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase mb-1">Old Address</p>
+                                <p className="text-sm text-slate-700">{r.location?.formattedAddress || r.location?.address || "N/A"}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">Coords: {r.location?.latitude}, {r.location?.longitude}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <div className="p-1 bg-purple-100 rounded-full">
+                                  <ArrowUpDown className="w-4 h-4 text-purple-600 rotate-90" />
+                                </div>
+                              </div>
+                              <div className="p-3 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase mb-1">New Address</p>
+                                <p className="text-sm text-slate-900 font-bold">{r.pendingUpdate.location.formattedAddress || r.pendingUpdate.location.address || "N/A"}</p>
+                                <p className="text-[10px] text-slate-500 mt-1">Coords: {r.pendingUpdate.location.latitude}, {r.pendingUpdate.location.longitude}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Timing Change */}
+                        {(r.pendingUpdate.openingTime || r.pendingUpdate.closingTime) && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Operating Hours</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                              <div className="flex-1 p-2 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase">Old Hours</p>
+                                <p className="text-sm font-medium text-slate-700">{formatTime12Hour(r.openingTime)} - {formatTime12Hour(r.closingTime)}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <ArrowRight className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="flex-1 p-2 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase">New Hours</p>
+                                <p className="text-sm font-medium text-slate-900 font-bold">
+                                  {formatTime12Hour(r.pendingUpdate.openingTime || r.openingTime)} - {formatTime12Hour(r.pendingUpdate.closingTime || r.closingTime)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Primary Contact Change */}
+                        {r.pendingUpdate.primaryContactNumber && r.pendingUpdate.primaryContactNumber !== r.primaryContactNumber && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Primary Contact</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                              <div className="flex-1 p-2 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase">Old Contact</p>
+                                <p className="text-sm font-medium text-slate-700">{r.primaryContactNumber}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <ArrowRight className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="flex-1 p-2 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase">New Contact</p>
+                                <p className="text-sm font-medium text-slate-900 font-bold">{r.pendingUpdate.primaryContactNumber}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Cuisine Change */}
+                        {r.pendingUpdate.cuisines && JSON.stringify(r.pendingUpdate.cuisines) !== JSON.stringify(r.cuisines) && (
+                          <div className="bg-white rounded-lg p-4 border border-purple-100 shadow-sm">
+                            <p className="text-xs font-bold text-purple-600 uppercase mb-2">Cuisines</p>
+                            <div className="flex flex-col gap-4">
+                              <div className="p-2 bg-red-50 rounded border border-red-100">
+                                <p className="text-[10px] text-red-500 font-bold uppercase mb-1">Old Cuisines</p>
+                                <p className="text-sm font-medium text-slate-700">{(r.cuisines || []).join(", ")}</p>
+                              </div>
+                              <div className="flex justify-center">
+                                <ArrowUpDown className="w-4 h-4 text-purple-400 rotate-90" />
+                              </div>
+                              <div className="p-2 bg-green-50 rounded border border-green-100">
+                                <p className="text-[10px] text-green-500 font-bold uppercase mb-1">New Cuisines</p>
+                                <p className="text-sm font-medium text-slate-900 font-bold">{(r.pendingUpdate.cuisines || []).join(", ")}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Owner Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -32,16 +32,8 @@ const CookingAnimation = memo(() => (
   </div>
 ));
 
-const haversineDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
+import { calculateOrderEta, normalizeLookupId } from "../../utils/orderEta";
+import { getStoredEta, subscribeToEta } from "../../utils/orderEtaStore";
 
 import { useOrders } from "@food/context/OrdersContext";
 import { orderAPI } from "@food/api";
@@ -92,53 +84,7 @@ const isActiveOrder = (order) => {
   return true;
 };
 
-const getTimeRemaining = (order) => {
-  if (!order) return null;
-
-  const status = getOrderStatus(order);
-  
-  // 1. Distance-based for en-route orders
-  if (
-    (status === "picked_up" || status === "reached_drop" || status === "out_for_delivery") &&
-    order.deliveryState?.currentLocation?.lat &&
-    order.deliveryAddress?.location?.coordinates
-  ) {
-    const [userLng, userLat] = order.deliveryAddress.location.coordinates;
-    const dist = haversineDistance(
-      order.deliveryState.currentLocation.lat,
-      order.deliveryState.currentLocation.lng,
-      userLat,
-      userLng
-    );
-    // 3 mins per km is a safe estimate for urban delivery
-    return Math.ceil(dist * 3) || 1;
-  }
-
-  // 2. Countdown-based for earlier phases
-  const orderTime = new Date(
-    order.createdAt || order.orderDate || order.created_at || order.date || Date.now(),
-  );
-  
-  const restaurant = order.restaurantId || {};
-  const estimatedMinutes =
-    order.estimatedDeliveryTime ||
-    order.estimatedTime ||
-    restaurant.estimatedDeliveryTimeMinutes ||
-    (typeof restaurant.estimatedDeliveryTime === 'string' ? parseInt(restaurant.estimatedDeliveryTime) : 0) ||
-    35;
-
-  const deliveryTime = new Date(orderTime.getTime() + estimatedMinutes * 60000);
-  const diffMs = deliveryTime - new Date();
-  const diffMins = Math.floor(diffMs / 60000);
-
-  if (diffMins > 0) return diffMins;
-  
-  // If order is late, show a "buffer" time based on status
-  if (status === "confirmed" || status === "preparing" || status === "created") return 5;
-  if (status === "ready_for_pickup" || status === "reached_pickup") return 3;
-  
-  return 1; // Default for late orders
-};
+const getTimeRemaining = (order) => calculateOrderEta(order);
 
 /** Cheap fingerprint so we skip setState when list content is unchanged (fewer re-renders). */
 function ordersFingerprint(orders) {
@@ -200,7 +146,7 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 30000);
+    const interval = setInterval(fetchOrders, 10000); // Increased frequency for better sync
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
@@ -299,22 +245,50 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     };
   }, [fetchOrders]);
 
+  // Subscribe to shared ETA store — this mirrors exactly what the tracking page shows
   useEffect(() => {
     if (!activeOrder) {
       setTimeRemaining((prev) => (prev !== null ? null : prev));
       return;
     }
 
+    const orderIds = [
+      normalizeLookupId(activeOrder._id),
+      normalizeLookupId(activeOrder.id),
+      normalizeLookupId(activeOrder.orderId),
+    ].filter(Boolean);
+
     const tick = () => {
-      const next = getTimeRemaining(activeOrder);
+      // 1. Try shared store first (written by tracking page with live map data)
+      let stored = null;
+      for (const id of orderIds) {
+        const s = getStoredEta(id);
+        if (s !== null) { stored = s; break; }
+      }
+
+      if (stored !== null) {
+        setTimeRemaining(stored);
+        return;
+      }
+
+      // 2. Fall back to local calculation (same shared function as tracking page)
+      const next = calculateOrderEta(activeOrder);
       setTimeRemaining((prev) => (prev === next ? prev : next));
     };
 
     tick();
-    const interval = setInterval(tick, 10000); // Update every 10 seconds for more dynamic feel
+    const interval = setInterval(tick, 10000);
 
-    return () => clearInterval(interval);
-  }, [activeOrder]);
+    // Also subscribe to real-time updates from shared store
+    const unsub = subscribeToEta(orderIds, (eta) => {
+      if (typeof eta === 'number') setTimeRemaining(eta);
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsub();
+    };
+  }, [activeOrder?._id, activeOrder?.id, activeOrder?.orderId, activeOrder?.status, activeOrder?.deliveryState?.currentPhase]);
 
   // Proactive verification for active orders not found in recent API list
   useEffect(() => {

@@ -108,15 +108,52 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const mapRef = useRef(null);
 
   const isLoggingOut = useRef(false);
-  const handleLogout = useCallback(() => {
+
+  const getDeliveryFcmToken = useCallback(async () => {
+    let fcmToken = null;
+    let platform = "web";
+    try {
+      if (typeof window !== "undefined" && window.flutter_inappwebview) {
+        platform = "mobile";
+        const handlerNames = [
+          "getFcmToken",
+          "getFCMToken",
+          "getPushToken",
+          "getFirebaseToken",
+        ];
+        for (const handlerName of handlerNames) {
+          try {
+            const t = await window.flutter_inappwebview.callHandler(handlerName, {
+              module: "delivery",
+            });
+            if (t && typeof t === "string" && t.length > 20) {
+              fcmToken = t.trim();
+              break;
+            }
+          } catch (_) {}
+        }
+      } else {
+        fcmToken = localStorage.getItem("fcm_web_registered_token_delivery") || null;
+      }
+    } catch (_) {}
+    return { fcmToken, platform };
+  }, []);
+
+  const handleLogout = useCallback(async () => {
     if (isLoggingOut.current) return;
     isLoggingOut.current = true;
     
+    try {
+      const { fcmToken, platform } = await getDeliveryFcmToken();
+      await deliveryAPI.logout(null, fcmToken, platform);
+    } catch (_) {}
+
     // 1. Clear tokens and state
     localStorage.removeItem('delivery_accessToken');
     localStorage.removeItem('delivery_refreshToken');
     localStorage.removeItem('delivery_authenticated');
     localStorage.removeItem('delivery_user');
+    localStorage.removeItem('fcm_web_registered_token_delivery');
     
     // 2. Alert user and redirect
     toast.error("Session Expired", { description: "Please log in again." });
@@ -128,7 +165,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           window.location.reload();
        }
     }, 1500);
-  }, [navigate]);
+  }, [navigate, getDeliveryFcmToken]);
 
   useEffect(() => {
     const onAuthFailure = (e) => {
