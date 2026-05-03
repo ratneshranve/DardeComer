@@ -95,6 +95,7 @@ export default function Profile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [referralReward, setReferralReward] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   const [tableBookings, setTableBookings] = useState([]);
@@ -417,6 +418,7 @@ export default function Profile() {
 
   const handleDeleteAccountClick = () => {
     if (isDeletingAccount) return;
+    setDeleteConfirmationText("");
     setDeleteConfirmOpen(true);
   };
 
@@ -1121,7 +1123,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Delete Account Confirmation Popup */}
       {deleteConfirmOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#1a1a1a] p-5 shadow-2xl border border-gray-200 dark:border-gray-800">
@@ -1129,8 +1130,20 @@ export default function Profile() {
               Delete Account?
             </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Are you sure you want to delete your account? This action cannot be undone.
+              Are you sure you want to delete your account? This action cannot be undone. <span className="text-red-600 font-semibold block mt-2">Your wallet balance will be permanently lost.</span>
             </p>
+            <div className="mt-4">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                Please type <span className="font-bold text-red-600">DELETE</span> to confirm:
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="Type DELETE here"
+                className="w-full px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+              />
+            </div>
             <div className="mt-5 flex items-center gap-3">
               <Button
                 type="button"
@@ -1143,9 +1156,9 @@ export default function Profile() {
               </Button>
               <Button
                 type="button"
-                className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+                className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleDeleteAccount}
-                disabled={isDeletingAccount}
+                disabled={isDeletingAccount || deleteConfirmationText !== "DELETE"}
               >
                 {isDeletingAccount ? "Deleting..." : "Yes, Delete"}
               </Button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import Lenis from "lenis"
@@ -37,6 +37,8 @@ export default function SettingsPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [actionSubmitting, setActionSubmitting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -73,10 +75,10 @@ export default function SettingsPage() {
 
   const handleRestaurantDeleteAccount = async () => {
     if (actionSubmitting) return
-    const confirmed = window.confirm(
-      "Are you sure you want to delete your account? This cannot be undone.",
-    )
-    if (!confirmed) return
+    if (deleteConfirmationText !== "DELETE") {
+      toast.error("Please type DELETE to confirm")
+      return
+    }
 
     setActionSubmitting(true)
     try {
@@ -89,6 +91,7 @@ export default function SettingsPage() {
       toast.error(error?.response?.data?.message || "Failed to delete account")
     } finally {
       setActionSubmitting(false)
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -127,7 +130,8 @@ export default function SettingsPage() {
           handleRestaurantLogout()
         } },
         { id: "delete_account", label: "Delete Account", icon: Trash2, isDestructive: true, action: () => {
-          handleRestaurantDeleteAccount()
+          setDeleteConfirmationText("")
+          setShowDeleteConfirm(true)
         } },
       ]
     }
@@ -247,6 +251,86 @@ export default function SettingsPage() {
       
       {/* Menu Overlay */}
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
+
+      {/* Delete Account Confirmation Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+              onClick={() => {
+                if (!actionSubmitting) setShowDeleteConfirm(false)
+              }}
+            />
+
+            {/* Dialog */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 flex items-center justify-center z-[101] px-4 pointer-events-none"
+            >
+              <div 
+                className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex justify-center mb-4">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                      <Trash2 className="w-8 h-8 text-red-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Delete Account?</h3>
+                  <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-100 mb-6">
+                    <p className="text-sm font-semibold text-red-700 text-center leading-tight">
+                      Warning: All your earnings, wallet balance, and restaurant data will be permanently lost.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 block text-center">
+                        Type <span className="text-red-600">DELETE</span> to confirm
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteConfirmationText}
+                        onChange={(e) => setDeleteConfirmationText(e.target.value.toUpperCase())}
+                        placeholder="DELETE"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-center focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all uppercase"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={actionSubmitting}
+                        className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleRestaurantDeleteAccount}
+                        disabled={actionSubmitting || deleteConfirmationText !== "DELETE"}
+                        className="flex-1 px-4 py-3 rounded-2xl bg-red-600 text-sm font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-200"
+                      >
+                        {actionSubmitting ? "Deleting..." : "Confirm"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

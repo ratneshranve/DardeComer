@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from "react"
+
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, Users, UserPlus, LayoutGrid, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, Users, UserPlus, LayoutGrid, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus, Wallet } from "lucide-react"
 import { adminAPI, restaurantAPI, uploadAPI } from "@food/api"
 import { clearModuleAuth } from "@food/utils/auth"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -27,13 +28,15 @@ const normalizeApprovalStatus = (restaurant) => {
   return "pending"
 }
 
-const approvalStatusLabel = (status) => {
+const approvalStatusLabel = (status, isDeleted) => {
+  if (isDeleted) return "Deleted"
   if (status === "approved") return "Approved"
   if (status === "rejected") return "Rejected"
   return "Pending"
 }
 
-const approvalStatusBadgeClass = (status) => {
+const approvalStatusBadgeClass = (status, isDeleted) => {
+  if (isDeleted) return "bg-slate-100 text-slate-700 border border-slate-200"
   if (status === "approved") return "bg-emerald-100 text-emerald-700"
   if (status === "rejected") return "bg-rose-100 text-rose-700"
   return "bg-amber-100 text-amber-700"
@@ -106,6 +109,11 @@ const getPrimaryRestaurantImage = (restaurant, fallback = "") => {
 export default function RestaurantsList() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
+  const [filters, setFilters] = useState({
+    all: "All",
+    businessModel: "",
+    zone: "",
+  })
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -204,7 +212,16 @@ export default function RestaurantsList() {
         setLoading(true)
         setError(null)
 
-        const response = await adminAPI.getApprovedRestaurants({})
+        const fetchParams = {}
+        if (filters.all === "Deleted") {
+          fetchParams.status = "deleted"
+        } else if (filters.all === "Pending") {
+          fetchParams.status = "pending"
+        } else if (filters.all === "Rejected") {
+          fetchParams.status = "rejected"
+        }
+        
+        const response = await adminAPI.getRestaurants(fetchParams)
 
         if (cancelled) return
 
@@ -254,7 +271,9 @@ export default function RestaurantsList() {
             ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
             zone: zoneLabelFromRestaurant(restaurant),
             approvalStatus: normalizeApprovalStatus(restaurant),
-            isActive: restaurant.isActive !== false,
+            isDeleted: restaurant.isDeleted || false,
+            balance: restaurant.balance || 0,
+            isActive: restaurant.status === "approved",
             rating: restaurant.ratings?.average || restaurant.rating || 0,
             logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
             originalData: restaurant,
@@ -286,7 +305,7 @@ export default function RestaurantsList() {
 
     fetchRestaurants()
     return () => { cancelled = true }
-  }, [])
+  }, [filters.all])
 
   const [searchParams] = useSearchParams()
   const restaurantIdFromUrl = searchParams.get("restaurantId")
@@ -300,11 +319,6 @@ export default function RestaurantsList() {
     }
   }, [restaurantIdFromUrl, restaurants])
 
-  const [filters, setFilters] = useState({
-    all: "All",
-    businessModel: "",
-    zone: "",
-  })
 
   const filteredRestaurants = useMemo(() => {
     let result = [...restaurants]
@@ -319,10 +333,16 @@ export default function RestaurantsList() {
     }
 
     if (filters.all !== "All") {
-      if (filters.all === "Active") {
-        result = result.filter(restaurant => restaurant.isActive === true)
+      if (filters.all === "Deleted") {
+        result = result.filter(r => r.isDeleted)
+      } else if (filters.all === "Active") {
+        result = result.filter(restaurant => restaurant.isActive === true && !restaurant.isDeleted)
       } else if (filters.all === "Inactive") {
-        result = result.filter(restaurant => restaurant.isActive !== true)
+        result = result.filter(restaurant => restaurant.isActive !== true && !restaurant.isDeleted)
+      } else if (filters.all === "Pending") {
+        result = result.filter(restaurant => restaurant.approvalStatus === "pending" && !restaurant.isDeleted)
+      } else if (filters.all === "Rejected") {
+        result = result.filter(restaurant => restaurant.approvalStatus === "rejected" && !restaurant.isDeleted)
       }
     }
 
@@ -511,7 +531,7 @@ export default function RestaurantsList() {
       return
     }
 
-    placesAutocompleteRef.current = new window.google.maps.places.Autocomplete(
+    placesAutocompleteRef.current = new window.google.maps.maps.places.Autocomplete(
       locationSearchInputRef.current,
       {
         fields: ["formatted_address", "address_components", "geometry"],
@@ -765,7 +785,7 @@ export default function RestaurantsList() {
       estimatedDeliveryTime: estimatedDeliveryTimeValue,
       openingTime: openingTimeValue,
       closingTime: closingTimeValue,
-      isActive: restaurant.isActive !== false,
+      isActive: restaurant.status === "approved",
     }
   }
 
@@ -876,7 +896,7 @@ export default function RestaurantsList() {
                 ownerName: updatedRestaurant.ownerName || item.ownerName,
                 ownerPhone: updatedRestaurant.ownerPhone || updatedRestaurant.phone || item.ownerPhone,
                 zone: updatedRestaurant.location?.area || updatedRestaurant.location?.city || item.zone,
-                isActive: updatedRestaurant.isActive !== false,
+                isActive: updatedRestaurant.status === "approved",
                 approvalStatus: normalizeApprovalStatus(updatedRestaurant),
                 logo: getPrimaryRestaurantImage(updatedRestaurant, item.logo),
                 originalData: {
@@ -1033,11 +1053,26 @@ export default function RestaurantsList() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-slate-900">Restaurants List</h1>
             </div>
-
+          </div>
+          
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {["All", "Active", "Inactive", "Pending", "Rejected", "Deleted"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilters(prev => ({ ...prev, all: tab }))}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
+                  filters.all === tab 
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1187,13 +1222,9 @@ export default function RestaurantsList() {
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
-                      onClick={() => handleSort('rating')}
+                      className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider"
                     >
-                      <div className="flex items-center gap-1">
-                        <span>Rating</span>
-                        <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'rating' ? 'text-blue-600' : 'text-slate-400'}`} />
-                      </div>
+                      Balance
                     </th>
                     <th
                       className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
@@ -1262,18 +1293,13 @@ export default function RestaurantsList() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{restaurant.zone}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span className="text-sm font-semibold text-slate-900">
-                              {(Number(restaurant.rating) || 0).toFixed(1)}
-                            </span>
-                          </div>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                          ₹{(restaurant.balance || 0).toLocaleString('en-IN')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
-                            <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${approvalStatusBadgeClass(restaurant.approvalStatus)}`}>
-                              {approvalStatusLabel(restaurant.approvalStatus)}
+                            <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${approvalStatusBadgeClass(restaurant.approvalStatus, restaurant.isDeleted)}`}>
+                              {approvalStatusLabel(restaurant.approvalStatus, restaurant.isDeleted)}
                             </span>
                             <span className="text-[11px] text-slate-500">
                               Outlet: {restaurant.isActive ? "Active" : "Inactive"}
@@ -1494,101 +1520,73 @@ export default function RestaurantsList() {
                 const r = restaurantDetails || selectedRestaurant?.originalData || selectedRestaurant
                 const detailsApprovalStatus = normalizeApprovalStatus(r)
                 const profileImgUrl = getPrimaryRestaurantImage(r)
-                const coverImages = Array.isArray(r?.coverImages) ? r.coverImages.map(normalizeImageUrl).filter(Boolean) : []
-                const hasFlatAddress = r?.addressLine1 || r?.area || r?.city || r?.state || r?.pincode
                 const flatAddress = [r?.addressLine1, r?.addressLine2, r?.area, r?.city, r?.state, r?.pincode, r?.landmark].filter(Boolean).join(", ")
-                const menuImages = Array.isArray(r?.menuImages) ? r.menuImages.map(normalizeImageUrl).filter(Boolean) : []
-                const cuisinesList =
-                  (Array.isArray(r?.cuisines) && r.cuisines.length ? r.cuisines : null) ||
-                  (Array.isArray(r?.onboarding?.step2?.cuisines) && r.onboarding.step2.cuisines.length ? r.onboarding.step2.cuisines : null) ||
-                  null
                 const openingTimeVal = r?.openingTime || r?.deliveryTimings?.openingTime || r?.onboarding?.step2?.deliveryTimings?.openingTime || ""
                 const closingTimeVal = r?.closingTime || r?.deliveryTimings?.closingTime || r?.onboarding?.step2?.deliveryTimings?.closingTime || ""
                 const openDaysVal =
                   (Array.isArray(r?.openDays) && r.openDays.length ? r.openDays : null) ||
                   (Array.isArray(r?.onboarding?.step2?.openDays) && r.onboarding.step2.openDays.length ? r.onboarding.step2.openDays : null) ||
                   null
-                const offerVal = r?.offer || r?.onboarding?.step4?.offer || ""
                 const estimatedDeliveryTimeVal = r?.estimatedDeliveryTime || r?.onboarding?.step4?.estimatedDeliveryTime || ""
-                const featuredDishVal = r?.featuredDish || r?.onboarding?.step4?.featuredDish || ""
-                const featuredPriceVal = r?.featuredPrice ?? r?.onboarding?.step4?.featuredPrice
-                const diningSettingsVal = r?.diningSettings || r?.onboarding?.step4?.diningSettings || null
-                const panDocumentUrl = typeof r?.panImage === "string" ? r.panImage : (r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url || "")
-                const gstDocumentUrl = typeof r?.gstImage === "string" ? r.gstImage : (r?.gstImage?.url || r?.onboarding?.step3?.gst?.image?.url || "")
-                const fssaiDocumentUrl = typeof r?.fssaiImage === "string" ? r.fssaiImage : (r?.fssaiImage?.url || r?.onboarding?.step3?.fssai?.image?.url || "")
-                const hasPanSection = Boolean(r?.panNumber || r?.nameOnPan || panDocumentUrl || r?.onboarding?.step3?.pan?.panNumber || r?.onboarding?.step3?.pan?.nameOnPan)
-                const hasGstSection = Boolean(
-                  r?.gstNumber ||
-                  r?.gstLegalName ||
-                  r?.gstAddress ||
-                  gstDocumentUrl ||
-                  r?.onboarding?.step3?.gst?.gstNumber ||
-                  r?.onboarding?.step3?.gst?.legalName ||
-                  r?.onboarding?.step3?.gst?.address
-                )
-                const hasFssaiSection = Boolean(
-                  r?.fssaiNumber ||
-                  r?.fssaiExpiry ||
-                  fssaiDocumentUrl ||
-                  r?.onboarding?.step3?.fssai?.registrationNumber ||
-                  r?.onboarding?.step3?.fssai?.expiryDate
-                )
-                const hasBankSection = Boolean(
-                  r?.accountNumber ||
-                  r?.ifscCode ||
-                  r?.accountHolderName ||
-                  r?.accountType ||
-                  r?.onboarding?.step3?.bank?.accountNumber ||
-                  r?.onboarding?.step3?.bank?.ifscCode ||
-                  r?.onboarding?.step3?.bank?.accountHolderName ||
-                  r?.onboarding?.step3?.bank?.accountType
-                )
-                const hasRegistrationDocuments = hasPanSection || hasGstSection || hasFssaiSection || hasBankSection
-                return (
-                <div className="space-y-10">
-                  {/* Restaurant Basic Info */}
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-                    <div className="w-32 h-32 rounded-3xl overflow-hidden bg-slate-50 shrink-0 shadow-inner group">
-                      <img
-                        src={profileImgUrl || PLACEHOLDER_128}
-                        alt={r?.restaurantName || r?.name || "Restaurant"}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => {
-                          e.target.src = PLACEHOLDER_128
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 text-center md:text-left pt-2">
-                      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                          {r?.restaurantName || r?.name || "N/A"}
-                        </h3>
-                        <div className="flex items-center justify-center md:justify-start gap-2">
-                          <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${r?.isActive !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {r?.isActive !== false ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-center md:justify-start gap-6 flex-wrap">
-                        {(r?.ratings?.average != null) && (
-                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-xl">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
-                            <span className="text-sm font-bold text-yellow-700">
-                              {(r.ratings?.average ?? 0).toFixed(1)}
-                            </span>
-                            <span className="text-xs text-yellow-600/70 ml-1 font-medium">
-                              ({(r.ratings?.count ?? 0)} reviews)
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-                          <Building2 className="w-4 h-4" />
-                          <span className="text-xs font-bold tracking-wider">{formatRestaurantId(r?.restaurantId || r?._id)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                
+                // Define missing variables used in the template below
+                const diningSettingsVal = r?.diningSettings
+                const coverImages = (Array.isArray(r?.coverImages) ? r.coverImages : (r?.onboarding?.step4?.coverImages || [])).map(normalizeImageUrl).filter(Boolean)
+                const menuImages = (Array.isArray(r?.menuImages) ? r.menuImages : (r?.onboarding?.step4?.menuImages || [])).map(normalizeImageUrl).filter(Boolean)
+                const hasFlatAddress = !!flatAddress
+                
+                const panDocumentUrl = normalizeImageUrl(r?.panDocument || r?.onboarding?.step3?.pan?.panDocument)
+                const gstDocumentUrl = normalizeImageUrl(r?.gstDocument || r?.onboarding?.step3?.gst?.gstDocument)
+                const fssaiDocumentUrl = normalizeImageUrl(r?.fssaiDocument || r?.onboarding?.step3?.fssai?.document)
+                const bankDocumentUrl = normalizeImageUrl(r?.bankDocument || r?.onboarding?.step3?.bank?.passbookImage)
 
+                const hasPanSection = !!(r?.panNumber || r?.onboarding?.step3?.pan?.panNumber || panDocumentUrl)
+                const hasGstSection = !!(r?.gstNumber || r?.onboarding?.step3?.gst?.gstNumber || gstDocumentUrl)
+                const hasFssaiSection = !!(r?.fssaiNumber || r?.onboarding?.step3?.fssai?.registrationNumber || fssaiDocumentUrl)
+                const hasBankSection = !!(r?.accountNumber || r?.onboarding?.step3?.bank?.accountNumber || bankDocumentUrl)
+                
+                const hasRegistrationDocuments = hasPanSection || hasGstSection || hasFssaiSection || hasBankSection
+
+                return (
+                  <div className="space-y-10">
+                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                      <div className="w-full md:w-48 aspect-4/5 rounded-3xl overflow-hidden shadow-2xl shadow-blue-100 shrink-0 border-4 border-white">
+                        <img
+                          src={profileImgUrl || PLACEHOLDER_128}
+                          alt={r?.restaurantName || r?.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = PLACEHOLDER_128
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 space-y-6 pt-2">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3 mb-3">
+                            <h3 className="text-3xl font-black text-slate-900 tracking-tight">{r?.restaurantName || r?.name}</h3>
+                            {r.ratings?.average !== undefined && (
+                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-xl">
+                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
+                                <span className="text-sm font-bold text-yellow-700">
+                                  {(r.ratings?.average ?? 0).toFixed(1)}
+                                </span>
+                                <span className="text-xs text-yellow-600/70 ml-1 font-medium">
+                                  ({(r.ratings?.count ?? 0)} reviews)
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                              <Building2 className="w-4 h-4" />
+                              <span className="text-xs font-bold tracking-wider">{formatRestaurantId(r?.restaurantId || r?._id)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100">
+                              <Wallet className="w-4 h-4" />
+                              <span className="text-xs font-bold tracking-wider">Wallet: ₹{(r?.balance || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
                     {/* Owner Information */}
                     <div className="space-y-6">
@@ -1733,11 +1731,11 @@ export default function RestaurantsList() {
                         )}
                         <div>
                           <p className="text-xs text-slate-500 mb-1">Status</p>
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${approvalStatusBadgeClass(detailsApprovalStatus)}`}>
-                            {approvalStatusLabel(detailsApprovalStatus)}
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${approvalStatusBadgeClass(detailsApprovalStatus, r?.isDeleted)}`}>
+                            {approvalStatusLabel(detailsApprovalStatus, r?.isDeleted)}
                           </span>
                           <p className="mt-2 text-xs text-slate-500">
-                            Outlet: {(r?.isActive !== false) ? "Active" : "Inactive"}
+                            Outlet: {(r?.status === "approved") ? "Active" : "Inactive"}
                           </p>
                         </div>
                       </div>

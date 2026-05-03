@@ -16,6 +16,21 @@ import { logger } from "../../utils/logger.js";
 import { sendAdminResetOtpEmail } from "../../utils/email.js";
 import mongoose from "mongoose";
 import { creditReferralReward } from "../../modules/food/user/services/userWallet.service.js";
+import { FoodItem } from "../../modules/food/admin/models/food.model.js";
+import { FoodCategory } from "../../modules/food/admin/models/category.model.js";
+import { FoodAddon } from "../../modules/food/restaurant/models/foodAddon.model.js";
+import { FoodOrder } from "../../modules/food/orders/models/order.model.js";
+
+const ACTIVE_ORDER_STATUSES = [
+  "payment_pending",
+  "created",
+  "confirmed",
+  "preparing",
+  "ready_for_pickup",
+  "reached_pickup",
+  "picked_up",
+  "reached_drop",
+];
 
 const ROLES = {
   USER: "USER",
@@ -60,8 +75,9 @@ export const verifyUserOtpAndLogin = async (
   // Directly find or create a FoodUser for this phone.
   // Each module (user/restaurant/delivery) maintains its own independent account,
   // so the same phone number can register across all three portals.
-  let userDoc = await FoodUser.findOne({ 
-    $or: [{ phone: normalized }, { phone: { $regex: new RegExp(normalized + "$") } }] 
+  let userDoc = await FoodUser.findOne({
+    $or: [{ phone }, { email: phone }],
+    isDeleted: { $ne: true },
   });
   
   // Ensure user exists and mark as verified on successful OTP.
@@ -276,6 +292,7 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
       ...phoneOrFields("ownerPhone"),
       ...phoneOrFields("primaryContactNumber"),
     ],
+    isDeleted: { $ne: true },
   });
   if (!restaurant) {
     // Phone has been successfully verified, but no restaurant exists yet.
@@ -353,19 +370,24 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
     throw new AuthError(result.reason || "OTP verification failed");
   }
 
+  const digits = String(phone || "").replace(/\D/g, "");
+  const last10 = digits.slice(-10);
+  const phoneCandidates = [phone, digits, last10].filter(Boolean);
+
   const normalized = normalizePhoneForDelivery(phone);
   if (!normalized) {
     return { needsRegistration: true, phone };
   }
 
-  const deliveryPartner = await FoodDeliveryPartner.findOne({
+  const partner = await FoodDeliveryPartner.findOne({
     $or: [
-      { phone: normalized },
-      { phone: { $regex: new RegExp(normalized + "$") } },
+      { phone: { $in: phoneCandidates } },
+      ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : []),
     ],
+    isDeleted: { $ne: true },
   });
 
-  if (!deliveryPartner) {
+  if (!partner) {
     return { needsRegistration: true, phone };
   }
 
@@ -463,6 +485,24 @@ export const deleteMyAccount = async (
     throw new AuthError("Invalid token payload");
   }
 
+  // 0. Safety Check: Block deletion if there are active orders
+  let activeOrderQuery = null;
+  if (role === ROLES.USER) {
+    activeOrderQuery = { userId, orderStatus: { $in: ACTIVE_ORDER_STATUSES } };
+  } else if (role === ROLES.RESTAURANT) {
+    activeOrderQuery = { restaurantId: userId, orderStatus: { $in: ACTIVE_ORDER_STATUSES } };
+  } else if (role === ROLES.DELIVERY_PARTNER) {
+    activeOrderQuery = { "dispatch.deliveryPartnerId": userId, orderStatus: { $in: ACTIVE_ORDER_STATUSES } };
+  }
+
+  if (activeOrderQuery) {
+    const activeOrdersCount = await FoodOrder.countDocuments(activeOrderQuery);
+    if (activeOrdersCount > 0) {
+      throw new ValidationError("Cannot delete account while you have active orders. Please complete or settle your ongoing orders first.");
+    }
+  }
+
+
   // Best-effort cleanup: remove specific refresh token if provided.
   if (refreshToken) {
     await FoodRefreshToken.deleteOne({ token: refreshToken });
@@ -495,10 +535,34 @@ export const deleteMyAccount = async (
       deleted = await FoodUser.deleteOne({ _id: userId });
       break;
     case ROLES.RESTAURANT:
-      deleted = await FoodRestaurant.deleteOne({ _id: userId });
+      // Soft delete the restaurant profile
+      deleted = await FoodRestaurant.updateOne(
+        { _id: userId },
+        { 
+          $set: { 
+            isDeleted: true, 
+            deletedAt: new Date(),
+            status: 'rejected' // Ensure they don't appear in active lists
+          } 
+        }
+      );
+      if (deleted.modifiedCount > 0) {
+        // Hard delete associated menu data as requested
+        await Promise.all([
+          FoodItem.deleteMany({ restaurantId: userId }),
+          FoodCategory.deleteMany({ restaurantId: userId }),
+          FoodAddon.deleteMany({ restaurantId: userId })
+        ]);
+        deleted.deletedCount = deleted.modifiedCount;
+      }
       break;
     case ROLES.DELIVERY_PARTNER:
-      deleted = await FoodDeliveryPartner.deleteOne({ _id: userId });
+      // Soft delete the delivery partner
+      deleted = await FoodDeliveryPartner.updateOne(
+        { _id: userId },
+        { $set: { isDeleted: true, deletedAt: new Date() } }
+      );
+      deleted.deletedCount = deleted.modifiedCount;
       break;
     default:
       throw new AuthError("Delete account is not supported for this role");

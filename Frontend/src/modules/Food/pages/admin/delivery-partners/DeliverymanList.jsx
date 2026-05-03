@@ -26,6 +26,7 @@ export default function DeliverymanList() {
   const [editValues, setEditValues] = useState({ pocketBalance: "", cashInHand: "" })
   const [savingDeliveryId, setSavingDeliveryId] = useState(null)
   const [deletingDeliveryId, setDeletingDeliveryId] = useState(null)
+  const [activeStatusTab, setActiveStatusTab] = useState("All")
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     name: true,
@@ -75,6 +76,7 @@ export default function DeliverymanList() {
       const params = {
         page: 1,
         limit: 1000, // Get all for now
+        status: activeStatusTab === "All" ? undefined : activeStatusTab.toLowerCase(),
       }
 
       // Add search to params if provided
@@ -100,13 +102,13 @@ export default function DeliverymanList() {
           return {
             ...partner,
             walletSummary: wallet || null,
-pocketBalance: wallet?.pocketBalance || 0,
-cashInHand: wallet?.cashCollected || 0,
-remainingCashLimit: wallet?.remainingCashLimit || 0,
-totalEarning: wallet?.totalEarning || 0,
-bonus: wallet?.bonus || 0,
-totalWithdrawn: wallet?.totalWithdrawn || 0,
-availableCashLimit: wallet?.availableCashLimit || 0,
+            pocketBalance: partner.balance ?? wallet?.pocketBalance ?? 0,
+            cashInHand: wallet?.cashCollected || 0,
+            remainingCashLimit: wallet?.remainingCashLimit || 0,
+            totalEarning: wallet?.totalEarning || 0,
+            bonus: wallet?.bonus || 0,
+            totalWithdrawn: wallet?.totalWithdrawn || 0,
+            availableCashLimit: wallet?.availableCashLimit || 0,
           }
         })
 
@@ -143,7 +145,7 @@ availableCashLimit: wallet?.availableCashLimit || 0,
   // Fetch on mount
   useEffect(() => {
     fetchDeliverymen()
-  }, [])
+  }, [activeStatusTab]) // Refetch when tab changes
 
   // Debounced search effect
   useEffect(() => {
@@ -388,6 +390,22 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
               <h1 className="text-2xl font-bold text-slate-900">Deliveryman List</h1>
             </div>
 
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {["All", "Active", "Inactive", "Pending", "Rejected", "Deleted"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveStatusTab(tab)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
+                    activeStatusTab === tab
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-center gap-3">
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
@@ -522,6 +540,7 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                         </div>
                       </th>
                     )}
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Status</th>
                     {visibleColumns.availabilityStatus && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         <div className="flex items-center gap-2">
@@ -641,6 +660,11 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                             <span className="text-sm text-slate-700">{formatCurrency(dm.remainingCashLimit)}</span>
                           </td>
                         )}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${dm.isDeleted ? "bg-slate-100 text-slate-700 border border-slate-200" : dm.status === 'Online' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                              {dm.isDeleted ? "Deleted" : dm.status}
+                           </span>
+                        </td>
                         {visibleColumns.availabilityStatus && (
                           <td className="px-6 py-4">
                             <div className="flex flex-col">

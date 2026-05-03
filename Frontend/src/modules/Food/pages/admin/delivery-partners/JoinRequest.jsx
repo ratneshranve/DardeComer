@@ -343,6 +343,7 @@ export default function JoinRequest() {
                         <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                       </div>
                     </th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Type</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <span>Contact</span>
@@ -379,7 +380,7 @@ export default function JoinRequest() {
                 <tbody className="bg-white divide-y divide-slate-100">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-20 text-center">
+                      <td colSpan={9} className="px-6 py-20 text-center">
                         <p className="text-sm text-slate-500">
                           {error ? "Error loading requests" : "No requests found"}
                         </p>
@@ -416,6 +417,15 @@ export default function JoinRequest() {
                               {request.name}
                             </span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                            request.pendingUpdate 
+                              ? "bg-purple-100 text-purple-700 border border-purple-200" 
+                              : "bg-blue-100 text-blue-700 border border-blue-200"
+                          }`}>
+                            {request.pendingUpdate ? "Update" : "New"}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col">

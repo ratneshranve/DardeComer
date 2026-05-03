@@ -249,6 +249,14 @@ const restaurantSchema = new mongoose.Schema(
     rejectedAt: {
       type: Date,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+    },
     rejectionReason: {
       type: String,
       trim: true,

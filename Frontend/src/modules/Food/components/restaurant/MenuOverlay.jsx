@@ -30,6 +30,9 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem("restaurant_authenticated") === "true"
   })
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Listen for authentication state changes
   useEffect(() => {
@@ -126,6 +129,13 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
   }
 
   const handleRestaurantDeleteAccount = async () => {
+    if (isDeleting) return
+    if (deleteConfirmationText !== "DELETE") {
+      toast.error("Please type DELETE to confirm")
+      return
+    }
+
+    setIsDeleting(true)
     try {
       await restaurantAPI.deleteAccount()
       clearModuleAuth("restaurant")
@@ -135,11 +145,16 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
       navigate("/restaurant/login", { replace: true })
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to delete account")
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+      setShowMenu(false)
     }
   }
 
   return (
-    <AnimatePresence mode="wait">
+    <>
+      <AnimatePresence mode="wait">
       {showMenu && (
         <>
           {/* Backdrop */}
@@ -209,9 +224,8 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
                           }
                         } else if (option.isDeleteAccount) {
                           // Handle delete account
-                          if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-                            handleRestaurantDeleteAccount()
-                          }
+                          setDeleteConfirmationText("")
+                          setShowDeleteConfirm(true)
                         } else {
                           navigate(option.route)
                         }
@@ -259,6 +273,72 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
         </>
       )}
     </AnimatePresence>
+
+    {/* Delete Account Confirmation Dialog */}
+    <AnimatePresence>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDeleteConfirm(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden"
+          >
+            <div className="p-6">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Delete Account?</h3>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                Are you sure you want to delete your account? This action cannot be undone.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 block">
+                    Type <span className="text-red-600">DELETE</span> to confirm
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmationText}
+                    onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRestaurantDeleteAccount}
+                    disabled={isDeleting || deleteConfirmationText !== "DELETE"}
+                    className="flex-1 px-4 py-3 rounded-2xl bg-red-600 text-sm font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-200"
+                  >
+                    {isDeleting ? "Deleting..." : "Confirm"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  </>
   )
 }
 

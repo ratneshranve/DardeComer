@@ -354,6 +354,10 @@ export default function ExploreMore() {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [existingSchedule, setExistingSchedule] = useState(null)
+  
+  // Deletion confirmation states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   const STORAGE_KEY = "restaurant_schedule_off"
 
@@ -615,10 +619,15 @@ export default function ExploreMore() {
   const handleDeleteAccount = async () => {
     if (isDeletingAccount || isLoggingOut) return
 
-    const confirmed = window.confirm("Are you sure you want to delete your account? This action cannot be undone.")
-    if (!confirmed) return
+    setDeleteConfirmationText("")
+    setShowDeleteConfirm(true)
+  }
 
+  const confirmDeleteAccount = async () => {
+    if (deleteConfirmationText !== "DELETE") return
+    
     setIsDeletingAccount(true)
+    setShowDeleteConfirm(false)
     setProfileOpen(false)
 
     try {
@@ -1761,6 +1770,83 @@ export default function ExploreMore() {
         )}
       </AnimatePresence>
       <BottomNavOrders />
+
+      {/* Delete Account Confirmation Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-primary/50 z-[10001]"
+              onClick={() => {
+                if (!isDeletingAccount) setShowDeleteConfirm(false)
+              }}
+            />
+
+            {/* Dialog */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 flex items-center justify-center z-[10002] px-4 pointer-events-none"
+            >
+              <div 
+                className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+                    <Trash2 className="w-7 h-7 text-red-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Delete Account?</h3>
+                  <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                    <p className="text-sm font-semibold text-red-700 leading-tight">
+                      Warning: All your earnings, wallet balance, and restaurant data will be permanently lost.
+                    </p>
+                  </div>
+                  <p className="mt-4 text-sm text-gray-500">
+                    This action cannot be undone. Please type <span className="font-bold text-gray-900">DELETE</span> below to confirm.
+                  </p>
+                </div>
+
+                <div className="mt-5">
+                  <input
+                    type="text"
+                    value={deleteConfirmationText}
+                    onChange={(e) => setDeleteConfirmationText(e.target.value.toUpperCase())}
+                    placeholder="Type DELETE here"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center font-bold text-gray-900 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-red-500 transition-all uppercase"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteAccount}
+                    disabled={deleteConfirmationText !== "DELETE" || isDeletingAccount}
+                    className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDeletingAccount ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

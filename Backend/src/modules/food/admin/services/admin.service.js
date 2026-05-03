@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { FoodRestaurantWallet } from '../../restaurant/models/restaurantWallet.model.js';
+import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
 import { FoodZone } from '../models/zone.model.js';
 import { FoodCategory } from '../models/category.model.js';
@@ -29,7 +31,7 @@ import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurantWithdrawal.model.js';
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
-import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
+
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
 import {
@@ -277,28 +279,99 @@ export async function updateRestaurantComplaint(id, updateData) {
     return updated;
 }
 
+const isDeliveredLike = (orderStatus, txStatus) => {
+    const normalizedOrderStatus = String(orderStatus || '').toLowerCase();
+    const normalizedTxStatus = String(txStatus || '').toLowerCase();
+    return (
+        normalizedOrderStatus === 'delivered' ||
+        normalizedOrderStatus === 'completed' ||
+        ['captured', 'authorized', 'settled'].includes(normalizedTxStatus)
+    );
+};
+
+export async function calculateRestaurantWalletBalance(restaurantId) {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return 0;
+    const rid = new mongoose.Types.ObjectId(restaurantId);
+
+    // 1. Calculate global estimated payout (all unsettled transactions)
+    const allUnsettledTransactions = await FoodTransaction.find({
+        restaurantId: rid,
+        'settlement.isRestaurantSettled': { $ne: true }
+    })
+        .populate('orderId', 'orderStatus deliveryState')
+        .select('amounts.restaurantShare status orderId')
+        .lean();
+
+    const globalEstimatedPayout = allUnsettledTransactions.reduce(
+        (sum, tx) => {
+            const order = tx.orderId || {};
+            const orderStatus = order?.orderStatus || order?.deliveryState?.currentPhase || order?.deliveryState?.status;
+            if (!isDeliveredLike(orderStatus, tx.status)) return sum;
+            return sum + (Number(tx.amounts?.restaurantShare) || 0);
+        },
+        0
+    );
+
+    // 2. Subtract pending and approved withdrawals
+    const withdrawalAgg = await FoodRestaurantWithdrawal.aggregate([
+        {
+            $match: {
+                restaurantId: rid,
+                $expr: { $in: [{ $toLower: { $trim: { input: '$status' } } }, ['pending', 'approved']] }
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                total: { $sum: '$amount' }
+            }
+        }
+    ]);
+
+    const totalConsumedWithdrawals = Number(withdrawalAgg?.[0]?.total || 0);
+    return Math.max(0, globalEstimatedPayout - totalConsumedWithdrawals);
+}
+
 export async function getRestaurants(query) {
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 100, 1), 1000);
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
     const status = query.status;
     const filter = {};
-    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
-        filter.status = status;
+
+    if (status === 'deleted') {
+        filter.isDeleted = true;
+    } else {
+        filter.isDeleted = { $ne: true };
+        if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+            filter.status = status;
+        }
     }
+
     if (query.view === 'pending-dining') {
         filter.pendingDiningSettings = { $exists: true, $ne: null };
     }
-    const [restaurants, total] = await Promise.all([
+
+    const [restaurantsRaw, total] = await Promise.all([
         FoodRestaurant.find(filter)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId pendingDiningSettings diningSettings')
+            .select('restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId pendingDiningSettings diningSettings isDeleted deletedAt')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)
     ]);
+
+    // Attach real-time balances
+    const restaurants = await Promise.all(restaurantsRaw.map(async (r) => {
+        const balance = await calculateRestaurantWalletBalance(r._id);
+        return {
+            ...r,
+            balance
+        };
+    }));
+
     return { restaurants, total, page, limit };
 }
 
@@ -2097,10 +2170,16 @@ export async function getRestaurantReviews(query = {}) {
 
 export async function getRestaurantById(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
-    return FoodRestaurant.findById(id)
-        .select('-__v')
-        .populate('zoneId', 'name zoneName serviceLocation isActive')
-        .lean();
+    const [restaurant, balance] = await Promise.all([
+        FoodRestaurant.findById(id)
+            .select('-__v')
+            .populate('zoneId', 'name zoneName serviceLocation isActive')
+            .lean(),
+        calculateRestaurantWalletBalance(id)
+    ]);
+
+    if (!restaurant) return null;
+    return { ...restaurant, balance };
 }
 
 export async function getRestaurantAnalytics(restaurantId) {
@@ -2295,6 +2374,20 @@ export async function updateRestaurantById(id, body = {}) {
 
     if (body.pureVegRestaurant !== undefined) {
         doc.pureVegRestaurant = parseBooleanLike(body.pureVegRestaurant, 'pureVegRestaurant');
+    }
+
+    if (body.isActive !== undefined) {
+        const isActive = parseBooleanLike(body.isActive, 'isActive');
+        doc.status = isActive ? 'approved' : 'rejected';
+        if (isActive) {
+            doc.approvedAt = new Date();
+            doc.rejectedAt = undefined;
+            doc.rejectionReason = undefined;
+        } else {
+            doc.rejectedAt = new Date();
+            doc.approvedAt = undefined;
+            doc.rejectionReason = 'Disabled by admin';
+        }
     }
 
     if (body.isAcceptingOrders !== undefined) {
@@ -3680,8 +3773,20 @@ export async function updateDeliverySupportTicket(id, body = {}) {
 
 // ----- Delivery partners (approved list) -----
 export async function getDeliveryPartners(query) {
-    const { page = 1, limit = 1000, search } = query;
-    const filter = { status: 'approved' };
+    const { page = 1, limit = 100, search, status } = query;
+    const filter = {};
+
+    if (status === 'deleted') {
+        filter.isDeleted = true;
+    } else {
+        filter.isDeleted = { $ne: true };
+        if (status === 'pending') {
+            filter.status = 'pending';
+        } else {
+            filter.status = 'approved';
+        }
+    }
+
     if (search && typeof search === 'string' && search.trim()) {
         const term = search.trim();
         filter.$or = [
@@ -3705,30 +3810,19 @@ export async function getDeliveryPartners(query) {
         FoodDeliveryPartner.countDocuments(filter)
     ]);
 
-    const deliveryPartners = list.map((doc, index) => ({
-        _id: doc._id,
-        sl: skip + index + 1,
-        name: doc.name || '',
-        email: doc.email || '',
-        phone: doc.phone || '',
-        deliveryId: doc._id ? `DP-${doc._id.toString().slice(-8).toUpperCase()}` : null,
-        zone: doc.city || doc.state || doc.address || '',
-        vehicleType: doc.vehicleType || '',
-        status: doc.status,
-        profilePhoto: doc.profilePhoto || null,
-        profileImage: doc.profilePhoto ? { url: doc.profilePhoto } : null
+    const deliveryPartners = await Promise.all(list.map(async (doc, index) => {
+        const wallet = await FoodDeliveryWallet.findOne({ deliveryPartnerId: doc._id }).select('balance').lean();
+        return {
+            ...doc,
+            _id: doc._id,
+            sl: skip + index + 1,
+            balance: wallet?.balance || 0
+        };
     }));
 
-    return {
-        deliveryPartners,
-        pagination: {
-            page: Number(page) || 1,
-            limit: limitNum,
-            total,
-            pages: Math.ceil(total / limitNum) || 1
-        }
-    };
+    return { deliveryPartners, total, page, limit: limitNum };
 }
+
 
 // ----- Delivery partner bonus (admin) -----
 function generateBonusTransactionId() {
@@ -4655,13 +4749,16 @@ export async function getWithdrawals(query = {}) {
     ]);
 
     // UI expects status with first letter capitalized, and data in 'requests' key
-    const requests = withdrawals.map((w) => ({
-        ...w,
-        id: w._id,
-        restaurantName: w.restaurantId?.restaurantName || 'N/A',
-        restaurantIdString: w.restaurantId ? `REST${w.restaurantId._id.toString().slice(-6).padStart(6, '0')}` : 'N/A',
-        restaurantBankDetails: {
-            accountHolderName: w.restaurantId?.accountHolderName || '',
+    const requests = await Promise.all(withdrawals.map(async (w) => {
+        const currentBalance = w.restaurantId?._id ? await calculateRestaurantWalletBalance(w.restaurantId._id) : 0;
+        return {
+            ...w,
+            id: w._id,
+            restaurantName: w.restaurantId?.restaurantName || 'N/A',
+            restaurantIdString: w.restaurantId ? `REST${w.restaurantId._id.toString().slice(-6).padStart(6, '0')}` : 'N/A',
+            currentBalance,
+            restaurantBankDetails: {
+                accountHolderName: w.restaurantId?.accountHolderName || '',
             accountNumber: w.restaurantId?.accountNumber || '',
             ifscCode: w.restaurantId?.ifscCode || '',
             accountType: w.restaurantId?.accountType || '',
@@ -4669,7 +4766,8 @@ export async function getWithdrawals(query = {}) {
             upiQrImage: w.restaurantId?.upiQrImage || ''
         },
         status: w.status.charAt(0).toUpperCase() + w.status.slice(1)
-    }));
+    };
+}));
 
     return { requests, total, page, limit };
 }

@@ -31,6 +31,7 @@ export const ProfileV2 = () => {
   const [logoutSubmitting, setLogoutSubmitting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   // Fetch profile data
   useEffect(() => {
@@ -117,6 +118,10 @@ export const ProfileV2 = () => {
 
   const handleDeleteAccount = async () => {
     if (deleteSubmitting) return
+    if (deleteConfirmationText !== "DELETE") {
+      toast.error("Please type DELETE to confirm")
+      return
+    }
     setShowDeleteConfirm(false)
     try {
       setDeleteSubmitting(true)
@@ -236,7 +241,10 @@ export const ProfileV2 = () => {
 
             {/* Delete Account Section */}
             <div 
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => {
+                setDeleteConfirmationText("")
+                setShowDeleteConfirm(true)
+              }}
               className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer border border-red-50 hover:bg-red-50/30 active:bg-red-50 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -280,7 +288,6 @@ export const ProfileV2 = () => {
         </div>
       )}
 
-      {/* Delete Account Confirm Popup */}
       {showDeleteConfirm && (
         <div 
           className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center px-4"
@@ -300,22 +307,35 @@ export const ProfileV2 = () => {
               Delete account?
             </h3>
             <p className="text-slate-500 text-center text-sm font-medium mb-6">
-              Are you sure you want to delete your account? This action cannot be undone.
+              Are you sure you want to delete your account? This action cannot be undone. <span className="text-red-600 font-semibold block mt-2">Your wallet amount and earnings will be permanently deleted.</span>
             </p>
+
+            <div className="mb-6">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">
+                Type <span className="text-red-600">DELETE</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="Type DELETE here"
+                className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 text-sm font-bold focus:outline-none focus:border-red-500 transition-colors"
+              />
+            </div>
 
             <div className="flex flex-row-reverse gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 h-11 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
               >
-                No
+                Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
-                disabled={deleteSubmitting}
-                className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60"
+                disabled={deleteSubmitting || deleteConfirmationText !== "DELETE"}
+                className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {deleteSubmitting ? "Deleting..." : "Yes, Delete"}
+                {deleteSubmitting ? "Deleting..." : "Confirm"}
               </button>
             </div>
           </div>
