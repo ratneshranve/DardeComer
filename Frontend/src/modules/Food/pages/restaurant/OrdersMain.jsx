@@ -1042,7 +1042,6 @@ export default function OrdersMain() {
     hasSubmittedForVerification: false,
     isLoading: true,
   });
-  const [isReverifying, setIsReverifying] = useState(false);
   const audioUnlockedRef = useRef(false);
   const showNewOrderPopupRef = useRef(showNewOrderPopup);
   const isMutedRef = useRef(isMuted);
@@ -1210,68 +1209,11 @@ export default function OrdersMain() {
     };
   }, [navigate]);
 
-  // Handle reverify (resubmit for approval)
-  const handleReverify = async () => {
-    try {
-      setIsReverifying(true);
-      await restaurantAPI.reverify();
-
-      // Refresh restaurant status
-      const response = await restaurantAPI.getCurrentRestaurant();
-      const restaurant =
-        response?.data?.data?.restaurant || response?.data?.restaurant;
-      if (restaurant) {
-        setRestaurantStatus({
-          isActive: restaurant.isActive,
-          status: restaurant.status || null,
-          rejectionReason: restaurant.rejectionReason || null,
-          onboarding: restaurant.onboarding || null,
-          hasSubmittedForVerification:
-            Number(restaurant?.onboarding?.completedSteps || 0) >= 4 ||
-            restaurant?.isActive === false,
-          isLoading: false,
-        });
-      }
-
-      // Trigger profile refresh event
-      window.dispatchEvent(new Event("restaurantProfileRefresh"));
-
-      // Navigate to onboarding so they can fix/review data before resubmitting
-      navigate("/restaurant/onboarding?step=1", { replace: true });
-    } catch (error) {
-      // Don't log network/timeout errors (backend might be down)
-      if (
-        error.code !== "ERR_NETWORK" &&
-        error.code !== "ECONNABORTED" &&
-        !error.message?.includes("timeout")
-      ) {
-        debugError("Error reverifying restaurant:", error);
-      }
-
-      // Handle 401 Unauthorized errors (token expired/invalid)
-      if (error.response?.status === 401) {
-        const errorMessage =
-          error.response?.data?.message ||
-          "Your session has expired. Please login again.";
-        alert(errorMessage);
-        // The axios interceptor should handle redirecting to login
-        // But if it doesn't, we can manually redirect
-        if (!error.response?.data?.message?.includes("inactive")) {
-          // Only redirect if it's not an "inactive" error (which we handle differently)
-          setTimeout(() => {
-            window.location.href = "/restaurant/login";
-          }, 1500);
-        }
-      } else {
-        // Other errors (400, 500, etc.)
-        const errorMessage =
-          error.response?.data?.message ||
-          "Failed to reverify restaurant. Please try again.";
-        alert(errorMessage);
-      }
-    } finally {
-      setIsReverifying(false);
-    }
+  // Handle re-apply (navigate to onboarding to fix details)
+  const handleReverify = () => {
+    // We no longer call restaurantAPI.reverify() here to prevent premature status changes.
+    // The status will transition to 'pending' once they click 'Finish' in the onboarding flow.
+    navigate("/restaurant/onboarding?step=1");
   };
 
   // Lenis smooth scrolling
@@ -2371,16 +2313,8 @@ export default function OrdersMain() {
                   </p>
                   <button
                     onClick={handleReverify}
-                    disabled={isReverifying}
-                    className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                    {isReverifying ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Re-apply"
-                    )}
+                    className="w-full px-6 py-2.5 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                    Re-apply
                   </button>
                 </>
               ) : (

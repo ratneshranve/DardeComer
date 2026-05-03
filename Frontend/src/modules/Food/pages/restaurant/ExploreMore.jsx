@@ -636,10 +636,14 @@ export default function ExploreMore() {
       localStorage.removeItem("restaurant_onboarding")
       sessionStorage.removeItem("restaurantAuthData")
       window.dispatchEvent(new Event("restaurantAuthChanged"))
+      toast.success("Account deleted successfully")
       navigate("/food/restaurant/login", { replace: true })
     } catch (error) {
       debugError("Error deleting account:", error)
-      alert(error?.response?.data?.message || "Failed to delete account")
+      const msg = error?.response?.data?.message || "Failed to delete account"
+      toast.error(msg, {
+        description: msg.includes("complete your orders") ? "Please deliver or cancel all active orders first." : undefined
+      })
     } finally {
       setIsDeletingAccount(false)
     }

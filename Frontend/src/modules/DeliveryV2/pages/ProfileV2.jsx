@@ -131,7 +131,10 @@ export const ProfileV2 = () => {
       toast.success("Account deleted successfully")
       navigate("/food/delivery/login", { replace: true })
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to delete account")
+      const msg = error?.response?.data?.message || "Failed to delete account"
+      toast.error(msg, {
+        description: msg.includes("complete your orders") ? "Please complete all assigned or ongoing deliveries first." : undefined
+      })
     } finally {
       setDeleteSubmitting(false)
     }

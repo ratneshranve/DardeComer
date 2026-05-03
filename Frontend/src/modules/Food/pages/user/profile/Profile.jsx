@@ -441,7 +441,10 @@ export default function Profile() {
       navigate("/user/auth/login", { replace: true });
     } catch (err) {
       debugError("Error deleting account:", err);
-      toast.error(err?.response?.data?.message || "Failed to delete account");
+      const msg = err?.response?.data?.message || "Failed to delete account";
+      toast.error(msg, {
+        description: msg.includes("complete your orders") ? "Please wait for your active orders to be delivered or cancelled." : undefined
+      });
     } finally {
       setIsDeletingAccount(false);
       setDeleteConfirmOpen(false);

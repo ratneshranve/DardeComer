@@ -293,16 +293,16 @@ export async function calculateRestaurantWalletBalance(restaurantId) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return 0;
     const rid = new mongoose.Types.ObjectId(restaurantId);
 
-    // 1. Calculate global estimated payout (all unsettled transactions)
-    const allUnsettledTransactions = await FoodTransaction.find({
-        restaurantId: rid,
-        'settlement.isRestaurantSettled': { $ne: true }
+    // 1. Calculate global lifetime earnings (all transactions where order is delivered)
+    // We ignore 'settlement.isRestaurantSettled' to make the balance dynamic
+    const allTransactions = await FoodTransaction.find({
+        restaurantId: rid
     })
         .populate('orderId', 'orderStatus deliveryState')
         .select('amounts.restaurantShare status orderId')
         .lean();
 
-    const globalEstimatedPayout = allUnsettledTransactions.reduce(
+    const globalGrossEarnings = allTransactions.reduce(
         (sum, tx) => {
             const order = tx.orderId || {};
             const orderStatus = order?.orderStatus || order?.deliveryState?.currentPhase || order?.deliveryState?.status;
@@ -312,12 +312,13 @@ export async function calculateRestaurantWalletBalance(restaurantId) {
         0
     );
 
-    // 2. Subtract pending and approved withdrawals
+    // 2. Subtract all non-rejected withdrawals (pending + approved)
+    // Pending are "reserved" and approved are "paid out"
     const withdrawalAgg = await FoodRestaurantWithdrawal.aggregate([
         {
             $match: {
                 restaurantId: rid,
-                $expr: { $in: [{ $toLower: { $trim: { input: '$status' } } }, ['pending', 'approved']] }
+                status: { $in: ['pending', 'approved'] }
             }
         },
         {
@@ -329,7 +330,7 @@ export async function calculateRestaurantWalletBalance(restaurantId) {
     ]);
 
     const totalConsumedWithdrawals = Number(withdrawalAgg?.[0]?.total || 0);
-    return Math.max(0, globalEstimatedPayout - totalConsumedWithdrawals);
+    return Math.max(0, globalGrossEarnings - totalConsumedWithdrawals);
 }
 
 export async function getRestaurants(query) {
@@ -4759,13 +4760,13 @@ export async function getWithdrawals(query = {}) {
             currentBalance,
             restaurantBankDetails: {
                 accountHolderName: w.restaurantId?.accountHolderName || '',
-            accountNumber: w.restaurantId?.accountNumber || '',
-            ifscCode: w.restaurantId?.ifscCode || '',
-            accountType: w.restaurantId?.accountType || '',
-            upiId: w.restaurantId?.upiId || '',
-            upiQrImage: w.restaurantId?.upiQrImage || ''
-        },
-        status: w.status.charAt(0).toUpperCase() + w.status.slice(1)
+                accountNumber: w.restaurantId?.accountNumber || '',
+                ifscCode: w.restaurantId?.ifscCode || '',
+                accountType: w.restaurantId?.accountType || '',
+                upiId: w.restaurantId?.upiId || '',
+                upiQrImage: w.restaurantId?.upiQrImage || ''
+            },
+            status: w.status.charAt(0).toUpperCase() + w.status.slice(1)
         };
     }));
 
