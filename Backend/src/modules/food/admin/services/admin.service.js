@@ -4766,8 +4766,8 @@ export async function getWithdrawals(query = {}) {
             upiQrImage: w.restaurantId?.upiQrImage || ''
         },
         status: w.status.charAt(0).toUpperCase() + w.status.slice(1)
-    };
-}));
+        };
+    }));
 
     return { requests, total, page, limit };
 }
