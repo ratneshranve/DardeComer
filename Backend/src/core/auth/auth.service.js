@@ -379,7 +379,7 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
     return { needsRegistration: true, phone };
   }
 
-  const partner = await FoodDeliveryPartner.findOne({
+  const deliveryPartner = await FoodDeliveryPartner.findOne({
     $or: [
       { phone: { $in: phoneCandidates } },
       ...(last10 ? [{ phone: { $regex: new RegExp(last10 + "$") } }] : []),
@@ -387,7 +387,7 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
     isDeleted: { $ne: true },
   });
 
-  if (!partner) {
+  if (!deliveryPartner) {
     return { needsRegistration: true, phone };
   }
 
