@@ -539,9 +539,15 @@ function showForegroundNotification(payload = {}, options = {}) {
   // Only show a system notification from the PAGE if this is NOT a SW relay.
   // When it IS a SW relay the service worker already showed the notification —
   // creating another one here would produce a duplicate.
-  if (!options.fromSwRelay && typeof Notification !== "undefined" && Notification.permission === "granted") {
+  const isTabVisible = typeof document !== "undefined" && document.visibilityState === "visible";
+
+  // Only show a system notification from the PAGE if:
+  // 1. This is NOT a relay from the service worker (the SW already handles background alerts).
+  // 2. The tab is currently HIDDEN (if visible, the user sees the toast instead).
+  // 3. We are NOT in a mobile WebView (where native notifications are preferred).
+  if (!options.fromSwRelay && !isTabVisible && !isFlutterWebView() && typeof Notification !== "undefined" && Notification.permission === "granted") {
     try {
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Showing browser notification from page", {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Showing browser notification from page (tab is hidden)", {
         title,
         body,
         image,

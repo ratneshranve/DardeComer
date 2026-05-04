@@ -129,17 +129,21 @@ async function loadFirebaseWebConfig() {
     
     const visibleClient = await hasVisibleClientForTarget(payload);
     
-    if (!visibleClient) {
-      const title = payload?.notification?.title || payload?.data?.title || "New Notification";
-      const body = payload?.notification?.body || payload?.data?.body || "";
+    // 💡 IMPORTANT: If the payload contains a 'notification' object, the browser/FCM SDK
+    // will often display a system notification automatically in the background.
+    // To prevent double notifications (one from browser, one from our manual call),
+    // we only call showNotification manually if 'notification' is missing (Data-only message)
+    // AND there is no visible window for the user.
+    if (!visibleClient && !payload.notification) {
+      const title = payload?.data?.title || "New Notification";
+      const body = payload?.data?.body || "";
       const image =
-        payload?.notification?.image ||
         payload?.data?.image ||
         payload?.data?.imageUrl ||
         undefined;
       const notificationKey = getNotificationKey(payload);
       
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Showing service worker notification", {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Showing manual service worker notification (Data-only message)", {
         title,
         body,
         image,
