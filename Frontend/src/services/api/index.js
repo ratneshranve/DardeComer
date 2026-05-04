@@ -118,7 +118,8 @@ export const authAPI = {
       (typeof localStorage !== "undefined"
         ? localStorage.getItem("user_refreshToken")
         : null);
-    return authService.logout(token, fcmToken, platform);
+    const fallbackToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_user") : null;
+    return authService.logout(token, fcmToken || fallbackToken, platform);
   },
   deleteAccount: (refreshToken) => {
     const token =

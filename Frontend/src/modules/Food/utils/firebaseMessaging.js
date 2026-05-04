@@ -78,32 +78,51 @@ function sanitize(value) {
 }
 
 function getNotificationKey(payload = {}) {
-  return (
-    payload?.data?.notificationId ||
-    payload?.data?.messageId ||
-    payload?.messageId ||
-    [
-      payload?.notification?.title || "",
-      payload?.notification?.body || "",
-      payload?.data?.orderId || "",
-      payload?.data?.targetUrl || "",
-    ].join("::")
-  );
+  // Use unique identifiers from FCM if available
+  const fcmId = payload?.messageId || payload?.data?.messageId || payload?.data?.notificationId;
+  if (fcmId) return String(fcmId);
+
+  // Fallback to content-based fingerprinting
+  const title = (payload?.notification?.title || payload?.data?.title || "").trim();
+  const body = (payload?.notification?.body || payload?.data?.body || "").trim();
+  const orderId = payload?.data?.orderId || "";
+  
+  if (!title && !body && !orderId) return null;
+
+  return [
+    title.toLowerCase(),
+    body.toLowerCase(),
+    orderId
+  ].join("|");
 }
 
 function wasRecentlyHandled(notificationKey) {
   if (!notificationKey) return false;
   const now = Date.now();
 
+  // Cleanup old entries
   for (const [key, timestamp] of recentForegroundNotifications.entries()) {
     if (now - timestamp > notificationDedupWindowMs) {
       recentForegroundNotifications.delete(key);
     }
   }
 
+  // Check memory-based dedup (for same tab)
   if (recentForegroundNotifications.has(notificationKey)) {
-    pushDebugLog(PUSH_DEBUG_PREFIX, "Duplicate notification skipped", { notificationKey });
+    pushDebugLog(PUSH_DEBUG_PREFIX, "Duplicate notification skipped (memory)", { notificationKey });
     return true;
+  }
+
+  // Check storage-based dedup (for cross-tab)
+  const storageKey = `fcm_handled_${notificationKey.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  if (typeof localStorage !== "undefined") {
+    const lastSeen = localStorage.getItem(storageKey);
+    if (lastSeen && now - Number(lastSeen) < notificationDedupWindowMs) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Duplicate notification skipped (storage)", { notificationKey });
+      return true;
+    }
+    localStorage.setItem(storageKey, String(now));
+    // Periodic cleanup of storage keys would be good but this is enough for now
   }
 
   recentForegroundNotifications.set(notificationKey, now);
@@ -500,10 +519,13 @@ function showForegroundNotification(payload = {}, options = {}) {
   const title =
     payload?.notification?.title ||
     payload?.data?.title ||
+    payload?.data?.alert ||
     "New notification";
   const body =
     payload?.notification?.body ||
     payload?.data?.body ||
+    payload?.data?.message ||
+    payload?.data?.msg ||
     "";
   const image =
     payload?.notification?.image ||
@@ -772,8 +794,9 @@ export async function registerWebPushForCurrentModule(pathname = window.location
         tokenPreview: `${token.slice(0, 12)}...`,
       });
 
-      // Removed localStorage caching (getSavedToken/setSavedToken) as per user requirements.
-      // The backend 'upsert' already handles duplicates efficiently.
+      // Cache the token in localStorage so it can be retrieved during logout for cleanup.
+      setSavedToken(moduleName, token);
+
       try {
         pushDebugLog(PUSH_DEBUG_PREFIX, "Synchronizing FCM token with backend database", { moduleName, tokenPreview: `${token?.slice(0, 10)}...` });
         await saveTokenByModule(moduleName, token);

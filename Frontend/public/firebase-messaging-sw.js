@@ -5,16 +5,22 @@ importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-com
 const sanitize = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "");
 const PUSH_DEBUG_PREFIX = "[push-sw]";
 const pushDebugLog = () => {};
-const getNotificationKey = (payload) =>
-  payload?.data?.notificationId ||
-  payload?.data?.messageId ||
-  payload?.messageId ||
-  [
-    payload?.notification?.title || payload?.data?.title || "",
-    payload?.notification?.body || payload?.data?.body || "",
-    payload?.data?.orderId || "",
-    payload?.data?.targetUrl || payload?.data?.link || "",
-  ].join("::");
+const getNotificationKey = (payload) => {
+  const fcmId = payload?.messageId || payload?.data?.messageId || payload?.data?.notificationId;
+  if (fcmId) return String(fcmId);
+
+  const title = (payload?.notification?.title || payload?.data?.title || "").trim();
+  const body = (payload?.notification?.body || payload?.data?.body || "").trim();
+  const orderId = payload?.data?.orderId || "";
+  
+  if (!title && !body && !orderId) return "unknown";
+
+  return [
+    title.toLowerCase(),
+    body.toLowerCase(),
+    orderId
+  ].join("|");
+};
 
 async function notifyOpenClients(payload) {
   pushDebugLog(PUSH_DEBUG_PREFIX, "Broadcasting push to open clients", { payload });

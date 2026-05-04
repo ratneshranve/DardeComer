@@ -1,5 +1,7 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useEffect, useState, createContext, useContext } from "react"
+import { Loader2 } from "lucide-react"
+import { usePaymentRecovery } from "../../hooks/usePaymentRecovery"
 import { ProfileProvider } from "@food/context/ProfileContext"
 import LocationPrompt from "./LocationPrompt"
 import { CartProvider } from "@food/context/CartContext"
@@ -137,8 +139,25 @@ export default function UserLayout() {
 
   const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250"
 
+  const { isVerifying } = usePaymentRecovery()
+
   return (
     <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200">
+      {/* Payment Recovery Overlay */}
+      {isVerifying && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/90 dark:bg-black/90 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#1a1a1a] p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 text-center max-w-[80%] border border-blue-50 dark:border-blue-900/30">
+            <div className="relative">
+              <Loader2 className="h-12 w-12 text-[#001A94] animate-spin" />
+              <div className="absolute inset-0 blur-xl bg-[#001A94]/20 animate-pulse rounded-full"></div>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Verifying Payment</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Please wait while we check your recent transaction status...</p>
+            </div>
+          </div>
+        </div>
+      )}
       <CartProvider>
         <ProfileProvider>
           <OrdersProvider>

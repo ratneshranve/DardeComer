@@ -81,6 +81,17 @@ export async function fetchRazorpayPaymentLink(paymentLinkId) {
 }
 
 /**
+ * Fetch payments associated with a Razorpay order.
+ * @param {string} rzOrderId 
+ */
+export async function fetchRazorpayOrderPayments(rzOrderId) {
+    const instance = getRazorpayInstance();
+    if (!instance) throw new Error('Razorpay not configured');
+    if (!rzOrderId) throw new Error('Razorpay orderId is required');
+    return instance.orders.fetchPayments(String(rzOrderId));
+}
+
+/**
  * ✅ NEW: Initiate a refund for a successful payment.
  * NON-BREAKING Extension for automated cancellation refunds.
  * @param {string} paymentId - Original Razorpay payment_id (captured)

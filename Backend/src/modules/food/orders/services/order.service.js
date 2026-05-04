@@ -21,7 +21,8 @@ import {
     verifyPaymentSignature,
     getRazorpayKeyId,
     isRazorpayConfigured,
-    initiateRazorpayRefund
+    initiateRazorpayRefund,
+    fetchRazorpayOrderPayments
 } from '../helpers/razorpay.helper.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
@@ -548,6 +549,67 @@ export async function verifyPayment(userId, dto) {
   return { order: normalizeOrderForClient(order), payment: order.payment };
 }
 
+// ----- Payment Recovery -----
+/**
+ * Automatically checks Razorpay for 'payment_pending' orders and marks them as paid if money was captured.
+ * This fixes the issue where the app crashes/closes before the frontend can verify the payment.
+ */
+export async function syncPendingOrdersPayment(userId) {
+  try {
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const pendingOrders = await FoodOrder.find({
+      userId: new mongoose.Types.ObjectId(userId),
+      orderStatus: "payment_pending",
+      "payment.method": "razorpay",
+      createdAt: { $gt: thirtyMinutesAgo }
+    });
+
+    if (!pendingOrders.length) return;
+
+    for (const order of pendingOrders) {
+      const rzOrderId = order.payment?.razorpay?.orderId;
+      if (!rzOrderId) continue;
+
+      try {
+        const paymentsRes = await fetchRazorpayOrderPayments(rzOrderId);
+        const payments = paymentsRes.items || [];
+        const capturedPayment = payments.find(p => p.status === 'captured');
+
+        if (capturedPayment) {
+          logger.info(`Auto-Recovery: Found captured payment ${capturedPayment.id} for Order ${order._id}`);
+          
+          order.orderStatus = "created";
+          order.payment.status = "paid";
+          order.payment.razorpay.paymentId = capturedPayment.id;
+          
+          pushStatusHistory(order, {
+            byRole: "SYSTEM",
+            from: "payment_pending",
+            to: "created",
+            note: "Payment auto-recovered via status sync (App crash fallback)",
+          });
+          
+          await order.save();
+
+          // Sync with transaction ledger
+          await foodTransactionService.updateTransactionStatus(order._id, 'captured', {
+            status: 'captured',
+            razorpayPaymentId: capturedPayment.id,
+            note: 'Payment auto-recovered via status sync'
+          });
+
+          // Notify restaurant
+          await notifyRestaurantNewOrder(order);
+        }
+      } catch (err) {
+        logger.error(`Auto-Recovery Error for Order ${order._id}: ${err.message}`);
+      }
+    }
+  } catch (err) {
+    logger.error(`Global Auto-Recovery Error: ${err.message}`);
+  }
+}
+
 // ----- Auto-assign -----
 
 /**
@@ -568,6 +630,9 @@ export async function processDispatchTimeout(orderId, partnerId, options = {}) {
 
 // ----- User: list, get, cancel -----
 export async function listOrdersUser(userId, query) {
+  // Auto-recover any missed payments before listing
+  await syncPendingOrdersPayment(userId);
+
   const { page, limit, skip } = buildPaginationOptions(query);
   const filter = { 
     userId: new mongoose.Types.ObjectId(userId),
@@ -716,6 +781,9 @@ export async function recoverStuckOrders() {
 
 export async function resyncState(userId, role) {
   if (role === "USER") {
+    // Auto-recover any missed payments before syncing state
+    await syncPendingOrdersPayment(userId);
+
     const order = await FoodOrder.findOne({
       userId: new mongoose.Types.ObjectId(userId),
       orderStatus: {

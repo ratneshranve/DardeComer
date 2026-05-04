@@ -141,11 +141,25 @@ const normalizeDataMap = (data = {}) => {
 };
 
 const buildMessagePayload = (payload = {}, token) => {
-    const notification = {
-        title: sanitizeString(payload.title || payload.notification?.title || 'New notification'),
-        body: sanitizeString(payload.body || payload.notification?.body || '')
-    };
     const data = normalizeDataMap(payload.data || {});
+    
+    // 🔍 Smart fallback for title based on data type if missing
+    let derivedTitle = payload.title || payload.notification?.title;
+    if (!derivedTitle) {
+        const type = String(data.type || '').toLowerCase();
+        if (type.includes('order')) derivedTitle = 'Order Update';
+        else if (type.includes('payment')) derivedTitle = 'Payment Update';
+        else if (type.includes('wallet')) derivedTitle = 'Wallet Update';
+        else if (type.includes('delivery')) derivedTitle = 'Delivery Update';
+        else if (type.includes('chat') || type.includes('message')) derivedTitle = 'New Message';
+        else derivedTitle = 'New notification';
+    }
+
+    const notification = {
+        title: sanitizeString(derivedTitle),
+        body: sanitizeString(payload.body || payload.notification?.body || data.body || data.message || '')
+    };
+    
     const image =
         sanitizeString(payload.icon || payload.notification?.image || payload.notification?.icon || data.image || data.imageUrl);
 
@@ -160,9 +174,11 @@ const buildMessagePayload = (payload = {}, token) => {
         }
     }
 
-    if (Object.keys(data).length > 0) {
-        message.data = data;
-    }
+    // Always include the text in data so the frontend can retrieve it even if 'notification' block is stripped or missing
+    if (!data.title) data.title = notification.title;
+    if (!data.body) data.body = notification.body;
+    
+    message.data = data;
 
     message.android = {
         priority: 'high',

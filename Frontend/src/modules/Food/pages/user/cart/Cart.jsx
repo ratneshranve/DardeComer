@@ -1813,6 +1813,9 @@ export default function Cart() {
       // Get company name for Razorpay
       const companyName = await getCompanyNameAsync()
 
+      // Store payment attempt for recovery if app crashes
+      localStorage.setItem('payment_in_progress', order._id || order.orderId);
+
       // Initialize Razorpay payment
       await initRazorpayPayment({
         key: razorpay.key,
@@ -1861,6 +1864,7 @@ export default function Cart() {
               setPlacedOrderId(order._id || order.orderId)
               setShowOrderSuccess(true)
               window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
+              localStorage.removeItem('payment_in_progress');
               clearCart()
               setIsPlacingOrder(false)
             } else {
@@ -1885,11 +1889,13 @@ export default function Cart() {
             const errorMessage = error?.description || error?.message || "Payment failed. Please try again."
             toast.error(errorMessage, { duration: 3000 })
           }
+          localStorage.removeItem('payment_in_progress');
           setIsPlacingOrder(false)
         },
         onClose: () => {
           debugLog("?? Payment modal closed by user")
           toast.error("Payment not completed. Please try again to place your order.")
+          localStorage.removeItem('payment_in_progress');
           setIsPlacingOrder(false)
         }
       })
