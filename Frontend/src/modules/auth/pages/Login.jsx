@@ -155,7 +155,8 @@ export default function UnifiedOTPFastLogin() {
     }
 
     setAuthData(moduleKey, accessToken, user, refreshToken)
-    toast.success(`Login successful! Logged in as ${role.toLowerCase().replace('_', ' ')}`)
+    const roleText = role.toUpperCase() === "USER" ? "" : ` Logged in as ${role.toLowerCase().replace('_', ' ')}`
+    toast.success(`Login successful!${roleText}`)
     navigate(navigatePath, { replace: true })
   }
 

@@ -129,120 +129,118 @@ export default function ReferEarn() {
           <h1 className="text-xl font-bold text-black dark:text-white">Refer & Earn</h1>
         </div>
 
-        <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl border-0 dark:border-gray-800 shadow-sm mb-3">
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Invite friends and earn when they sign up.
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-3">
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Reward per invite</p>
-                <p className="text-lg font-bold text-[#EB590E]">{"\u20B9"}{stats.rewardAmount}</p>
+        <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl border-0 shadow-sm mb-4">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center shrink-0">
+                <Share2 className="h-6 w-6 text-[#001A94] dark:text-blue-400" />
               </div>
-              <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-3">
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Referral earnings</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {"\u20B9"}{stats.totalReferralEarnings}
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Invite & Earn</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                  Refer your friends to join {companyName}. You'll earn rewards directly in your wallet once they sign up.
                 </p>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-800/40 p-4 border border-gray-100 dark:border-gray-800">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Per Invite</p>
+                <p className="text-xl font-bold text-[#001A94] dark:text-blue-400">₹{stats.rewardAmount}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 dark:bg-gray-800/40 p-4 border border-gray-100 dark:border-gray-800">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total Earned</p>
+                <p className="text-xl font-bold text-green-600 dark:text-green-400">₹{stats.totalReferralEarnings}</p>
+              </div>
+            </div>
+
             <Button
               type="button"
               onClick={handleShare}
               disabled={!referralLink}
-              className="w-full mt-3 h-11 rounded-xl bg-[#EB590E] hover:bg-[#d84f0a]"
+              className="w-full mt-6 h-12 rounded-xl bg-[#001A94] hover:bg-blue-800 text-white font-bold shadow-lg shadow-blue-900/10 transition-transform active:scale-95"
             >
               <Share2 className="h-4 w-4 mr-2" />
-              Share Invite
+              Share Link
             </Button>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <Card className="border-0 shadow-sm bg-white dark:bg-[#1a1a1a]">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[11px]">
-                <Users className="h-3.5 w-3.5" />
-                Invited
-              </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.totalInvited}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm bg-white dark:bg-[#1a1a1a]">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[11px]">
-                <CircleCheck className="h-3.5 w-3.5" />
-                Credited
-              </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stats.creditedCount}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm bg-white dark:bg-[#1a1a1a]">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[11px]">
-                <Wallet className="h-3.5 w-3.5" />
-                Total
-              </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{"\u20B9"}{stats.totalReferralEarnings}</p>
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {[
+            { label: "Invited", val: stats.totalInvited, icon: Users },
+            { label: "Success", val: stats.creditedCount, icon: CircleCheck },
+            { label: "Pending", val: stats.pendingCount, icon: Clock3 },
+          ].map((item, idx) => (
+            <Card key={idx} className="border-0 shadow-sm bg-white dark:bg-[#1a1a1a] rounded-xl overflow-hidden">
+              <CardContent className="p-4 text-center">
+                <item.icon className="h-4 w-4 mx-auto mb-2 text-gray-400" />
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{item.label}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{item.val}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 px-1">
+            <div className="w-1 h-4 bg-[#001A94] rounded-full" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Referrals</h3>
+          </div>
+
+          <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl border-0 shadow-sm overflow-hidden">
+            <CardContent className="p-2">
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="w-8 h-8 border-2 border-[#001A94] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 font-medium">Syncing your network...</p>
+                </div>
+              ) : invitedFriends.length === 0 ? (
+                <div className="p-10 text-center">
+                  <Users className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed px-4">
+                    Your referral list is empty. Start sharing to earn rewards!
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {invitedFriends.map((item) => {
+                    const meta = statusMeta[item?.status] || statusMeta.pending;
+                    const StatusIcon = meta.icon;
+                    const invitedDate = item?.invitedAt ? new Date(item.invitedAt) : null;
+                    const dateText = invitedDate && !Number.isNaN(invitedDate.getTime()) ? invitedDate.toLocaleDateString() : "-";
+
+                    return (
+                      <div key={item?.id || item?.refereeId} className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center font-bold text-[#001A94] dark:text-blue-400">
+                            {item?.name?.charAt(0).toUpperCase() || "F"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                              {item?.name || "Friend"}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">{dateText}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg ${meta.className}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {meta.label}
+                          </span>
+                          <p className="text-xs font-bold text-gray-900 dark:text-white mt-2">
+                            +₹{Number(item?.earnedAmount) || 0}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl border-0 dark:border-gray-800 shadow-sm">
-          <CardContent className="p-4">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Invited Friends Status</h2>
-
-            {loading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">Loading referrals...</p>
-            ) : invitedFriends.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No invited friends yet. Share your referral to start earning.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {invitedFriends.map((item) => {
-                  const meta = statusMeta[item?.status] || statusMeta.pending;
-                  const StatusIcon = meta.icon;
-                  const invitedDate = item?.invitedAt ? new Date(item.invitedAt) : null;
-                  const dateText =
-                    invitedDate && !Number.isNaN(invitedDate.getTime())
-                      ? invitedDate.toLocaleDateString()
-                      : "-";
-
-                  return (
-                    <div
-                      key={item?.id || item?.refereeId}
-                      className="rounded-xl border border-gray-200 dark:border-gray-800 p-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {item?.name || "Friend"}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {item?.phone || "Phone hidden"}
-                          </p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">Invited on {dateText}</p>
-                        </div>
-                        <div className="text-right">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${meta.className}`}
-                          >
-                            <StatusIcon className="h-3 w-3" />
-                            {meta.label}
-                          </span>
-                          <p className="text-xs mt-2 text-gray-700 dark:text-gray-300">
-                            Earned: {"\u20B9"}{Number(item?.earnedAmount) || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </AnimatedPage>
   );

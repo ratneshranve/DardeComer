@@ -174,168 +174,140 @@ export default function Wallet() {
         )}
 
         {!loading && !error && (
-          <>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8 lg:gap-10">
-              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 lg:gap-8 flex-1">
-                <div className="relative flex-shrink-0">
-                  <div className="w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 xl:w-32 xl:h-32 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform rotate-[-5deg]">
-                    <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 bg-white/10 rounded-lg md:rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
-                      <IndianRupee className="h-10 w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 text-white" strokeWidth={2.5} />
+          <div className="space-y-6">
+            {/* Compact & Light Wallet Card */}
+            <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm border-0 overflow-hidden">
+              <div className="p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="space-y-1">
+                    <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
+                      Available Balance
+                    </p>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white flex items-baseline gap-1">
+                      <span className="text-xl font-medium text-gray-400">₹</span>
+                      {currentBalance.toLocaleString("en-IN")}
+                    </h2>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                    <IndianRupee className="h-6 w-6 text-[#001A94] dark:text-blue-400" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-gray-50 dark:border-gray-800">
+                  <div className="flex items-center gap-6">
+                    <div>
+                      <p className="text-gray-400 text-[10px] font-bold uppercase mb-0.5">Referral Earnings</p>
+                      <p className="text-base font-bold text-green-600 dark:text-green-400">
+                        {formatAmount(referralEarnings)}
+                      </p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-100 dark:bg-gray-800" />
+                    <div>
+                      <p className="text-gray-400 text-[10px] font-bold uppercase mb-0.5">Status</p>
+                      <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Active Account</p>
                     </div>
                   </div>
-                  <div className="absolute inset-0 bg-red-800 rounded-xl md:rounded-2xl transform rotate-[-5deg] translate-y-1 -z-10 opacity-25" />
-                </div>
 
-                <div className="flex flex-col md:items-start items-center text-center md:text-left">
-                  <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-2 md:mb-3">
-                    {companyName} Money
-                  </h2>
-
-                  <div className="mb-2 md:mb-3">
-                    <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm lg:text-base mb-1">Current Balance</p>
-                    <p className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-gray-900 dark:text-white">
-                      {formatAmount(currentBalance)}
-                    </p>
-                  </div>
-
-                  <div className="mb-2 md:mb-3">
-                    <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm lg:text-base mb-1">Referral Earnings</p>
-                    <p className="text-lg md:text-xl lg:text-2xl font-semibold text-green-600 dark:text-green-400">
-                      {formatAmount(referralEarnings)}
-                    </p>
-                  </div>
-
-                  <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm lg:text-base text-center md:text-left max-w-md">
-                    Add money to enjoy one-tap, seamless payments
-                  </p>
+                  <Button
+                    onClick={() => setAddMoneyModalOpen(true)}
+                    className="w-full sm:w-auto bg-[#001A94] hover:bg-blue-800 text-white rounded-xl font-bold px-6 py-5 h-auto transition-transform active:scale-95 flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Money
+                  </Button>
                 </div>
               </div>
+            </Card>
 
-              <div className="flex-shrink-0 w-full md:w-auto">
-                <Button
-                  className="w-full md:w-auto md:min-w-[200px] lg:min-w-[240px] h-12 md:h-14 lg:h-16 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold text-sm md:text-base lg:text-lg rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
-                  onClick={() => setAddMoneyModalOpen(true)}
-                >
-                  <Plus className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
-                  Add money
-                </Button>
-              </div>
-            </div>
+            {/* Transactions Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-[#001A94] rounded-full" />
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Transaction History</h3>
+                </div>
 
-            <div className="space-y-4 md:space-y-6 lg:space-y-8">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
-                <h2 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase">
-                  TRANSACTION HISTORY
-                </h2>
-
-                <div className="flex gap-2 md:gap-3 overflow-x-auto md:overflow-x-visible scrollbar-hide pb-2 md:pb-0">
+                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
                   {[
-                    { id: TRANSACTION_TYPES.ALL, label: "All Transactions" },
-                    { id: TRANSACTION_TYPES.ADDITIONS, label: "Additions" },
-                    { id: TRANSACTION_TYPES.DEDUCTIONS, label: "Deductions" },
-                    { id: TRANSACTION_TYPES.REFUNDS, label: "Refunds" },
-                  ].map((filter) => {
-                    const isSelected = selectedFilter === filter.id
-                    return (
-                      <button
-                        key={filter.id}
-                        onClick={() => setSelectedFilter(filter.id)}
-                        className={`px-4 md:px-5 lg:px-6 py-2 md:py-2.5 lg:py-3 rounded-lg md:rounded-xl text-xs md:text-sm lg:text-base font-medium whitespace-nowrap flex-shrink-0 transition-all ${
-                          isSelected
-                            ? "bg-white dark:bg-[#1a1a1a] border-2 border-green-600 dark:border-green-500 text-green-600 dark:text-green-400 shadow-sm"
-                            : "bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm"
-                        }`}
-                      >
-                        {filter.label}
-                      </button>
-                    )
-                  })}
+                    { id: TRANSACTION_TYPES.ALL, label: "All" },
+                    { id: TRANSACTION_TYPES.ADDITIONS, label: "Credits" },
+                    { id: TRANSACTION_TYPES.DEDUCTIONS, label: "Debits" },
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setSelectedFilter(filter.id)}
+                      className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        selectedFilter === filter.id
+                          ? "bg-white dark:bg-gray-800 text-[#001A94] dark:text-white shadow-sm"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {filteredTransactions.length > 0 ? (
-                <div className="space-y-3 md:space-y-4">
-
-                  {filteredTransactions.map((transaction) => (
-                    <Card
-                      key={transaction.id}
-                      className="py-0 border border-gray-100 dark:border-gray-800 shadow-sm dark:bg-[#1a1a1a] hover:shadow-md transition-all duration-200 cursor-pointer"
+                <div className="grid gap-3">
+                  {filteredTransactions.map((transaction, idx) => (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      key={transaction.id || idx}
+                      className="group relative"
                     >
-                      <CardContent className="p-4 md:p-5 lg:p-6">
-                        <div className="flex items-center justify-between gap-4 md:gap-6">
-                          <div className="flex items-center gap-4 md:gap-5 lg:gap-6 flex-1 min-w-0">
-                            <div className="flex-shrink-0">
-                              <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800/50">
-                                {getTransactionIcon(transaction.type)}
-                              </div>
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-gray-200 to-transparent dark:from-white/5 dark:to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-300" />
+                      <Card className="relative border-none bg-white dark:bg-[#111] shadow-[0_4px_20px_rgba(0,0,0,0.02)] dark:shadow-none rounded-2xl overflow-hidden">
+                        <CardContent className="p-4 md:p-5 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                              transaction.type === 'addition' ? 'bg-green-500/10 text-green-600' :
+                              transaction.type === 'refund' ? 'bg-blue-500/10 text-blue-600' :
+                              'bg-gray-500/10 text-gray-600'
+                            }`}>
+                              {getTransactionIcon(transaction.type)}
                             </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="text-gray-900 dark:text-white font-semibold text-sm md:text-base lg:text-lg truncate">
-                                  {transaction.description}
-                                </p>
-                                {transaction.type === "withdrawal" && transaction.status && (
-                                  <span
-                                    className={`px-2 py-0.5 rounded text-xs font-semibold 
-                                      ${transaction.status === "Pending" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : ""}
-                                      ${transaction.status === "Completed" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : ""}
-                                      ${transaction.status === "Rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : ""}
-                                    `}
-                                  >
-                                    {transaction.status}
-                                  </span>
-                                )}
-                              </div>
-                              {(transaction?.metadata?.source === "referral_signup" ||
-                                String(transaction.description || "").toLowerCase().startsWith("referral reward")) && (
-                                <p className="text-[11px] md:text-xs text-green-600 dark:text-green-400 font-medium mb-1">
-                                  Referral reward
-                                </p>
-                              )}
-                              <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm lg:text-base">
+                            
+                            <div>
+                              <p className="font-bold text-gray-900 dark:text-white truncate max-w-[150px] md:max-w-[300px]">
+                                {transaction.description}
+                              </p>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                                 {formatDate(transaction.date || transaction.createdAt)}
                               </p>
                             </div>
                           </div>
 
-                          <div className={`flex-shrink-0 font-bold text-lg md:text-xl lg:text-2xl ${getTransactionColor(transaction.type)}`}>
-                            {transaction.type === "deduction" ? "-" : "+"}
-                            {formatAmount(transaction.amount)}
+                          <div className="text-right">
+                            <p className={`text-lg font-black tracking-tight ${getTransactionColor(transaction.type)}`}>
+                              {transaction.type === "deduction" ? "-" : "+"}
+                              {formatAmount(transaction.amount)}
+                            </p>
+                            {transaction.status && transaction.status !== 'Completed' && (
+                              <span className="text-[9px] font-black uppercase tracking-widest text-orange-500">
+                                {transaction.status}
+                              </span>
+                            )}
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="py-12 md:py-16 lg:py-20 xl:py-24">
-                  <div className="space-y-3 md:space-y-4 mb-6 md:mb-8 max-w-2xl mx-auto">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 md:gap-4 bg-gray-100 dark:bg-gray-800 rounded-xl px-4 md:px-5 lg:px-6 py-3 md:py-4"
-                        style={{
-                          opacity: 0.3 + i * 0.15,
-                        }}
-                      >
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-3 md:h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                          <div className="h-2 md:h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-                        </div>
-                      </div>
-                    ))}
+                <div className="py-20 text-center">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <RefreshCw className="h-8 w-8 text-gray-300 animate-spin-slow" />
                   </div>
-
-                  <p className="text-gray-600 dark:text-gray-400 text-sm md:text-base lg:text-lg text-center font-medium">
-                    Your transactions will appear here
-                  </p>
+                  <p className="text-gray-400 font-bold italic tracking-tight">No activity found in this period</p>
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
+
       </div>
 
       <AddMoneyModal
