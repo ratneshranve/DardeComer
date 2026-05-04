@@ -82,6 +82,10 @@ const DeliveryTrackingMap = ({
     return (API_BASE_URL || '').replace(/\/api\/v1\/?$/i, '').replace(/\/api\/?$/i, '');
   }, []);
 
+  const tripStatus = order?.status || order?.orderStatus || 'pending';
+  const isOrderPickedUp = ['picked_up', 'out_for_delivery', 'delivered'].includes(tripStatus.toLowerCase());
+
+
   // 1. Initial State from Order Payload
   useEffect(() => {
     const loc = order?.deliveryState?.currentLocation;
@@ -211,8 +215,6 @@ const DeliveryTrackingMap = ({
   // Use smooth location for sync if available
   const displayRiderLocation = smoothLocation || riderLocation;
 
-  const tripStatus = order?.status || order?.orderStatus || 'pending';
-  const isOrderPickedUp = ['picked_up', 'out_for_delivery', 'delivered'].includes(tripStatus.toLowerCase());
 
   // 2. Pro Camera: Intelligent Frame Management (Throttled)
   const lastCameraUpdateRef = useRef({ time: 0, status: null });
