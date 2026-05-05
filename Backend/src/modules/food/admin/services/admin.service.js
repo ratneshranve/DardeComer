@@ -3278,6 +3278,7 @@ export async function createRestaurantByAdmin(body) {
     const loc = body.location || {};
     const toStr = (v) => (v != null && v !== undefined ? String(v).trim() : '');
     const toUrl = (v) => (v && (typeof v === 'string' ? v : v.url)) ? (typeof v === 'string' ? v : v.url) : undefined;
+    const normalizePhoneDigits = (value) => String(value || '').replace(/\D/g, '');
     const coordinates = Array.isArray(loc.coordinates) ? loc.coordinates : [];
     const lngFromCoordinates = toFiniteNumber(coordinates[0]);
     const latFromCoordinates = toFiniteNumber(coordinates[1]);
@@ -3291,12 +3292,35 @@ export async function createRestaurantByAdmin(body) {
     const normalizedClosingTime = normalizeRestaurantTime(body.closingTime) || '22:00';
     validateOpeningClosingTimes(normalizedOpeningTime, normalizedClosingTime);
 
+    const ownerPhoneRaw = toStr(body.ownerPhone);
+    const primaryContactRaw = toStr(body.primaryContactNumber) || ownerPhoneRaw;
+    const phoneDigits = normalizePhoneDigits(ownerPhoneRaw || primaryContactRaw).slice(-15);
+    const phoneLast10 = phoneDigits ? phoneDigits.slice(-10) : '';
+
+    if (phoneLast10) {
+        const existingRestaurant = await FoodRestaurant.findOne({
+            isDeleted: { $ne: true },
+            $or: [
+                { ownerPhoneLast10: phoneLast10 },
+                { ownerPhoneDigits: phoneDigits },
+                { ownerPhone: ownerPhoneRaw },
+                { primaryContactNumber: primaryContactRaw }
+            ]
+        })
+            .select('_id restaurantName ownerPhone primaryContactNumber isDeleted')
+            .lean();
+
+        if (existingRestaurant) {
+            throw new ValidationError('A restaurant with this phone number already exists');
+        }
+    }
+
     const doc = {
         restaurantName: toStr(body.restaurantName) || toStr(body.name),
         ownerName: toStr(body.ownerName),
         ownerEmail: toStr(body.ownerEmail),
-        ownerPhone: toStr(body.ownerPhone),
-        primaryContactNumber: toStr(body.primaryContactNumber) || toStr(body.ownerPhone),
+        ownerPhone: ownerPhoneRaw,
+        primaryContactNumber: primaryContactRaw,
         pureVegRestaurant: body.pureVegRestaurant !== undefined
             ? parseBooleanLike(body.pureVegRestaurant, 'pureVegRestaurant')
             : false,
