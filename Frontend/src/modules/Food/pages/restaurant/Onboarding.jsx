@@ -525,6 +525,7 @@ export default function RestaurantOnboarding() {
   const [hasExistingRestaurantProfile, setHasExistingRestaurantProfile] = useState(false)
   const [isFssaiCalendarOpen, setIsFssaiCalendarOpen] = useState(false)
   const [zones, setZones] = useState([])
+  const lastZoneLookupRef = useRef({ key: "", missingNotifiedKey: "" })
   const [zonesLoading, setZonesLoading] = useState(false)
   const [isOnboardingHydrated, setIsOnboardingHydrated] = useState(false)
 
@@ -1383,6 +1384,39 @@ export default function RestaurantOnboarding() {
 
 
 
+  const propagateOutletTimings = async (openingTime, closingTime, openDays = []) => {
+    try {
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+      const outletTimings = {}
+      const normalizedOpening = normalizeTimeValue(openingTime) || "09:00"
+      const normalizedClosing = normalizeTimeValue(closingTime) || "22:00"
+
+      const shortDaysMap = {
+        "Mon": "Monday",
+        "Tue": "Tuesday",
+        "Wed": "Wednesday",
+        "Thu": "Thursday",
+        "Fri": "Friday",
+        "Sat": "Saturday",
+        "Sun": "Sunday"
+      }
+
+      days.forEach(day => {
+        const isOpen = openDays.some(d => d === day || shortDaysMap[d] === day)
+        outletTimings[day] = {
+          isOpen: isOpen,
+          openingTime: normalizedOpening,
+          closingTime: normalizedClosing
+        }
+      })
+
+      await restaurantAPI.saveOutletTimings(outletTimings)
+      debugLog("Outlet timings propagated successfully")
+    } catch (err) {
+      debugError("Failed to propagate outlet timings:", err)
+    }
+  }
+
   const handleNext = async () => {
     setError("")
 
@@ -1472,6 +1506,8 @@ export default function RestaurantOnboarding() {
             accountType: step3.accountType || "",
           })
 
+          await propagateOutletTimings(step2.openingTime, step2.closingTime, step2.openDays)
+
           clearOnboardingFromLocalStorage()
           clearOnboardingFileCache()
           await clearAllFilesFromDB()
@@ -1558,6 +1594,9 @@ export default function RestaurantOnboarding() {
         formData.append("accountType", step3.accountType || "")
 
         await restaurantAPI.register(formData)
+
+        // Propagate timings to outlet settings
+        await propagateOutletTimings(step2.openingTime, step2.closingTime, step2.openDays)
 
         // Clear localStorage when onboarding is complete
         clearOnboardingFromLocalStorage()
@@ -1922,6 +1961,49 @@ export default function RestaurantOnboarding() {
       </section>
     </div>
   )
+
+  const isPointInsidePolygon = (lat, lng, polygon = []) => {
+    if (!Array.isArray(polygon) || polygon.length < 3) return false
+    let inside = false
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = Number(polygon[i]?.longitude)
+      const yi = Number(polygon[i]?.latitude)
+      const xj = Number(polygon[j]?.longitude)
+      const yj = Number(polygon[j]?.latitude)
+      if (!Number.isFinite(xi) || !Number.isFinite(yi) || !Number.isFinite(xj) || !Number.isFinite(yj)) {
+        continue
+      }
+      const intersect = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi + 0.0) + xi
+      if (intersect) inside = !inside
+    }
+    return inside
+  }
+
+  useEffect(() => {
+    if (step !== 1) return
+    const lat = Number(step1.location?.latitude)
+    const lng = Number(step1.location?.longitude)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+    if (!Array.isArray(zones) || zones.length === 0) return
+
+    const key = `${lat.toFixed(6)},${lng.toFixed(6)}`
+    if (lastZoneLookupRef.current.key === key) return
+    lastZoneLookupRef.current.key = key
+
+    const matchedZone = zones.find((zone) => isPointInsidePolygon(lat, lng, zone?.coordinates || []))
+    if (matchedZone) {
+      const zoneId = String(matchedZone?._id || matchedZone?.id || "")
+      setStep1((prev) => ({ ...prev, zoneId }))
+      lastZoneLookupRef.current.missingNotifiedKey = ""
+      return
+    }
+
+    setStep1((prev) => ({ ...prev, zoneId: "" }))
+    if (lastZoneLookupRef.current.missingNotifiedKey !== key) {
+      toast.error("Selected location is outside your service zones.")
+      lastZoneLookupRef.current.missingNotifiedKey = key
+    }
+  }, [step, step1.location?.latitude, step1.location?.longitude, zones])
 
 
   // Initialize Google Places Autocomplete for Step 1 location search.

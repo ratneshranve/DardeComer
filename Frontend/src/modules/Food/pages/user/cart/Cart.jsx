@@ -318,7 +318,7 @@ export default function Cart() {
     if (normalized === "other") return "Other"
     return label || "Saved address"
   }
-  const sanitizeRecipientPhone = (value) => String(value || "").replace(/[^\d+]/g, "").slice(0, 14)
+  const sanitizeRecipientPhone = (value) => String(value || "").replace(/\D/g, "").slice(0, 10)
   const savedAddress = getDefaultAddress()
   const selectedAddress = addresses.find((addr) => getAddressId(addr) && getAddressId(addr) === selectedAddressId)
 
@@ -1689,10 +1689,17 @@ export default function Cart() {
         return;
       }
 
+      const finalPhone = sanitizeRecipientPhone(recipientPhone || defaultAddress?.phone || "")
+      if (finalPhone.length !== 10) {
+        toast.error("Please enter a valid 10-digit phone number.")
+        setIsPlacingOrder(false)
+        return
+      }
+
       const orderAddressPayload = defaultAddress
         ? {
           ...defaultAddress,
-          phone: recipientPhone || defaultAddress?.phone || "",
+          phone: finalPhone,
           name: recipientName,
           fullName: recipientName,
         }
@@ -1702,7 +1709,7 @@ export default function Cart() {
         items: orderItems,
         address: orderAddressPayload,
         customerName: recipientName,
-        customerPhone: recipientPhone || defaultAddress?.phone || "",
+        customerPhone: finalPhone,
         restaurantId: finalRestaurantId,
         restaurantName: finalRestaurantName || undefined,
         deliveryType: selectedDeliveryType,
@@ -2611,6 +2618,7 @@ export default function Cart() {
                       <input
                         type="tel"
                         value={recipientDetails.phone}
+                        maxLength={10}
                         onChange={(e) =>
                           setRecipientDetails((prev) => ({
                             ...prev,

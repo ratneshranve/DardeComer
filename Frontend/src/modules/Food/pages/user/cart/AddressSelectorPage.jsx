@@ -72,6 +72,10 @@ export default function AddressSelectorPage() {
   const [addressAutocompleteValue, setAddressAutocompleteValue] = useState("")
   const [keywordAddressSuggestions, setKeywordAddressSuggestions] = useState([])
   const [isKeywordSearching, setIsKeywordSearching] = useState(false)
+  const [primaryAddressSuggestions, setPrimaryAddressSuggestions] = useState([])
+  const [isPrimarySearching, setIsPrimarySearching] = useState(false)
+  const suppressPrimarySearchRef = useRef(false)
+  const suppressReverseGeocodeRef = useRef(false)
   const [lockMapToAutocomplete, setLockMapToAutocomplete] = useState(true)
   const [GOOGLE_MAPS_API_KEY, setGOOGLE_MAPS_API_KEY] = useState(null)
   const [formScrollTop, setFormScrollTop] = useState(0)
@@ -161,6 +165,51 @@ export default function AddressSelectorPage() {
     }, 350)
     return () => clearTimeout(t)
   }, [addressAutocompleteValue, showAddressForm, location, ENABLE_NOMINATIM_SEARCH])
+
+  useEffect(() => {
+    if (!showAddressForm) return
+    const q = String(addressFormData.street || "").trim()
+    if (suppressPrimarySearchRef.current) {
+      suppressPrimarySearchRef.current = false
+      setPrimaryAddressSuggestions([])
+      setIsPrimarySearching(false)
+      return
+    }
+    if (!ENABLE_NOMINATIM_SEARCH || q.length < 3) {
+      setPrimaryAddressSuggestions([])
+      setIsPrimarySearching(false)
+      return
+    }
+
+    const t = setTimeout(async () => {
+      try {
+        setIsPrimarySearching(true)
+        const refLat = location?.latitude ?? 22.7196
+        const refLng = location?.longitude ?? 75.8577
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=10&q=${encodeURIComponent(q)}`
+        const res = await fetch(url, { headers: { Accept: "application/json" } })
+        const json = await res.json()
+        const mapped = (Array.isArray(json) ? json : []).map(r => ({
+          id: r.place_id || r.osm_id,
+          display: r.display_name || "",
+          lat: Number(r.lat),
+          lng: Number(r.lon),
+          address: r.address || {},
+        }))
+        const withDistance = mapped
+          .filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng))
+          .map(x => ({ ...x, distanceMeters: calculateDistance(refLat, refLng, x.lat, x.lng) }))
+          .sort((a, b) => (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity))
+          .slice(0, 4)
+        setPrimaryAddressSuggestions(withDistance)
+      } catch (e) {
+        setPrimaryAddressSuggestions([])
+      } finally {
+        setIsPrimarySearching(false)
+      }
+    }, 350)
+    return () => clearTimeout(t)
+  }, [addressFormData.street, showAddressForm, location, ENABLE_NOMINATIM_SEARCH])
 
   // Map Initialization logic
   useEffect(() => {
@@ -295,6 +344,7 @@ export default function AddressSelectorPage() {
 
   const handleMapMoveEnd = async (lat, lng) => {
     if (!ENABLE_LOCATION_REVERSE_GEOCODE) return
+    if (suppressReverseGeocodeRef.current) return
     try {
       // Use Nominatim for free reverse geocoding on the client side
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
@@ -527,15 +577,65 @@ export default function AddressSelectorPage() {
 
             <div>
               <Label className="text-sm font-bold mb-2 block">Primary Address (Street / Area / Landmark)</Label>
-              <Input 
-                placeholder="Search or drag to update street/area" 
-                value={addressFormData.street} 
-                onChange={e => setAddressFormData({...addressFormData, street: e.target.value})}
-                onFocus={() => scrollFieldIntoView("street")}
-                ref={(el) => { manualFieldRefs.current.street = el }}
-                className="mb-4 h-12 rounded-xl bg-gray-50 dark:bg-gray-800/50"
-                required
-              />
+              <div className="relative mb-4">
+                <Input 
+                  placeholder="Search or drag to update street/area" 
+                  value={addressFormData.street} 
+                  onChange={e => setAddressFormData({...addressFormData, street: e.target.value})}
+                  onFocus={() => scrollFieldIntoView("street")}
+                  ref={(el) => { manualFieldRefs.current.street = el }}
+                  className="h-12 rounded-xl bg-gray-50 dark:bg-gray-800/50"
+                  required
+                />
+                {isPrimarySearching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#001A94] border-t-transparent" />
+                  </div>
+                )}
+                {primaryAddressSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden z-30 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 dark:bg-gray-800/50">Suggestions</p>
+                    {primaryAddressSuggestions.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          const { lat, lng, display, address: a } = s
+                              suppressPrimarySearchRef.current = true
+                              suppressReverseGeocodeRef.current = true
+                              setTimeout(() => {
+                                suppressReverseGeocodeRef.current = false
+                              }, 1200)
+                          setMapPosition([lat, lng])
+                          if (googleMapRef.current) {
+                            googleMapRef.current.panTo({ lat, lng })
+                            googleMapRef.current.setZoom(17)
+                          }
+                              const city = a.city || a.town || a.village || a.county || ""
+                              const state = a.state || ""
+                              const zipCode = a.postcode || ""
+                          setCurrentAddress(display)
+                          setAddressFormData((prev) => ({
+                            ...prev,
+                            street: display || prev.street,
+                                city: city || prev.city,
+                                state: state || prev.state,
+                                zipCode: zipCode || prev.zipCode,
+                          }))
+                          setPrimaryAddressSuggestions([])
+                              setIsPrimarySearching(false)
+                        }}
+                        className="w-full px-4 py-3 flex items-start gap-3 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors text-left border-b border-gray-50 dark:border-gray-800 last:border-none"
+                      >
+                        <MapPin className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{s.display}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.address?.city || s.address?.state}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <Label className="text-sm font-bold mb-2 block text-blue-600 dark:text-blue-400">Secondary Address (House No. / Flat / Floor)</Label>
               <Input 

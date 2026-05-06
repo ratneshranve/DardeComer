@@ -7,7 +7,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Lenis from "lenis";
 import {
-  Printer,
+
   Volume2,
   VolumeX,
   ChevronDown,
@@ -30,8 +30,7 @@ import notificationSound from "@food/assets/audio/alert.mp3";
 import { restaurantAPI, diningAPI } from "@food/api";
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications";
 import { useRestaurantNotificationContext } from "../../context/RestaurantNotificationContext";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+
 import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton";
 const debugLog = (...args) => {};
 const debugWarn = (...args) => {};
@@ -1827,171 +1826,6 @@ export default function OrdersMain() {
     }
   };
 
-  // Handle PDF download
-  const handlePrint = async () => {
-    const orderToPrint = popupOrder || newOrder;
-    if (!orderToPrint) {
-      debugWarn("No order data available for PDF generation");
-      return;
-    }
-
-    try {
-      // Create new PDF document
-      const doc = new jsPDF();
-
-      // Set font
-      doc.setFont("helvetica", "bold");
-
-      // Header
-      doc.setFontSize(20);
-      doc.text("Order Receipt", 105, 20, { align: "center" });
-
-      // Restaurant name
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "normal");
-      doc.text(orderToPrint.restaurantName || "Restaurant", 105, 30, {
-        align: "center",
-      });
-
-      // Order details
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Order ID: ${orderToPrint.orderId || "N/A"}`, 20, 45);
-      doc.setFont("helvetica", "normal");
-
-      const orderDate = orderToPrint.createdAt
-        ? new Date(orderToPrint.createdAt).toLocaleString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : new Date().toLocaleString("en-GB");
-
-      doc.text(`Date: ${orderDate}`, 20, 52);
-
-      // Customer address
-      if (orderToPrint.customerAddress) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Delivery Address:", 20, 62);
-        doc.setFont("helvetica", "normal");
-        const addressText =
-          [
-            orderToPrint.customerAddress.street,
-            orderToPrint.customerAddress.city,
-            orderToPrint.customerAddress.state,
-          ]
-            .filter(Boolean)
-            .join(", ") || "Address not available";
-        const addressLines = doc.splitTextToSize(addressText, 170);
-        doc.text(addressLines, 20, 69);
-      }
-
-      // Items table
-      let yPos = 85;
-      if (orderToPrint.items && orderToPrint.items.length > 0) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Items:", 20, yPos);
-        yPos += 8;
-
-        // Prepare table data
-        const tableData = orderToPrint.items.map((item) => [
-          item.name || "Item",
-          item.quantity || 1,
-          `Rs. ${(item.price || 0).toFixed(2)}`,
-          `Rs. ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
-        ]);
-
-        autoTable(doc, {
-          startY: yPos,
-          head: [["Item", "Qty", "Price", "Total"]],
-          body: tableData,
-          theme: "striped",
-          headStyles: {
-            fillColor: [0, 0, 0],
-            textColor: 255,
-            fontStyle: "bold",
-          },
-          styles: { fontSize: 9 },
-          columnStyles: {
-            0: { cellWidth: 80 },
-            1: { cellWidth: 30, halign: "center" },
-            2: { cellWidth: 35, halign: "right" },
-            3: { cellWidth: 35, halign: "right" },
-          },
-        });
-
-        yPos = doc.lastAutoTable.finalY + 10;
-      }
-
-      // Total
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text(`Total: Rs. ${(orderToPrint.total || 0).toFixed(2)}`, 20, yPos);
-
-      // Payment status
-      yPos += 10;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        `Payment Status: ${orderToPrint.status === "confirmed" ? "Paid" : "Pending"}`,
-        20,
-        yPos,
-      );
-
-      // Estimated delivery time
-      if (orderToPrint.estimatedDeliveryTime) {
-        yPos += 8;
-        doc.text(
-          `Estimated Delivery: ${orderToPrint.estimatedDeliveryTime} minutes`,
-          20,
-          yPos,
-        );
-      }
-
-      // Notes
-      if (orderToPrint.note) {
-        yPos += 10;
-        doc.setFont("helvetica", "bold");
-        doc.text("Note:", 20, yPos);
-        doc.setFont("helvetica", "normal");
-        const noteLines = doc.splitTextToSize(orderToPrint.note, 170);
-        doc.text(noteLines, 20, yPos + 7);
-      }
-
-      // Cutlery preference
-      yPos += 15;
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        orderToPrint.sendCutlery === false
-          ? "? Don't send cutlery"
-          : "? Send cutlery requested",
-        20,
-        yPos,
-      );
-
-      // Footer
-      const pageHeight = doc.internal.pageSize.height;
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "italic");
-      doc.text(
-        `Generated on ${new Date().toLocaleString("en-GB")}`,
-        105,
-        pageHeight - 10,
-        { align: "center" },
-      );
-
-      // Download PDF
-      const fileName = `Order-${orderToPrint.orderId || "Receipt"}-${Date.now()}.pdf`;
-      doc.save(fileName);
-
-      debugLog("? PDF generated successfully:", fileName);
-    } catch (error) {
-      debugError("? Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
-    }
-  };
 
   // Handle swipe gestures with smooth animations
   const handleTouchStart = (e) => {
@@ -2433,12 +2267,7 @@ export default function OrdersMain() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={handlePrint}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      aria-label="Print">
-                      <Printer className="w-5 h-5 text-gray-700" />
-                    </button>
+
                     <button
                       onClick={toggleMute}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

@@ -57,6 +57,7 @@ export default function OutletInfo() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [imageType, setImageType] = useState(null) // 'profile' or 'menu'
   const [uploadingCount, setUploadingCount] = useState(0) // Track how many images are being uploaded
+  const [zones, setZones] = useState([])
   
   const profileImageInputRef = useRef(null)
   const menuImageInputRef = useRef(null)
@@ -66,6 +67,17 @@ export default function OutletInfo() {
   const formatAddress = (location) => {
     if (!location) return ""
     
+    // Priority 1: Use formattedAddress if it exists (from map selection)
+    if (location.formattedAddress && location.formattedAddress.trim() !== "") {
+      return location.formattedAddress.trim()
+    }
+    
+    // Priority 2: Use legacy address field if it exists
+    if (location.address && location.address.trim() !== "") {
+      return location.address.trim()
+    }
+    
+    // Priority 3: Construct from parts
     const parts = []
     if (location.addressLine1) parts.push(location.addressLine1.trim())
     if (location.addressLine2) parts.push(location.addressLine2.trim())
@@ -80,6 +92,18 @@ export default function OutletInfo() {
     if (location.landmark) parts.push(location.landmark.trim())
     
     return parts.join(", ") || ""
+  }
+
+  const resolveZoneName = (zoneValue, zonesList) => {
+    if (!zoneValue) return ""
+    if (typeof zoneValue === "object") {
+      return zoneValue?.name || zoneValue?.zoneName || ""
+    }
+    const zoneId = String(zoneValue)
+    const match = (Array.isArray(zonesList) ? zonesList : []).find((zone) =>
+      String(zone?._id || zone?.id || "") === zoneId
+    )
+    return match?.name || match?.zoneName || match?.serviceLocation || ""
   }
 
   // Fetch restaurant data on mount
@@ -140,7 +164,18 @@ export default function OutletInfo() {
       }
     }
 
+    const fetchZones = async () => {
+      try {
+        const response = await restaurantAPI.getZones()
+        const data = response?.data?.data?.zones || response?.data?.zones || []
+        setZones(Array.isArray(data) ? data : [])
+      } catch (error) {
+        debugWarn("Failed to load zones:", error)
+      }
+    }
+
     fetchRestaurantData()
+    fetchZones()
 
     // Listen for updates from edit pages
     const handleCuisinesUpdate = () => {
@@ -489,22 +524,7 @@ export default function OutletInfo() {
             </div>
           </div>
 
-          {/* Delivery Zone */}
-          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-500 font-normal mb-1">Delivery zone</p>
-                <p className="text-base font-semibold text-gray-900">
-                  {loading ? "Loading..." : (
-                    restaurantData?.zone || 
-                    (typeof restaurantData?.zoneId === "object" ? (restaurantData?.zoneId?.name || restaurantData?.zoneId?.zoneName) : "") || 
-                    "Not set"
-                  )}
-                </p>
-              </div>
-              <button onClick={() => navigate("/food/restaurant/zone-setup")} className="text-blue-600 text-sm font-normal">Update</button>
-            </div>
-          </div>
+
 
           {/* Address */}
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
