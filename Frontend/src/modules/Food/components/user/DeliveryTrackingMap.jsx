@@ -52,6 +52,8 @@ const DeliveryTrackingMap = ({
   orderTrackingIds = [],
   restaurantCoords,
   customerCoords,
+  userLiveCoords = null,
+  isTakeAwayOrder = false,
   order = null,
   onEtaUpdate = null
 }) => {
@@ -164,22 +166,23 @@ const DeliveryTrackingMap = ({
     };
   }, [trackingIds, backendUrl, smoothLocation, riderLocation]);
 
-  // Real-time ETA from rider distance (runs on every location update, no Google Maps wait)
+  // Real-time ETA from rider distance OR user distance (takeaway)
   useEffect(() => {
-    if (!riderLocation || !onEtaUpdate) return;
-
-    const dest = isOrderPickedUp ? customerCoords : restaurantCoords;
-    const mins = haversineMinutes(riderLocation, dest);
+    const origin = isTakeAwayOrder ? (userLiveCoords || customerCoords) : riderLocation;
+    if (!origin || !onEtaUpdate) return;
+ 
+    const dest = (isTakeAwayOrder || !isOrderPickedUp) ? restaurantCoords : customerCoords;
+    const mins = haversineMinutes(origin, dest);
     if (mins === null) return;
-
+ 
     setCurrentEta(`${mins} mins`);
     onEtaUpdate(mins);
-
+ 
     // Also write directly to shared store for home strip
     const ids = [orderId, ...(Array.isArray(orderTrackingIds) ? orderTrackingIds : [])]
       .map(id => normalizeLookupId(id)).filter(Boolean);
     ids.forEach(id => saveOrderEta(id, mins));
-  }, [riderLocation?.lat, riderLocation?.lng, customerCoords, restaurantCoords, isOrderPickedUp, orderId, orderTrackingIds]);
+  }, [riderLocation?.lat, riderLocation?.lng, userLiveCoords?.lat, userLiveCoords?.lng, customerCoords, restaurantCoords, isOrderPickedUp, isTakeAwayOrder, orderId, orderTrackingIds]);
 
   // 3. Smooth Animation Loop (60 FPS Glide)
   useEffect(() => {
@@ -233,7 +236,10 @@ const DeliveryTrackingMap = ({
 
     const bounds = new window.google.maps.LatLngBounds();
     
-    if (isOrderPickedUp) {
+    if (isTakeAwayOrder) {
+      bounds.extend(restaurantCoords);
+      bounds.extend(userLiveCoords || customerCoords);
+    } else if (isOrderPickedUp) {
       if (riderLocation) bounds.extend(riderLocation);
       bounds.extend(customerCoords);
     } else {
@@ -248,8 +254,8 @@ const DeliveryTrackingMap = ({
       right: 60 
     });
     
-    debugLog(`[Camera] Focusing on ${isOrderPickedUp ? 'Delivery' : 'Pickup'} leg`);
-  }, [map, riderLocation, restaurantCoords, customerCoords, isOrderPickedUp, isLoaded]);
+    debugLog(`[Camera] Focusing on ${isTakeAwayOrder ? 'Takeaway' : (isOrderPickedUp ? 'Delivery' : 'Pickup')} leg`);
+  }, [map, riderLocation, userLiveCoords, restaurantCoords, customerCoords, isOrderPickedUp, isTakeAwayOrder, isLoaded]);
 
   // 3. Directions Management
   const directionsCallback = useCallback((result, status) => {
@@ -274,6 +280,16 @@ const DeliveryTrackingMap = ({
   }, [directions, lastDirectionsAt]);
 
   const directionsServiceOptions = useMemo(() => {
+    if (isTakeAwayOrder) {
+      const userPos = userLiveCoords || customerCoords;
+      if (!userPos || !restaurantCoords) return null;
+      return {
+        origin: userPos,
+        destination: restaurantCoords,
+        travelMode: 'DRIVING'
+      };
+    }
+
     if (!riderLocation) return null;
     const dest = isOrderPickedUp ? customerCoords : restaurantCoords;
     if (!dest) return null;
@@ -282,13 +298,14 @@ const DeliveryTrackingMap = ({
       destination: dest,
       travelMode: 'DRIVING'
     };
-  }, [riderLocation?.lat, riderLocation?.lng, isOrderPickedUp, restaurantCoords?.lat, restaurantCoords?.lng, customerCoords?.lat, customerCoords?.lng]);
+  }, [isTakeAwayOrder, userLiveCoords, customerCoords, restaurantCoords, riderLocation, isOrderPickedUp]);
 
   const center = useMemo(() => {
     // Highly stable center: use restaurant or customer as anchor, not the moving rider
+    if (isTakeAwayOrder) return restaurantCoords || { lat: 0, lng: 0 };
     if (isOrderPickedUp) return customerCoords || { lat: 0, lng: 0 };
     return restaurantCoords || { lat: 0, lng: 0 };
-  }, [isOrderPickedUp, restaurantCoords, customerCoords]);
+  }, [isTakeAwayOrder, isOrderPickedUp, restaurantCoords, customerCoords]);
 
   const restaurantMarkerUrl = useMemo(() => {
     const direct = order?.restaurantImage || order?.restaurant?.logo || order?.restaurant?.profileImage;
@@ -308,10 +325,10 @@ const DeliveryTrackingMap = ({
     if (!restaurantCoords || !customerCoords) return null;
     return {
       origin: restaurantCoords,
-      destination: customerCoords,
+      destination: userLiveCoords || customerCoords,
       travelMode: 'DRIVING'
     };
-  }, [restaurantCoords?.lat, restaurantCoords?.lng, customerCoords?.lat, customerCoords?.lng]);
+  }, [restaurantCoords?.lat, restaurantCoords?.lng, customerCoords?.lat, customerCoords?.lng, userLiveCoords]);
 
   if (!isLoaded) return <div className="w-full h-full bg-gray-100 animate-pulse" />;
 
@@ -364,9 +381,9 @@ const DeliveryTrackingMap = ({
           />
         )}
 
-        {customerCoords && (
+        {(customerCoords || (isTakeAwayOrder && userLiveCoords)) && (
           <Marker
-            position={customerCoords}
+            position={isTakeAwayOrder ? (userLiveCoords || customerCoords) : customerCoords}
             icon={{
               url: customerMarkerUrl,
               scaledSize: (window.google && window.google.maps) ? new window.google.maps.Size(44, 44) : undefined,

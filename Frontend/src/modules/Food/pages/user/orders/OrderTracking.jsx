@@ -159,9 +159,7 @@ const DeliveryMap = memo(({ orderId, order, isVisible, isTakeAwayOrder = false, 
     order?.id
   ].filter(Boolean), [order?.orderId, order?.mongoId, order?._id, orderId, order?.id]);
 
-  const effectiveCustomerCoords = isTakeAwayOrder
-    ? (restaurantCoords || customerCoords)
-    : customerCoords;
+  const effectiveCustomerCoords = customerCoords;
 
   if (!isVisible || !orderId || !order || !restaurantCoords || !effectiveCustomerCoords) {
     return (
@@ -186,6 +184,7 @@ const DeliveryMap = memo(({ orderId, order, isVisible, isTakeAwayOrder = false, 
           restaurantCoords={restaurantCoords}
           customerCoords={effectiveCustomerCoords}
 
+          isTakeAwayOrder={isTakeAwayOrder}
           userLiveCoords={userLiveCoords}
           userLocationAccuracy={userLocationAccuracy}
           deliveryBoyData={deliveryBoyData}
