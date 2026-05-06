@@ -10,7 +10,8 @@ const toNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const formatMoney = (value) => `INR ${toNumber(value).toFixed(2)}`
+const formatMoney = (val) => `Rs. ${toNumber(val).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 const formatDisplayText = (value, fallback = "N/A") => {
   if (value === null || value === undefined) return fallback
   const normalized = String(value).trim()
@@ -317,8 +318,7 @@ export function useOrdersManagement(orders, statusKey, title) {
         : toNumber(
             order.totalItemAmount ??
             order.subtotal ??
-            order.pricing?.subtotal ??
-            order.totalAmount
+            order.pricing?.subtotal
           )
       const deliveryFee = toNumber(
         order.deliveryCharge ??
@@ -346,10 +346,14 @@ export function useOrdersManagement(orders, statusKey, title) {
         order.packagingFee ??
         order.pricing?.packagingFee
       )
+      
       const computedTotal = subtotal + deliveryFee + taxAmount + platformFee + packagingFee - discountAmount
+      
       const totalAmount = toNumber(
-        order.totalAmount ??
-        order.pricing?.total ??
+        order.totalAmount ||
+        order.total ||
+        order.orderAmount ||
+        order.pricing?.total ||
         computedTotal
       )
       const paymentType = order.paymentType || order.payment?.method || order.paymentMethod || "N/A"
@@ -488,8 +492,8 @@ export function useOrdersManagement(orders, statusKey, title) {
         body: [[
           `Order ID: ${orderId}`,
           `Status: ${orderStatus}`,
-          `Payment Status: ${paymentStatus}`,
-          `Grand Total: ${formatMoney(totalAmount)}`,
+          `Payment: ${paymentStatus}`,
+          `Amount: ${formatMoney(totalAmount)}`,
         ]],
         theme: "plain",
         styles: {
@@ -585,6 +589,7 @@ export function useOrdersManagement(orders, statusKey, title) {
             hookData.cell.styles.fontStyle = "bold"
             hookData.cell.styles.fontSize = 11
             hookData.cell.styles.textColor = [15, 118, 110]
+            hookData.cell.styles.fillColor = [236, 253, 245] // emerald-50
           }
         },
       })

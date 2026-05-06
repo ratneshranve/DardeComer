@@ -26,11 +26,15 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
     const year = currentMonth.getFullYear()
     const month = currentMonth.getMonth()
     const firstDay = new Date(year, month, 1)
-    const startDate = new Date(firstDay)
-    startDate.setDate(startDate.getDate() - startDate.getDay() + (startDate.getDay() === 0 ? -6 : 1)) // Start from Monday
     
+    const calStartDate = new Date(firstDay)
+    // Start from Monday (adjusting for JS 0=Sunday)
+    const dayOfWeek = calStartDate.getDay()
+    const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek
+    calStartDate.setDate(calStartDate.getDate() + diff)
+
     const days = []
-    const currentDate = new Date(startDate)
+    const currentDate = new Date(calStartDate)
     
     // Generate 6 weeks (42 days)
     for (let i = 0; i < 42; i++) {
@@ -48,14 +52,11 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
   
   // Check if date is in range
   const isInRange = (date: Date) => {
-    if (!tempStartDate && !tempEndDate) return false
-    if (tempStartDate && tempEndDate) {
-      const dateTime = date.getTime()
-      const startTime = tempStartDate.getTime()
-      const endTime = tempEndDate.getTime()
-      return dateTime >= startTime && dateTime <= endTime
-    }
-    return false
+    if (!tempStartDate || !tempEndDate) return false
+    const dateTime = date.getTime()
+    const startTime = tempStartDate.getTime()
+    const endTime = tempEndDate.getTime()
+    return dateTime >= startTime && dateTime <= endTime
   }
   
   // Check if date is start date
@@ -72,6 +73,11 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
   
   // Handle date click
   const handleDateClick = (date: Date) => {
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+
+    if (date.getTime() > today.getTime()) return
+
     if (!tempStartDate || (tempStartDate && tempEndDate)) {
       // Start new selection
       setTempStartDate(date)
@@ -117,6 +123,8 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
     return "Select start date"
   }
   
+  const todayTimestamp = new Date().setHours(23, 59, 59, 999)
+  
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 w-full" style={{ minWidth: '320px', maxWidth: '400px' }}>
       {/* Header */}
@@ -159,14 +167,17 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
           const inRange = isInRange(date)
           const isStart = isStartDate(date)
           const isEnd = isEndDate(date)
+          const isFuture = date.getTime() > todayTimestamp
           
           return (
             <button
               key={index}
               onClick={() => handleDateClick(date)}
+              disabled={isFuture}
               className={`
                 h-9 w-9 text-xs rounded-md transition-colors relative
                 ${isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'}
+                ${isFuture ? 'opacity-20 cursor-not-allowed' : ''}
                 ${isStart || isEnd
                   ? 'bg-green-500 text-white font-semibold' 
                   : inRange
@@ -191,4 +202,3 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
     </div>
   )
 }
-

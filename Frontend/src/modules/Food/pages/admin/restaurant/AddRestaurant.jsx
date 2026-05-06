@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { useNavigate } from "react-router-dom"
-import { Building2, Info, Tag, Upload, Calendar, FileText, MapPin, CheckCircle2, X, Image as ImageIcon, Clock, Loader2 } from "lucide-react"
+import { Building2, Info, Tag, Upload, Calendar, FileText, MapPin, CheckCircle2, X, Image as ImageIcon, Clock, Loader2, Search, ChevronDown } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@food/components/ui/dialog"
 import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
@@ -196,6 +196,7 @@ export default function AddRestaurant() {
     openingTime: "",
     closingTime: "",
     openDays: [],
+    isActive: true,
   })
 
   // Step 3: Documents
@@ -218,12 +219,25 @@ export default function AddRestaurant() {
     accountType: "",
   })
 
+  useEffect(() => {
+    // Reset GST fields when GST Registered is changed to No
+    if (!step3.gstRegistered) {
+      setStep3(prev => ({
+        ...prev,
+        gstNumber: "",
+        gstLegalName: "",
+        gstAddress: "",
+        gstImage: null
+      }))
+    }
+  }, [step3.gstRegistered])
+
   const languageTabs = [
     { key: "default", label: "Default" },
     { key: "en", label: "English(EN)" },
     { key: "bn", label: "Bengali - ?????(BN)" },
     { key: "ar", label: "Arabic - ??????? (AR)" },
-    { key: "es", label: "Spanish - espa�ol(ES)" },
+    { key: "es", label: "Spanish - espaol(ES)" },
   ]
 
   const mainContentRef = useRef(null)
@@ -480,7 +494,7 @@ export default function AddRestaurant() {
     if (!step3.fssaiImage) errors.push("FSSAI image is required")
     if (step3.gstRegistered) {
       if (!step3.gstNumber?.trim()) errors.push("GST number is required when GST registered")
-      if (step3.gstNumber?.trim() && !GST_REGEX.test(step3.gstNumber.trim())) errors.push("GST number must be in valid format")
+      if (step3.gstNumber?.trim() && !GST_REGEX.test(step3.gstNumber.trim())) errors.push("GST number must be in valid format (e.g., 22AAAAA0000A1Z5)")
       if (!step3.gstLegalName?.trim()) errors.push("GST legal name is required when GST registered")
       if (step3.gstLegalName?.trim() && (!NAME_REGEX.test(step3.gstLegalName.trim()) || !hasLetters(step3.gstLegalName))) {
         errors.push("GST legal name must contain characters only")
@@ -950,13 +964,22 @@ export default function AddRestaurant() {
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Phone number*</Label>
+            <Label className="text-xs text-gray-700">Owner Phone*</Label>
             <Input
               value={step1.ownerPhone || ""}
               onChange={(e) => setStep1({ ...step1, ownerPhone: sanitizeDigits(e.target.value).slice(0, 10) })}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm"
               placeholder="10-digit mobile number"
-              inputMode="numeric"
+              maxLength={10}
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700">Primary Contact*</Label>
+            <Input
+              value={step1.primaryContactNumber || ""}
+              onChange={(e) => setStep1({ ...step1, primaryContactNumber: sanitizeDigits(e.target.value).slice(0, 10) })}
+              className="mt-1 bg-white text-sm"
+              placeholder="Alternative contact number"
               maxLength={10}
             />
           </div>
@@ -1026,39 +1049,40 @@ export default function AddRestaurant() {
         </div>
         <div>
           <Label className="text-xs text-gray-700">Service zone*</Label>
-          <select
-            value={step1.zoneId || ""}
-            onChange={(e) => setStep1({ ...step1, zoneId: e.target.value })}
-            className="mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm"
-            disabled={zonesLoading}
-          >
-            <option value="">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
-            {zones.map((z) => {
-              const id = String(z?._id || z?.id || "")
-              const label = z?.name || z?.zoneName || z?.serviceLocation || id
-              return (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              )
-            })}
-          </select>
+          <div className="mt-1 relative">
+            <select
+              value={step1.zoneId || ""}
+              onChange={(e) => setStep1({ ...step1, zoneId: e.target.value })}
+              className="w-full px-3 py-2 text-sm rounded-md border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+              disabled={zonesLoading}
+            >
+              <option value="">{zonesLoading ? "Loading zones..." : "Select a Zone"}</option>
+              {zones.map((z) => {
+                const id = String(z?._id || z?.id || "")
+                const label = z?.name || z?.zoneName || z?.serviceLocation || id
+                return (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                )
+              })}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            </div>
+          </div>
           <p className="text-[11px] text-gray-500 mt-1">
             Choose the service zone where your restaurant will be available.
           </p>
         </div>
-        <div>
-          <Label className="text-xs text-gray-700">Primary contact number*</Label>
-          <Input
-            value={step1.primaryContactNumber || ""}
-            onChange={(e) => setStep1({ ...step1, primaryContactNumber: sanitizeDigits(e.target.value).slice(0, 10) })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="Restaurant's primary contact number"
-            inputMode="numeric"
-            maxLength={10}
-          />
-        </div>
         <div className="space-y-3">
+          <Label className="text-xs text-gray-700">Address Details</Label>
+          <Input
+            value={step1.location?.addressLine1 || ""}
+            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, addressLine1: e.target.value } })}
+            className="bg-white text-sm"
+            placeholder="Address Line 1 (Shop no. / Building no.)*"
+          />
           <Input
             value={step1.location?.area || ""}
             onChange={(e) => setStep1({ ...step1, location: { ...step1.location, area: e.target.value } })}
@@ -1072,28 +1096,17 @@ export default function AddRestaurant() {
             placeholder="City*"
           />
           <Input
-            value={step1.location?.addressLine1 || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, addressLine1: e.target.value } })}
-            className="bg-white text-sm"
-            placeholder="Shop no. / building no. (optional)"
-          />
-          <Input
-            value={step1.location?.addressLine2 || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, addressLine2: e.target.value } })}
-            className="bg-white text-sm"
-            placeholder="Floor / tower (optional)"
-          />
-          <Input
             value={step1.location?.state || ""}
             onChange={(e) => setStep1({ ...step1, location: { ...step1.location, state: e.target.value } })}
             className="bg-white text-sm"
-            placeholder="State (optional)"
+            placeholder="State"
           />
           <Input
             value={step1.location?.pincode || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, pincode: e.target.value } })}
+            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, pincode: sanitizeDigits(e.target.value).slice(0, 6) } })}
             className="bg-white text-sm"
-            placeholder="Pin code (optional)"
+            placeholder="Pincode (6 digits)*"
+            maxLength={6}
           />
           <Input
             value={step1.location?.landmark || ""}
@@ -1366,7 +1379,14 @@ export default function AddRestaurant() {
           </button>
           <button
             type="button"
-            onClick={() => setStep3({ ...step3, gstRegistered: false })}
+            onClick={() => setStep3({ 
+              ...step3, 
+              gstRegistered: false,
+              gstNumber: "",
+              gstLegalName: "",
+              gstAddress: "",
+              gstImage: null
+            })}
             className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"}`}
           >
             No
@@ -1375,8 +1395,8 @@ export default function AddRestaurant() {
         {step3.gstRegistered && (
           <div className="space-y-3">
             <Input value={step3.gstNumber || ""} onChange={(e) => setStep3({ ...step3, gstNumber: sanitizeGst(e.target.value) })} className="bg-white text-sm" placeholder="GST number*" maxLength={15} />
-            <Input value={step3.gstLegalName || ""} onChange={(e) => setStep3({ ...step3, gstLegalName: normalizeName(e.target.value) })} className="bg-white text-sm" placeholder="Legal name*" />
-            <Input value={step3.gstAddress || ""} onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })} className="bg-white text-sm" placeholder="Registered address*" />
+            <Input value={step3.gstLegalName || ""} onChange={(e) => setStep3({ ...step3, gstLegalName: e.target.value.toUpperCase().replace(/\s+/g, " ").trimStart() })} className="bg-white text-sm" placeholder="Legal name*" />
+            <Input value={step3.gstAddress || ""} onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value.toUpperCase().replace(/\s+/g, " ").trimStart() })} className="bg-white text-sm" placeholder="Registered address*" />
             <Input type="file" accept="image/*" onChange={(e) => setStep3({ ...step3, gstImage: e.target.files?.[0] || null })} className="bg-white text-sm" />
             {step3.gstImage && (
               <div className="flex items-center gap-3">

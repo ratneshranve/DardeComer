@@ -4,6 +4,7 @@ import deliveryRoutes from '../modules/food/delivery/routes/delivery.routes.js';
 import restaurantRoutes from '../modules/food/restaurant/routes/restaurant.routes.js';
 import landingRoutes from '../modules/food/landing/routes/landing.routes.js';
 import { getPublicDiningCategories, getPublicDiningRestaurants } from '../modules/food/dining/controllers/diningPublic.controller.js';
+import diningBookingUserRoutes from '../modules/food/dining/routes/diningBooking.routes.user.js';
 import uploadRoutes from '../modules/uploads/routes/upload.routes.js';
 import restaurantAdminRoutes from '../modules/food/admin/routes/admin.routes.js';
 import userRoutes from '../modules/food/user/routes/user.routes.js';
@@ -38,6 +39,7 @@ router.use('/v1/food/search', searchRoutes);
 router.get('/v1/food/dining/categories', getPublicDiningCategories);
 router.get('/v1/food/dining/categories/public', getPublicDiningCategories);
 router.get('/v1/food/dining/restaurants/public', getPublicDiningRestaurants);
+router.use('/v1/food/dining/bookings', authMiddleware, requireRoles('USER'), diningBookingUserRoutes);
 router.use('/v1/uploads', uploadRoutes);
 
 // Mark business-settings/public as truly public (must be before protected admin block)

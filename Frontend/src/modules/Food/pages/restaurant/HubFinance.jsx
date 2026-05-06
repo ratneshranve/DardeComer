@@ -581,103 +581,182 @@ export default function HubFinance() {
     `
   }
 
-  // Download PDF report - Direct download without print dialog
+  // Download PDF report - Improved layout, page breaks, and data integrity
   const downloadPDF = async () => {
     try {
       setShowDownloadMenu(false)
+      const reportData = getReportData()
       
-    const reportData = getReportData()
-    const htmlContent = generateHTMLContent(reportData)
-    
-      debugLog('?? Generating PDF...')
-      
-      // Create a temporary hidden iframe to render HTML properly
-      const iframe = document.createElement('iframe')
-      iframe.style.position = 'absolute'
-      iframe.style.left = '-9999px'
-      iframe.style.top = '0'
-      iframe.style.width = '210mm'
-      iframe.style.height = '297mm'
-      iframe.style.border = 'none'
-      document.body.appendChild(iframe)
-      
-      // Write HTML to iframe
-      iframe.contentDocument.open()
-      iframe.contentDocument.write(htmlContent)
-      iframe.contentDocument.close()
-      
-      // Wait for iframe content to load
-      await new Promise((resolve) => {
-        if (iframe.contentDocument.readyState === 'complete') {
-          resolve()
-        } else {
-          iframe.contentWindow.onload = resolve
-          setTimeout(resolve, 1000) // Fallback timeout
-        }
-      })
-      
-      // Wait a bit more for styles to apply
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Import html2canvas and jsPDF dynamically
-      debugLog('?? Loading libraries...')
-      const html2canvas = (await import('html2canvas')).default
+      debugLog('?? Loading PDF libraries...')
       const { default: jsPDF } = await import('jspdf')
-    
-      // Get the body element from iframe
-      const iframeBody = iframe.contentDocument.body
+      const { default: autoTable } = await import('jspdf-autotable')
       
-      debugLog('?? Converting to canvas...')
-      // Convert HTML to canvas
-      const canvas = await html2canvas(iframeBody, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: iframeBody.scrollWidth,
-        height: iframeBody.scrollHeight
-      })
+      const doc = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
       
-      debugLog('? Canvas created:', canvas.width, 'x', canvas.height)
-      
-      // Remove temporary iframe
-      document.body.removeChild(iframe)
-    
-      // Calculate PDF dimensions
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      
-      debugLog('?? PDF dimensions:', imgWidth, 'x', imgHeight, 'mm')
-      
-      // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      let heightLeft = imgHeight
-      let position = 0
-      
-      // Add first page
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      
-      // Add additional pages if content is longer than one page
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+      // Helper to format currency safely (using Rs. as jspdf default fonts don't support ₹)
+      const formatCurrency = (amount) => {
+        const val = typeof amount === 'string' ? parseFloat(amount.replace(/[^\d.-]/g, '')) : amount
+        return `Rs. ${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      }
+
+      // Helper for clean dates
+      const formatDate = (dateVal) => {
+        if (!dateVal) return 'N/A'
+        const d = new Date(dateVal)
+        if (isNaN(d.getTime())) return 'N/A'
+        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
       }
       
+      // 1. Header
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(22)
+      doc.setTextColor(33, 33, 33)
+      doc.text("Finance Report", pageWidth / 2, 20, { align: 'center' })
+      
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(14)
+      doc.setTextColor(66, 66, 66)
+      doc.text(reportData.restaurantName || "Restaurant", pageWidth / 2, 28, { align: 'center' })
+      
+      doc.setFontSize(9)
+      doc.setTextColor(128, 128, 128)
+      doc.text(`ID: ${formatRestaurantId(reportData.restaurantId)}`, pageWidth / 2, 34, { align: 'center' })
+      doc.text(`Generated on: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, 39, { align: 'center' })
+      doc.text(`Selected Range: ${reportData.dateRange}`, pageWidth / 2, 44, { align: 'center' })
+      
+      // 2. Current Cycle Summary Box
+      const boxY = 52
+      const boxHeight = 42
+      doc.setDrawColor(220, 220, 220)
+      doc.setFillColor(252, 252, 252)
+      doc.roundedRect(15, boxY, pageWidth - 30, boxHeight, 2, 2, 'FD')
+      
+      doc.setFontSize(10)
+      doc.setTextColor(100, 100, 100)
+      doc.text(`Current Cycle (${reportData.currentCycle.start} - ${reportData.currentCycle.end} ${reportData.currentCycle.month})`, 22, boxY + 10)
+      
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(24)
+      doc.setTextColor(0, 0, 0)
+      doc.text(formatCurrency(reportData.currentCycle.estimatedPayout), 22, boxY + 22)
+      
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(10)
+      doc.setTextColor(80, 80, 80)
+      doc.text(`${reportData.currentCycle.orders} orders during this period`, 22, boxY + 32)
+      
+      doc.setFontSize(9)
+      doc.setTextColor(120, 120, 120)
+      doc.text(`Payout Date: ${reportData.currentCycle.payoutDate}`, pageWidth - 22, boxY + 32, { align: 'right' })
+      
+      // 3. Detailed Table
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(13)
+      doc.setTextColor(0, 0, 0)
+      doc.text("Detailed Order Wise Report", 15, boxY + boxHeight + 12)
+      
+      const tableData = (reportData.allOrders || []).map((order) => {
+        const orderDate = formatDate(order.createdAt || order.deliveredAt)
+        const foodItems = order.foodNames || (order.items && order.items.map(item => item.name).join(', ')) || 'N/A'
+        const orderAmount = order.totalAmount || order.orderTotal || order.amount || 0
+        const earning = order.payout || order.restaurantEarning || 0
+        
+        return [
+          order.cycle === 'Current Cycle' ? 'Current' : 'Past',
+          order.orderId || 'N/A',
+          orderDate,
+          foodItems,
+          formatCurrency(orderAmount),
+          formatCurrency(earning)
+        ]
+      })
+      
+      if (tableData.length === 0) {
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(11)
+        doc.setTextColor(150, 150, 150)
+        doc.text("No orders found for this period.", 15, boxY + boxHeight + 25)
+      } else {
+        autoTable(doc, {
+          startY: boxY + boxHeight + 18,
+          head: [['Cycle', 'Order ID', 'Date', 'Items', 'Total', 'Earning']],
+          body: tableData,
+          theme: 'grid',
+          headStyles: { 
+            fillColor: [40, 40, 40], 
+            textColor: [255, 255, 255], 
+            fontSize: 8,
+            fontStyle: 'bold',
+            halign: 'center'
+          },
+          styles: { 
+            fontSize: 7.5, 
+            cellPadding: 2.5,
+            overflow: 'linebreak',
+            valign: 'middle',
+            font: "helvetica"
+          },
+          columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 22, halign: 'center' },
+            3: { cellWidth: 'auto' },
+            4: { cellWidth: 26, halign: 'right' },
+            5: { cellWidth: 26, halign: 'right' },
+          },
+          margin: { top: 30, bottom: 25, left: 15, right: 15 },
+          didDrawPage: (data) => {
+            // Footer on each page
+            doc.setFont("helvetica", "normal")
+            doc.setFontSize(8)
+            doc.setTextColor(150, 150, 150)
+            const pageCount = doc.internal.getNumberOfPages()
+            doc.text(`Page ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
+            doc.text("DardeComer Finance Report", 15, pageHeight - 10)
+          }
+        })
+      }
+      
+      // 4. Final Summary Row - Ensure it always shows even if it needs a new page
+      let finalY = tableData.length > 0 ? doc.lastAutoTable.finalY + 15 : boxY + boxHeight + 40
+      const totalEarnings = (reportData.allOrders || []).reduce((sum, order) => sum + (order.payout || order.restaurantEarning || 0), 0)
+      const totalAmount = (reportData.allOrders || []).reduce((sum, order) => sum + (order.totalAmount || order.orderTotal || order.amount || 0), 0)
+      
+      // If summary doesn't fit on current page, add a new page
+      if (finalY > pageHeight - 35) {
+        doc.addPage()
+        finalY = 30 // Top of new page
+      }
+      
+      doc.setDrawColor(33, 33, 33)
+      doc.setLineWidth(0.5)
+      doc.line(15, finalY - 8, pageWidth - 15, finalY - 8)
+      
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(11)
+      doc.setTextColor(33, 33, 33)
+      
+      doc.text(`Total Orders: ${(reportData.allOrders || []).length}`, 15, finalY)
+      doc.text(`Total Business: ${formatCurrency(totalAmount)}`, pageWidth - 80, finalY, { align: 'right' })
+      doc.text(`Grand Total Earnings: ${formatCurrency(totalEarnings)}`, pageWidth - 15, finalY, { align: 'right' })
+      
+      doc.setFontSize(9)
+      doc.setFont("helvetica", "normal")
+      doc.setTextColor(100, 100, 100)
+      doc.text("* This is an auto-generated report by DardeComer Finance Department.", 15, finalY + 10)
+      
       // Download PDF
-      const fileName = `finance-report-${reportData.dateRange.replace(/\s+/g, '-').replace(/'/g, '')}_${new Date().toISOString().split("T")[0]}.pdf`
-      debugLog('?? Downloading PDF:', fileName)
-      pdf.save(fileName)
-      debugLog('? PDF downloaded successfully!')
+      const fileName = `finance-report-${(reportData.dateRange || 'report').replace(/\s+/g, '-').replace(/'/g, '')}_${new Date().toISOString().split("T")[0]}.pdf`
+      debugLog('?? Saving PDF:', fileName)
+      doc.save(fileName)
+      debugLog('? PDF generated successfully!')
+      
     } catch (error) {
       debugError('? Error downloading PDF:', error)
-      debugError('Error details:', error.stack)
-      alert(`Failed to download PDF: ${error.message}. Please check console for details.`)
-    setShowDownloadMenu(false)
+      alert(`Failed to download PDF: ${error.message}. Please try again.`)
+      setShowDownloadMenu(false)
     }
   }
 

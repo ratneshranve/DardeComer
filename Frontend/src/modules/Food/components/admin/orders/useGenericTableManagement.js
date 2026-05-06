@@ -183,8 +183,8 @@ export function useGenericTableManagement(data, title, searchFields = []) {
             index + 1,
             itemName + variantSuffix,
             item.quantity || 1,
-            `Rs. ${(item.price || item.variantPrice || 0).toFixed(2)}`,
-            `Rs. ${((item.quantity || 1) * (item.price || item.variantPrice || 0)).toFixed(2)}`
+            `₹${(item.price || item.variantPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+            `₹${((item.quantity || 1) * (item.price || item.variantPrice || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
           ]
         })
 
@@ -237,37 +237,37 @@ export function useGenericTableManagement(data, title, searchFields = []) {
       const grandTotal = pricing.total || totalAmount
 
       doc.text('Subtotal:', summaryX, startY)
-      doc.text(`Rs. ${subtotal.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+      doc.text(`₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
       startY += 5
       
       if (deliveryFee > 0) {
         doc.text('Delivery Fee:', summaryX, startY)
-        doc.text(`Rs. ${deliveryFee.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        doc.text(`₹${deliveryFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
         startY += 5
       }
 
       if (packagingFee > 0) {
         doc.text('Packaging Fee:', summaryX, startY)
-        doc.text(`Rs. ${packagingFee.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        doc.text(`₹${packagingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
         startY += 5
       }
 
       if (tax > 0) {
         doc.text('Tax:', summaryX, startY)
-        doc.text(`Rs. ${tax.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        doc.text(`₹${tax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
         startY += 5
       }
 
       if (platformFee > 0) {
         doc.text('Platform Fee:', summaryX, startY)
-        doc.text(`Rs. ${platformFee.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        doc.text(`₹${platformFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
         startY += 5
       }
 
       if (discount > 0) {
         doc.setTextColor(220, 38, 38)
         doc.text('Discount:', summaryX, startY)
-        doc.text(`- Rs. ${discount.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+        doc.text(`- ₹${discount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
         doc.setTextColor(...secondaryColor)
         startY += 5
       }
@@ -281,7 +281,7 @@ export function useGenericTableManagement(data, title, searchFields = []) {
       doc.setTextColor(...textColor)
       doc.setFont(undefined, 'bold')
       doc.text('Grand Total:', summaryX, startY)
-      doc.text(`Rs. ${grandTotal.toFixed(2)}`, rightAlignX, startY, { align: 'right' })
+      doc.text(`₹${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, rightAlignX, startY, { align: 'right' })
       
       startY += 15
 

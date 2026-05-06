@@ -31,10 +31,12 @@ const getStatusColor = (orderStatus) => {
 }
 
 const getPaymentStatusColor = (paymentStatus) => {
-  if (paymentStatus === "Paid" || paymentStatus === "Collected") return "text-emerald-600"
-  if (paymentStatus === "Not Collected") return "text-amber-600"
-  if (paymentStatus === "Unpaid" || paymentStatus === "Failed") return "text-red-600"
-  return "text-slate-600"
+  const base = "px-2.5 py-0.5 rounded-full border text-xs font-semibold "
+  if (paymentStatus === "Paid" || paymentStatus === "Collected") return base + "text-emerald-700 bg-emerald-50 border-emerald-100"
+  if (paymentStatus === "Refunded") return base + "text-sky-700 bg-sky-50 border-sky-100"
+  if (paymentStatus === "Unpaid" || paymentStatus === "Not Collected") return base + "text-amber-700 bg-amber-50 border-amber-100"
+  if (paymentStatus === "Failed") return base + "text-red-700 bg-red-50 border-red-100"
+  return base + "text-slate-600 bg-slate-50 border-slate-100"
 }
 
 export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
@@ -200,15 +202,16 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                     <CreditCard className="w-4 h-4" />
                     Payment Status
                   </p>
-                  <p className={`text-sm font-medium ${getPaymentStatusColor(
-                    order.paymentType === 'Cash on Delivery' || order.payment?.method === 'cash' || order.payment?.method === 'cod'
-                      ? (order.paymentCollectionStatus ? 'Collected' : (order.status === 'delivered' ? 'Collected' : 'Not Collected'))
-                      : order.paymentStatus
-                  )}`}>
-                    {order.paymentType === 'Cash on Delivery' || order.payment?.method === 'cash' || order.payment?.method === 'cod'
-                      ? (order.paymentCollectionStatus ? 'Collected' : (order.status === 'delivered' ? 'Collected' : 'Not Collected'))
-                      : order.paymentStatus}
-                  </p>
+                  <div className="flex flex-col gap-1">
+                    <span className={`inline-flex w-fit items-center ${getPaymentStatusColor(order.paymentStatus)}`}>
+                      {order.paymentStatus || "Pending"}
+                    </span>
+                    {order.paymentCollectionStatus && (
+                      <span className="text-xs text-slate-500 font-medium">
+                        {order.paymentCollectionStatus}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
               {order.deliveryType && (

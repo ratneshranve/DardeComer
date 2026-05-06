@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, ChevronDown, Loader2, Gift, X, 
-  CheckCircle2, Clock, Search, History
+  CheckCircle2, Clock, Search, History, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { deliveryAPI } from '@food/api';
@@ -23,6 +23,7 @@ export const HistoryV2 = () => {
   const [showTripTypePicker, setShowTripTypePicker] = useState(false);
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [showBonusModal, setShowBonusModal] = useState(false);
   const [bonusTransactions, setBonusTransactions] = useState([]);
   const [bonusLoading, setBonusLoading] = useState(false);
@@ -30,33 +31,46 @@ export const HistoryV2 = () => {
   const tripTypes = ["ALL TRIPS", "Completed", "Cancelled", "Pending"];
 
   // Fetch Logic
-  useEffect(() => {
-    const fetchTrips = async () => {
-      setLoading(true);
-      try {
-        const year = selectedDate.getFullYear();
-        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-        const day = String(selectedDate.getDate()).padStart(2, "0");
-        const dateStr = `${year}-${month}-${day}`;
+  const fetchTrips = async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    else setLoading(true);
+    
+    try {
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+      const day = String(selectedDate.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
 
-        const params = {
-          period: activeTab,
-          date: dateStr,
-          status: selectedTripType !== "ALL TRIPS" ? selectedTripType : undefined,
-          limit: 1000
-        };
-        
-        const response = await deliveryAPI.getTripHistory(params);
-        if (response.data?.success) {
-          setTrips(response.data.data.trips || []);
-        }
-      } catch (error) {
-        toast.error("Failed to load history");
-      } finally {
-        setLoading(false);
+      const params = {
+        period: activeTab,
+        date: dateStr,
+        status: selectedTripType !== "ALL TRIPS" ? selectedTripType : undefined,
+        limit: 1000
+      };
+      
+      const response = await deliveryAPI.getTripHistory(params);
+      if (response.data?.success) {
+        setTrips(response.data.data.trips || []);
+        if (isManual) toast.success("History updated");
       }
-    };
+    } catch (error) {
+      if (isManual) toast.error("Failed to refresh history");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchTrips();
+
+    // Auto-refresh every 60 seconds if it's "Today"
+    const isToday = selectedDate.toDateString() === new Date().toDateString();
+    let interval;
+    if (isToday) {
+      interval = setInterval(() => fetchTrips(false), 60000);
+    }
+    return () => clearInterval(interval);
   }, [selectedDate, activeTab, selectedTripType]);
 
   // Bonus Logic
@@ -126,14 +140,23 @@ export const HistoryV2 = () => {
                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">Your delivery milestones</p>
             </div>
           </div>
-          <button onClick={() => setShowBonusModal(true)} className="w-10 h-10 rounded-xl bg-primary/100/10 flex items-center justify-center text-primary border border-primary/20 relative active:scale-90 transition-all">
-             <Gift className="w-5 h-5" />
-             {bonusTransactions.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                   {bonusTransactions.length}
-                </span>
-             )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => fetchTrips(true)} 
+              disabled={refreshing}
+              className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all disabled:opacity-50"
+            >
+               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button onClick={() => setShowBonusModal(true)} className="w-10 h-10 rounded-xl bg-primary/100/10 flex items-center justify-center text-primary border border-primary/20 relative active:scale-90 transition-all">
+               <Gift className="w-5 h-5" />
+               {bonusTransactions.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                     {bonusTransactions.length}
+                  </span>
+               )}
+            </button>
+          </div>
        </div>
 
        {/* 2. Selection Tabs (Matched to Image) */}
@@ -201,19 +224,19 @@ export const HistoryV2 = () => {
        {/* 4. Page Content */}
        <div className="px-4 py-2 space-y-5">
           {/* Performance Summary Banner (Matched to Image) */}
-          <div className="bg-[#E9F9F4] rounded-2xl p-6 border border-[#D1F2E8] flex justify-between items-center">
+          <div className="bg-[#E9F9F4] rounded-2xl p-6 border border-[#D1F2E8] flex justify-between items-center shadow-sm">
              <div>
-                <p className="text-[11px] font-bold text-primary mb-1">COD Collected</p>
-                <h3 className="text-xl font-bold text-gray-950">₹{metrics.cod.toFixed(2)}</h3>
+                <p className="text-[11px] font-bold text-primary mb-1 uppercase tracking-wider">COD Collected</p>
+                <h3 className="text-2xl font-black text-gray-950 tracking-tighter">₹{metrics.cod.toFixed(2)}</h3>
              </div>
              <div className="text-right">
-                <p className="text-[11px] font-bold text-primary mb-1">Earnings</p>
-                <h3 className="text-xl font-bold text-gray-950">₹{metrics.earnings.toFixed(2)}</h3>
+                <p className="text-[11px] font-bold text-primary mb-1 uppercase tracking-wider">Earnings</p>
+                <h3 className="text-2xl font-black text-gray-950 tracking-tighter">₹{metrics.earnings.toFixed(2)}</h3>
              </div>
           </div>
 
           {/* Trip List */}
-          {loading ? (
+          {loading && !refreshing ? (
              <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 <p className="text-gray-400 text-xs font-medium">Fetching trips...</p>
@@ -229,21 +252,31 @@ export const HistoryV2 = () => {
                    const isCOD = (trip.paymentMethod || '').toLowerCase() === 'cash' || (trip.paymentMethod || '').toLowerCase() === 'cod';
 
                    return (
-                      <div key={trip.orderId || idx} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm active:scale-[0.99] transition-all">
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        key={trip.orderId || idx} 
+                        className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm active:scale-[0.99] transition-all"
+                      >
                          <div className="flex justify-between items-start mb-2">
                              <div>
                                 <h4 className="text-base font-bold text-gray-950">{trip.orderId || 'ORDER-ID'}</h4>
                                 <p className="text-sm font-medium text-gray-500 mt-0.5">{trip.restaurant || trip.restaurantName || 'Sayaji'}</p>
                                 <p className="text-xs text-gray-400 font-medium mt-0.5 line-clamp-1">{extractItems(trip)}</p>
                              </div>
-                             <span className={`text-sm font-bold ${isCompleted ? 'text-primary' : isCancelled ? 'text-red-500' : 'text-orange-500'}`}>
+                             <span className={`text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${
+                               isCompleted ? 'bg-green-50 text-primary' : 
+                               isCancelled ? 'bg-red-50 text-red-500' : 
+                               'bg-orange-50 text-orange-500'
+                             }`}>
                                 {trip.status || 'Status'}
                              </span>
                          </div>
                          
                          <div className="flex gap-2 mb-4 mt-3">
                              <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${isCOD ? 'bg-orange-50 text-orange-600' : 'bg-primary/10 text-primary'}`}>
-                                {isCOD ? 'COD' : 'Online'}
+                                {isCOD ? 'COD Collected' : 'Online Payment'}
                              </span>
                          </div>
 
@@ -258,17 +291,23 @@ export const HistoryV2 = () => {
                              </div>
                              <div className="text-right">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Earning</p>
-                                <p className="text-sm font-bold text-gray-950">₹{payout.toFixed(2)}</p>
+                                <p className="text-sm font-bold text-primary">₹{payout.toFixed(2)}</p>
                              </div>
                          </div>
-                      </div>
+                      </motion.div>
                    );
-                })}
+                 })}
              </div>
           ) : (
              <div className="py-20 text-center flex flex-col items-center">
                 <Clock className="w-12 h-12 text-gray-100 mb-4" />
                 <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No Trips Recorded</p>
+                <button 
+                  onClick={() => fetchTrips(true)}
+                  className="mt-4 text-primary text-xs font-bold uppercase tracking-widest underline underline-offset-4"
+                >
+                  Refresh Now
+                </button>
              </div>
           )}
        </div>

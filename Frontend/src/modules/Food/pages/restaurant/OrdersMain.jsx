@@ -132,7 +132,7 @@ const transformOrderForList = (order) => ({
 });
 
 // Completed Orders List Component
-function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
+function CompletedOrders({ onSelectOrder, refreshToken = 0, searchQuery = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -229,7 +229,9 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900">Completed orders</h2>
-        <span className="text-xs text-gray-500">{orders.length} total</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${orders.filter(o => o.orderId?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || o.customerName?.toLowerCase().includes(searchQuery.toLowerCase())).length} found` : `${orders.length} total`}
+        </span>
       </div>
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -237,7 +239,16 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
         </div>
       ) : (
         <div>
-          {orders.map((order) => {
+          {orders
+            .filter((order) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                order.orderId?.toString().toLowerCase().includes(q) ||
+                order.customerName?.toLowerCase().includes(q)
+              );
+            })
+            .map((order) => {
             const deliveredDate = order.deliveredAt
               ? new Date(order.deliveredAt).toLocaleDateString("en-US", {
                   month: "short",
@@ -338,7 +349,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
 }
 
 // Cancelled Orders List Component
-function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
+function CancelledOrders({ onSelectOrder, refreshToken = 0, searchQuery = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -438,7 +449,9 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900">Cancelled orders</h2>
-        <span className="text-xs text-gray-500">{orders.length} total</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${orders.filter(o => o.orderId?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || o.customerName?.toLowerCase().includes(searchQuery.toLowerCase())).length} found` : `${orders.length} total`}
+        </span>
       </div>
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -446,7 +459,16 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
         </div>
       ) : (
         <div>
-          {orders.map((order) => {
+          {orders
+            .filter((order) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                order.orderId?.toString().toLowerCase().includes(q) ||
+                order.customerName?.toLowerCase().includes(q)
+              );
+            })
+            .map((order) => {
             const cancelledDate = order.cancelledAt
               ? new Date(order.cancelledAt).toLocaleDateString("en-US", {
                   month: "short",
@@ -570,7 +592,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
 }
 
 // Table Bookings List Component
-function TableBookings() {
+function TableBookings({ searchQuery = "" }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -629,7 +651,9 @@ function TableBookings() {
     <div className="pt-4 pb-6 px-1">
       <div className="flex items-baseline justify-between mb-4 px-1">
         <h2 className="text-base font-semibold text-gray-900">Table Bookings</h2>
-        <span className="text-xs text-gray-500">{bookings.length} total</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${bookings.filter(b => b.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) || b.user?.phone?.includes(searchQuery)).length} found` : `${bookings.length} total`}
+        </span>
       </div>
 
       {bookings.length === 0 ? (
@@ -638,7 +662,16 @@ function TableBookings() {
         </div>
       ) : (
         <div className="space-y-3">
-          {bookings.map((booking) => (
+          {bookings
+            .filter((booking) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                booking.user?.name?.toLowerCase().includes(q) ||
+                booking.user?.phone?.includes(q)
+              );
+            })
+            .map((booking) => (
             <div
               key={booking._id}
               className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm transition-all hover:border-gray-300">
@@ -737,7 +770,7 @@ function TableBookings() {
   );
 }
 
-function AllOrders({ onSelectOrder, onCancel }) {
+function AllOrders({ onSelectOrder, onCancel, searchQuery = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -907,7 +940,9 @@ function AllOrders({ onSelectOrder, onCancel }) {
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900">All orders</h2>
-        <span className="text-xs text-gray-500">{orders.length} total</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${orders.filter(o => o.orderId?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || o.customerName?.toLowerCase().includes(searchQuery.toLowerCase())).length} found` : `${orders.length} total`}
+        </span>
       </div>
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -915,7 +950,16 @@ function AllOrders({ onSelectOrder, onCancel }) {
         </div>
       ) : (
         <div>
-          {orders.map((order) => {
+          {orders
+            .filter((order) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                order.orderId?.toString().toLowerCase().includes(q) ||
+                order.customerName?.toLowerCase().includes(q)
+              );
+            })
+            .map((order) => {
             const normalizedStatus = String(order.status || "").toLowerCase();
             let etaDisplay = order.eta;
 
@@ -990,6 +1034,7 @@ function AllOrders({ onSelectOrder, onCancel }) {
 export default function OrdersMain() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -1854,8 +1899,8 @@ export default function OrdersMain() {
         const tableData = orderToPrint.items.map((item) => [
           item.name || "Item",
           item.quantity || 1,
-          `₹${(item.price || 0).toFixed(2)}`,
-          `₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
+          `Rs. ${(item.price || 0).toFixed(2)}`,
+          `Rs. ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
         ]);
 
         autoTable(doc, {
@@ -1883,7 +1928,7 @@ export default function OrdersMain() {
       // Total
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text(`Total: ₹${(orderToPrint.total || 0).toFixed(2)}`, 20, yPos);
+      doc.text(`Total: Rs. ${(orderToPrint.total || 0).toFixed(2)}`, 20, yPos);
 
       // Payment status
       yPos += 10;
@@ -2063,6 +2108,7 @@ export default function OrdersMain() {
           <AllOrders
             onSelectOrder={handleSelectOrder}
             onCancel={handleCancelClick}
+            searchQuery={searchQuery}
           />
         );
       case "preparing":
@@ -2072,6 +2118,7 @@ export default function OrdersMain() {
             onCancel={handleCancelClick}
             refreshToken={ordersRefreshToken}
             onStatusChanged={requestOrdersRefresh}
+            searchQuery={searchQuery}
           />
         );
       case "ready":
@@ -2079,6 +2126,7 @@ export default function OrdersMain() {
           <ReadyOrders
             onSelectOrder={handleSelectOrder}
             refreshToken={ordersRefreshToken}
+            searchQuery={searchQuery}
           />
         );
       case "out-for-delivery":
@@ -2086,6 +2134,7 @@ export default function OrdersMain() {
           <OutForDeliveryOrders
             onSelectOrder={handleSelectOrder}
             refreshToken={ordersRefreshToken}
+            searchQuery={searchQuery}
           />
         );
       case "scheduled":
@@ -2095,15 +2144,17 @@ export default function OrdersMain() {
           <CompletedOrders
             onSelectOrder={handleSelectOrder}
             refreshToken={ordersRefreshToken}
+            searchQuery={searchQuery}
           />
         );
       case "table-booking":
-        return <TableBookings />;
+        return <TableBookings searchQuery={searchQuery} />;
       case "cancelled":
         return (
           <CancelledOrders
             onSelectOrder={handleSelectOrder}
             refreshToken={ordersRefreshToken}
+            searchQuery={searchQuery}
           />
         );
       default:
@@ -2115,7 +2166,11 @@ export default function OrdersMain() {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Restaurant Navbar - Sticky at top */}
       <div className="sticky top-0 z-50 bg-white">
-        <RestaurantNavbar showNotifications={true} />
+        <RestaurantNavbar 
+          showNotifications={true} 
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
       </div>
 
       {/* Top Filter Bar - Sticky below navbar */}
@@ -3203,8 +3258,9 @@ function OrderCard({
 function PreparingOrders({
   onSelectOrder,
   onCancel,
-  refreshToken = 0,
   onStatusChanged,
+  refreshToken = 0,
+  searchQuery = "",
 }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3457,7 +3513,9 @@ function PreparingOrders({
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900">Preparing orders</h2>
-        <span className="text-xs text-gray-500">{orders.length} active</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${orders.filter(o => o.orderId?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || o.customerName?.toLowerCase().includes(searchQuery.toLowerCase())).length} found` : `${orders.length} total`}
+        </span>
       </div>
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -3465,7 +3523,16 @@ function PreparingOrders({
         </div>
       ) : (
         <div>
-          {orders.map((order) => {
+          {orders
+            .filter((order) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                order.orderId?.toString().toLowerCase().includes(q) ||
+                order.customerName?.toLowerCase().includes(q)
+              );
+            })
+            .map((order) => {
             // Calculate remaining ETA (countdown)
             const elapsedMs = currentTime - order.preparingTimestamp;
             const elapsedMinutes = Math.floor(elapsedMs / 60000);
@@ -3615,7 +3682,7 @@ const TakeAwayOtpModal = ({ onVerify, onClose }) => {
 };
 
 // Ready Orders List
-function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
+function ReadyOrders({ onSelectOrder, refreshToken = 0, searchQuery = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completingTakeAwayOrderIds, setCompletingTakeAwayOrderIds] = useState({});
@@ -3746,7 +3813,9 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900">Ready for pickup</h2>
-        <span className="text-xs text-gray-500">{orders.length} active</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${orders.filter(o => o.orderId?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || o.customerName?.toLowerCase().includes(searchQuery.toLowerCase())).length} found` : `${orders.length} total`}
+        </span>
       </div>
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500 text-sm">
@@ -3754,7 +3823,16 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
         </div>
       ) : (
         <div>
-          {orders.map((order) => (
+          {orders
+            .filter((order) => {
+              if (!searchQuery) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                order.orderId?.toString().toLowerCase().includes(q) ||
+                order.customerName?.toLowerCase().includes(q)
+              );
+            })
+            .map((order) => (
             <OrderCard
               key={order.orderId || order.mongoId}
               {...order}
@@ -3788,7 +3866,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
 }
 
 // Out for Delivery Orders List
-const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
+const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0, searchQuery = "" }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -3884,7 +3962,9 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
     <div className="pt-4 pb-6">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900">Out for delivery</h2>
-        <span className="text-xs text-gray-500">{orders.length} active</span>
+        <span className="text-xs text-gray-500">
+          {searchQuery ? `${orders.filter(o => o.orderId?.toString().toLowerCase().includes(searchQuery.toLowerCase()) || o.customerName?.toLowerCase().includes(searchQuery.toLowerCase())).length} found` : `${orders.length} total`}
+        </span>
       </div>
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500 text-sm">

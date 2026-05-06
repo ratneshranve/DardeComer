@@ -209,7 +209,20 @@ export default function FeedbackExperienceReport() {
                     <input
                       type="date"
                       value={filters.fromDate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
+                      max={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        const date = e.target.value;
+                        const today = new Date().toISOString().split('T')[0];
+                        if (date > today) {
+                          toast.error("From date cannot be in the future");
+                          return;
+                        }
+                        if (filters.toDate && date > filters.toDate) {
+                          toast.error("From date must be before To date");
+                          return;
+                        }
+                        setFilters(prev => ({ ...prev, fromDate: date }));
+                      }}
                       className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -224,7 +237,20 @@ export default function FeedbackExperienceReport() {
                     <input
                       type="date"
                       value={filters.toDate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
+                      max={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        const date = e.target.value;
+                        const today = new Date().toISOString().split('T')[0];
+                        if (date > today) {
+                          toast.error("To date cannot be in the future");
+                          return;
+                        }
+                        if (filters.fromDate && date < filters.fromDate) {
+                          toast.error("To date must be after From date");
+                          return;
+                        }
+                        setFilters(prev => ({ ...prev, toDate: date }));
+                      }}
                       className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>

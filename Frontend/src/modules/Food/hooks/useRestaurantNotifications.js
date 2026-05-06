@@ -680,6 +680,15 @@ export const useRestaurantNotifications = () => {
         }
       }
     });
+    // Listen for restaurant status updates from automation
+    socketRef.current.on('restaurant_status_update', (data) => {
+      debugLog('?? Restaurant status updated remotely:', data);
+      if (data.isAcceptingOrders !== undefined) {
+        window.dispatchEvent(new CustomEvent('restaurantStatusChanged', { 
+          detail: { isOnline: data.isAcceptingOrders } 
+        }));
+      }
+    });
 
     socketRef.current.on('admin_notification', (payload) => {
       debugLog('📢 Admin broadcast received:', payload);

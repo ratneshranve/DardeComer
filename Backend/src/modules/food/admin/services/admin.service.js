@@ -127,7 +127,10 @@ export async function getRestaurantComplaints(query = {}) {
 
     const filter = { type: 'order' };
     if (query.status && query.status !== 'all') filter.status = query.status;
-    if (query.complaintType && query.complaintType !== 'all') filter.issueType = query.complaintType;
+    if (query.complaintType && query.complaintType !== 'all') {
+        const typeRegex = query.complaintType.replace(/_/g, '.*');
+        filter.issueType = { $regex: `^${typeRegex}$`, $options: 'i' };
+    }
     if (query.restaurantId && mongoose.Types.ObjectId.isValid(query.restaurantId)) {
         filter.restaurantId = new mongoose.Types.ObjectId(query.restaurantId);
     }
@@ -1230,6 +1233,26 @@ export async function getCustomers(query = {}) {
             const end = new Date(d);
             end.setHours(23, 59, 59, 999);
             filter.createdAt = { $gte: start, $lte: end };
+        }
+    }
+
+    if (query.orderDate && String(query.orderDate).trim()) {
+        const d = new Date(String(query.orderDate));
+        if (!Number.isNaN(d.getTime())) {
+            const start = new Date(d);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(d);
+            end.setHours(23, 59, 59, 999);
+
+            const userIdsWithOrders = await FoodOrder.distinct('userId', {
+                createdAt: { $gte: start, $lte: end }
+            });
+            
+            if (filter._id) {
+                filter._id = { $in: [...userIdsWithOrders], ...filter._id };
+            } else {
+                filter._id = { $in: userIdsWithOrders };
+            }
         }
     }
 

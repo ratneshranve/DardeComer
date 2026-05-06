@@ -21,10 +21,12 @@ const getStatusColor = (orderStatus) => {
 }
 
 const getPaymentStatusColor = (paymentStatus) => {
-  if (paymentStatus === "Paid") return "text-emerald-600"
-  if (paymentStatus === "Refunded") return "text-sky-600"
-  if (paymentStatus === "Unpaid" || paymentStatus === "Failed") return "text-red-600"
-  return "text-slate-600"
+  const base = "px-2 py-0.5 rounded-full border text-xs font-semibold "
+  if (paymentStatus === "Paid") return base + "text-emerald-700 bg-emerald-50 border-emerald-100"
+  if (paymentStatus === "Refunded") return base + "text-sky-700 bg-sky-50 border-sky-100"
+  if (paymentStatus === "Unpaid") return base + "text-amber-700 bg-amber-50 border-amber-100"
+  if (paymentStatus === "Failed") return base + "text-red-700 bg-red-50 border-red-100"
+  return base + "text-slate-600 bg-slate-50 border-slate-100"
 }
 
 export default function OrdersTable({
@@ -356,7 +358,7 @@ export default function OrdersTable({
                 {(visibleColumns.paymentCollectionStatus !== false) && (
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
-                      <span className={`text-sm font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
+                      <span className={`inline-flex items-center ${getPaymentStatusColor(order.paymentStatus)}`}>
                         {order.paymentStatus || "Pending"}
                       </span>
                       {order.paymentCollectionStatus && (

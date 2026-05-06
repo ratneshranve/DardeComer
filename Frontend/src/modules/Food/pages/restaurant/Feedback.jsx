@@ -99,6 +99,7 @@ export default function Feedback() {
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false)
   const [isComplaintsLoading, setIsComplaintsLoading] = useState(false)
   const [complaints, setComplaints] = useState([])
+  const [reviewSearchQuery, setReviewSearchQuery] = useState("")
 
   const [restaurantData, setRestaurantData] = useState(null)
   const [isLoadingRestaurant, setIsLoadingRestaurant] = useState(true)
@@ -288,6 +289,18 @@ export default function Feedback() {
 
   useEffect(() => {
     let filtered = [...reviews]
+    
+    // Search filtering
+    if (reviewSearchQuery) {
+      const query = reviewSearchQuery.toLowerCase()
+      filtered = filtered.filter(review => 
+        review.userName?.toLowerCase().includes(query) || 
+        review.orderNumber?.toString().toLowerCase().includes(query) || 
+        review.reviewText?.toLowerCase().includes(query)
+      )
+    }
+
+    // Sort filtering
     if (filterValues.sortBy) {
       filtered.sort((a, b) => {
         const dateA = new Date(a.date); const dateB = new Date(b.date)
@@ -299,9 +312,9 @@ export default function Feedback() {
       })
     }
     setDisplayedReviews(filtered)
-  }, [reviews, filterValues])
+  }, [reviews, filterValues, reviewSearchQuery])
 
-  const handleFilterReset = () => { setFilterValues({ duration: null, sortBy: "newest", reviewType: [] }); setIsFilterApply() }
+  const handleFilterReset = () => { setFilterValues({ duration: null, sortBy: "newest", reviewType: [] }); setIsFilterOpen(false) }
   const handleFilterApply = () => { setIsFilterLoading(true); setIsFilterOpen(false); setTimeout(() => setIsFilterLoading(false), 200) }
 
   const formatDate = (date) => {
@@ -501,9 +514,20 @@ export default function Feedback() {
         ) : (
           <div className="space-y-4">
             <div className="flex gap-2">
-              <div className="flex-1 bg-white p-3 rounded-xl border border-gray-200 flex items-center gap-2">
+              <div className="flex-1 bg-white p-3 rounded-xl border border-gray-200 flex items-center gap-2 shadow-sm">
                 <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" placeholder="Search reviews" className="flex-1 text-sm bg-transparent focus:outline-none" />
+                <input 
+                  type="text" 
+                  placeholder="Search reviews" 
+                  className="flex-1 text-sm bg-transparent focus:outline-none" 
+                  value={reviewSearchQuery}
+                  onChange={(e) => setReviewSearchQuery(e.target.value)}
+                />
+                {reviewSearchQuery && (
+                  <button onClick={() => setReviewSearchQuery("")}>
+                    <X className="w-3 h-3 text-gray-400" />
+                  </button>
+                )}
               </div>
               <button onClick={() => setIsFilterOpen(true)} className="bg-white p-3 rounded-xl border border-gray-200">
                 <SlidersHorizontal className="w-4 h-4 text-gray-900" />
@@ -534,6 +558,221 @@ export default function Feedback() {
         )}
       </div>
       <BottomNavOrders />
+
+      {/* Date Selector Modal */}
+      <AnimatePresence>
+        {isDateSelectorOpen && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-[2px]">
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-md bg-white rounded-t-[2.5rem] p-6 pb-10"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Select Date Range</h3>
+                <button onClick={() => setIsDateSelectorOpen(false)} className="p-2 bg-gray-100 rounded-full">
+                  <X className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {[
+                  { id: "today", label: "Today" },
+                  { id: "yesterday", label: "Yesterday" },
+                  { id: "last5days", label: "Last 5 Days" },
+                  { id: "thisWeek", label: "This Week" },
+                  { id: "lastWeek", label: "Last Week" },
+                  { id: "thisMonth", label: "This Month" },
+                  { id: "lastMonth", label: "Last Month" },
+                  { id: "custom", label: "Custom Range" },
+                ].map((range) => (
+                  <button
+                    key={range.id}
+                    onClick={() => handleDateRangeSelect(range.id)}
+                    className={`py-3 px-4 rounded-xl text-sm font-bold transition-all ${
+                      selectedDateRange === range.id
+                        ? "bg-primary text-white shadow-lg shadow-primary/20"
+                        : "bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100"
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+
+              {selectedDateRange === "custom" && (
+                <div className="mb-6 space-y-4">
+                  <div className="flex gap-2">
+                    <div className="flex-1 p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">Start Date</p>
+                      <p className="text-sm font-bold text-gray-900">{customDateRange.start ? customDateRange.start.toLocaleDateString() : 'Select'}</p>
+                    </div>
+                    <div className="flex-1 p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">End Date</p>
+                      <p className="text-sm font-bold text-gray-900">{customDateRange.end ? customDateRange.end.toLocaleDateString() : 'Select'}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <DateRangeCalendar 
+                      startDate={customDateRange.start}
+                      endDate={customDateRange.end}
+                      onDateRangeChange={(start, end) => setCustomDateRange({ start, end })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setIsDateSelectorOpen(false)}
+                className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/25"
+              >
+                Apply Selection
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Complaints Filter Modal */}
+      <AnimatePresence>
+        {isComplaintsFilterOpen && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-[2px]">
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-md bg-white rounded-t-[2.5rem] p-6 pb-10"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Filters</h3>
+                <button onClick={() => setIsComplaintsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full">
+                  <X className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+
+              <div className="flex gap-4 min-h-[300px]">
+                <div className="w-1/3 border-r border-gray-100 space-y-2">
+                  <button
+                    onClick={() => setSelectedComplaintsFilterCategory("issueType")}
+                    className={`w-full text-left p-3 rounded-xl text-xs font-bold transition-all ${
+                      selectedComplaintsFilterCategory === "issueType" ? "bg-primary/5 text-primary" : "text-gray-400"
+                    }`}
+                  >
+                    Issue Type
+                  </button>
+                </div>
+
+                <div className="flex-1 py-2">
+                  {selectedComplaintsFilterCategory === "issueType" && (
+                    <div className="space-y-3">
+                      {["missing_item", "quality_issue", "delivery_issue", "wrong_order", "packaging_issue", "other"].map((type) => (
+                        <label key={type} className="flex items-center gap-3 cursor-pointer group">
+                          <div
+                            onClick={() => {
+                              const current = complaintsFilterValues.issueType;
+                              const updated = current.includes(type) ? [] : [type]; // Allow single selection for now as per API
+                              setComplaintsFilterValues({ ...complaintsFilterValues, issueType: updated });
+                            }}
+                            className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
+                              complaintsFilterValues.issueType.includes(type) ? "bg-primary border-primary" : "border-gray-200"
+                            }`}
+                          >
+                            {complaintsFilterValues.issueType.includes(type) && <div className="w-2 h-2 bg-white rounded-full" />}
+                          </div>
+                          <span className="text-sm font-bold text-gray-700 capitalize">{type.replace('_', ' ')}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={handleComplaintsFilterReset}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={handleComplaintsFilterApply}
+                  className="flex-2 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/25"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Reviews Filter Modal */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-[2px]">
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-md bg-white rounded-t-[2.5rem] p-6 pb-10"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Sort Reviews</h3>
+                <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full">
+                  <X className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { id: "newest", label: "Newest First" },
+                  { id: "oldest", label: "Oldest First" },
+                  { id: "bestRated", label: "Best Rated" },
+                  { id: "worstRated", label: "Worst Rated" },
+                ].map((sort) => (
+                  <button
+                    key={sort.id}
+                    onClick={() => setFilterValues({ ...filterValues, sortBy: sort.id })}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${
+                      filterValues.sortBy === sort.id
+                        ? "bg-primary/5 border-2 border-primary"
+                        : "bg-gray-50 border-2 border-transparent"
+                    }`}
+                  >
+                    <span className={`font-bold ${filterValues.sortBy === sort.id ? "text-primary" : "text-gray-600"}`}>
+                      {sort.label}
+                    </span>
+                    {filterValues.sortBy === sort.id && (
+                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={handleFilterReset}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={handleFilterApply}
+                  className="flex-2 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/25"
+                >
+                  Apply Sort
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

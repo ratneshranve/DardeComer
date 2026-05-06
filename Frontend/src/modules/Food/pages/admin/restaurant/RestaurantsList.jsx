@@ -273,7 +273,7 @@ export default function RestaurantsList() {
             approvalStatus: normalizeApprovalStatus(restaurant),
             isDeleted: restaurant.isDeleted || false,
             balance: restaurant.balance || 0,
-            isActive: restaurant.status === "approved",
+            isActive: (restaurant.status || "").toLowerCase() === "approved",
             rating: restaurant.ratings?.average || restaurant.rating || 0,
             logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
             originalData: restaurant,
@@ -1153,6 +1153,18 @@ export default function RestaurantsList() {
                 <DropdownMenuContent align="end" className="w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
                   <DropdownMenuLabel>Export Format</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      const dataToExport = filteredRestaurants.length > 0 ? filteredRestaurants : restaurants
+                      import("@food/components/admin/restaurants/restaurantsExportUtils").then(m => {
+                        m.exportRestaurantsToExcel(dataToExport, "restaurants_list")
+                      })
+                    }} 
+                    className="cursor-pointer flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Excel
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExport} className="cursor-pointer flex items-center gap-2">
                     <FileText className="w-4 h-4" />
                     PDF

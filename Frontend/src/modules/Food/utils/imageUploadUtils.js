@@ -66,10 +66,12 @@ export const convertBase64ToFile = (
     throw new Error("Invalid base64 image data")
   }
 
+  // Remove potential data URL prefix and whitespace
   let pureBase64 = base64Value
   if (base64Value.includes(",")) {
     pureBase64 = base64Value.split(",")[1]
   }
+  pureBase64 = pureBase64.replace(/\s/g, "")
 
   try {
     const byteCharacters = atob(pureBase64)
@@ -80,19 +82,33 @@ export const convertBase64ToFile = (
 
     const byteArray = new Uint8Array(byteNumbers)
     const normalizedFileName = String(originalFileName || "").trim()
-    const extension = normalizedFileName.includes(".")
-      ? normalizedFileName.split(".").pop()
-      : mimeType.includes("png")
-        ? "png"
-        : mimeType.includes("webp")
-          ? "webp"
-          : "jpg"
+    
+    // Determine extension from mime type or original name
+    let extension = "jpg"
+    if (normalizedFileName.includes(".")) {
+      extension = normalizedFileName.split(".").pop()
+    } else if (mimeType.includes("png")) {
+      extension = "png"
+    } else if (mimeType.includes("webp")) {
+      extension = "webp"
+    }
+    
     const blob = new Blob([byteArray], { type: mimeType })
     const fileName = normalizedFileName || `${fileNamePrefix}-${Date.now()}.${extension}`
-    return new File([blob], fileName, { type: mimeType })
+    
+    // Create File object (Polyfill for environments where File isn't fully supported as a constructor)
+    try {
+      return new File([blob], fileName, { type: mimeType, lastModified: Date.now() })
+    } catch (e) {
+      // Fallback for some older browsers/WebViews where File constructor might fail with Blobs
+      const file = blob
+      file.name = fileName
+      file.lastModified = Date.now()
+      return file
+    }
   } catch (error) {
     console.error("Base64 conversion failed:", error)
-    throw new Error("Failed to process image data")
+    throw new Error("Failed to process image data: " + error.message)
   }
 }
 

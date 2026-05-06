@@ -170,6 +170,7 @@ export default function EditProfile() {
     mobile: "",
     email: "",
     dateOfBirth: "",
+    anniversary: "",
   })
   const fileInputRef = useRef(null)
   const hydratedFromDraftRef = useRef(Boolean(draftProfile))
@@ -231,6 +232,13 @@ export default function EditProfile() {
     return dob.isAfter(dayjs(), "day") ? "Date of birth cannot be in the future" : ""
   }
 
+  const validateAnniversary = (value) => {
+    if (!value) return ""
+    const anniv = dayjs(value)
+    if (!anniv.isValid()) return "Please select a valid anniversary date"
+    return anniv.isAfter(dayjs(), "day") ? "Anniversary date cannot be in the future" : ""
+  }
+
   const handleChange = (field, value) => {
     let normalizedValue = value
     let errorMessage = ""
@@ -243,6 +251,8 @@ export default function EditProfile() {
       errorMessage = validateEmail(normalizedValue)
     } else if (field === "dateOfBirth") {
       errorMessage = validateDateOfBirth(normalizedValue)
+    } else if (field === "anniversary") {
+      errorMessage = validateAnniversary(normalizedValue)
     }
 
     setFormData((prev) => ({
@@ -250,7 +260,7 @@ export default function EditProfile() {
       [field]: normalizedValue
     }))
 
-    if (field === "mobile" || field === "email" || field === "dateOfBirth") {
+    if (field === "mobile" || field === "email" || field === "dateOfBirth" || field === "anniversary") {
       setFieldErrors((prev) => ({
         ...prev,
         [field]: errorMessage
@@ -274,13 +284,13 @@ export default function EditProfile() {
       return
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB')
+    // Validate file size (max 10MB for raw, we will compress it)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size should be less than 10MB')
       return
     }
 
-    // Show preview
+    // Show immediate preview for better UX
     const reader = new FileReader()
     reader.onloadend = () => {
       setImagePreview(reader.result)
@@ -290,13 +300,23 @@ export default function EditProfile() {
     // Upload to server
     try {
       setIsUploadingImage(true)
-      const response = await userAPI.uploadProfileImage(file)
+      
+      // 1. Compress image before upload to handle high-res mobile camera photos
+      let fileToUpload = file
+      try {
+        const { compressImage } = await import("@food/utils/imageUploadUtils")
+        fileToUpload = await compressImage(file, { maxWidth: 1024, quality: 0.7 })
+      } catch (compressErr) {
+        debugWarn('Compression failed, using original file:', compressErr)
+      }
+
+      const response = await userAPI.uploadProfileImage(fileToUpload)
       const imageUrl = response?.data?.data?.profileImage || response?.data?.profileImage
 
       if (imageUrl) {
         setProfileImage(imageUrl)
         setImagePreview(imageUrl)
-        toast.success('Profile image uploaded successfully')
+        toast.success('Profile image updated')
 
         const mergedProfile = {
           ...(userProfile || {}),
@@ -317,11 +337,14 @@ export default function EditProfile() {
 
         // Dispatch event to refresh profile
         window.dispatchEvent(new Event("userAuthChanged"))
+      } else {
+        throw new Error('No image URL returned from server')
       }
     } catch (error) {
       debugError('Error uploading image:', error)
-      toast.error(error?.response?.data?.message || 'Failed to upload image')
-      // Revert preview
+      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to upload image'
+      toast.error(errorMsg)
+      // Revert preview to original
       setImagePreview(profileImage)
     } finally {
       setIsUploadingImage(false)
@@ -387,6 +410,7 @@ export default function EditProfile() {
       mobile: validateMobile(formData.mobile),
       email: validateEmail(formData.email),
       dateOfBirth: validateDateOfBirth(formData.dateOfBirth),
+      anniversary: validateAnniversary(formData.anniversary),
     }
     setFieldErrors(nextErrors)
     return !Object.values(nextErrors).some(Boolean)
@@ -648,6 +672,7 @@ export default function EditProfile() {
                 <DatePicker
                   value={formData.anniversary}
                   onChange={(newValue) => handleChange('anniversary', newValue)}
+                  maxDate={dayjs()}
                   slotProps={{
                     textField: {
                       className: "w-full",
@@ -675,6 +700,9 @@ export default function EditProfile() {
                   }}
                 />
               </LocalizationProvider>
+              {fieldErrors.anniversary && (
+                <p className="text-xs text-red-600">{fieldErrors.anniversary}</p>
+              )}
             </div>
 
             {/* Gender Field */}

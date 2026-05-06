@@ -428,18 +428,31 @@ export default function OrdersPage({ statusKey = "all" }) {
         else paymentType = "N/A"
       }
 
+      const backendStatus = String(order.orderStatus || "").toLowerCase()
       const paymentStatusRaw = order.payment?.status || ""
       let paymentStatus = order.paymentStatus
+      
       if (!paymentStatus) {
         const s = String(paymentStatusRaw || "").toLowerCase()
         if (s === "refunded") paymentStatus = "Refunded"
         else if (s === "paid" || s === "authorized" || s === "captured" || s === "settled") paymentStatus = "Paid"
         else if (s === "failed" || s === "rejected") paymentStatus = "Failed"
+        else if (s === "cod_pending") paymentStatus = "Unpaid"
         else if (s === "pending" || s === "created") paymentStatus = "Pending"
         else paymentStatus = "Pending"
       }
 
-      const backendStatus = String(order.orderStatus || "").toLowerCase()
+      // If Cash on Delivery and Delivered, it should be marked as Paid
+      if (paymentType === "Cash on Delivery" && backendStatus === "delivered") {
+        paymentStatus = "Paid"
+      }
+
+      // Helper for sub-status display in table
+      const paymentCollectionStatus = (paymentType === "Cash on Delivery") 
+        ? (backendStatus === "delivered" ? "Collected" : "Cash to be collected")
+        : null
+
+
       let displayStatus = order.orderStatus
       if (backendStatus === "created") {
         displayStatus = "Pending"
@@ -506,6 +519,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         paymentType,
         paymentMethod,
         paymentStatus,
+        paymentCollectionStatus,
         orderStatus: displayStatus,
         deliveryPartnerName,
         deliveryPartnerPhone,

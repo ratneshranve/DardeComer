@@ -24,10 +24,19 @@ export default function RestaurantNavbar({
   showSearch = true,
   showOfflineOnlineTag = true,
   showNotifications = true,
+  searchQuery,
+  onSearchChange,
 }) {
   const navigate = useNavigate()
   const [isSearchActive, setIsSearchActive] = useState(false)
-  const [searchValue, setSearchValue] = useState("")
+  const [searchValue, setSearchValue] = useState(searchQuery || "")
+
+  useEffect(() => {
+    if (searchQuery !== undefined) {
+      setSearchValue(searchQuery)
+      if (searchQuery && !isSearchActive) setIsSearchActive(true)
+    }
+  }, [searchQuery])
   const [status, setStatus] = useState("Offline")
   const [restaurantData, setRestaurantData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -254,8 +263,13 @@ export default function RestaurantNavbar({
   const handleSearchClose = () => {
     setIsSearchActive(false)
     setSearchValue("")
+    if (onSearchChange) onSearchChange("")
   }
-  const handleSearchChange = (e) => setSearchValue(e.target.value)
+  const handleSearchChange = (e) => {
+    const val = e.target.value
+    setSearchValue(val)
+    if (onSearchChange) onSearchChange(val)
+  }
   const handleMenuClick = () => navigate("/restaurant/explore")
   const handleNotificationsClick = () => navigate("/restaurant/notifications")
 

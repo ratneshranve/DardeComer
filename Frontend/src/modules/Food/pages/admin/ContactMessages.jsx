@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { Search, ArrowUpDown, Settings, Folder, ChevronDown, Eye, Loader2, Star } from "lucide-react"
+import { Search, ArrowUpDown, Folder, ChevronDown, Eye, Loader2, Star } from "lucide-react"
 import { toast } from "sonner"
 import { adminAPI } from "@food/api"
 import {
@@ -10,12 +10,6 @@ import {
   DialogDescription,
 } from "@food/components/ui/dialog"
 import { Button } from "@food/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@food/components/ui/dropdown-menu"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -200,7 +194,7 @@ export default function ContactMessages() {
                 <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                   <div className="flex items-center justify-center gap-2">
                     <span>Action</span>
-                    <Settings className="w-3 h-3 text-slate-400" />
+                    <Eye className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
               </tr>
@@ -251,19 +245,13 @@ export default function ContactMessages() {
                       {getRatingBadge(feedback.rating)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 rounded text-slate-600 hover:bg-slate-100 transition-colors">
-                            <Settings className="w-4 h-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewFeedback(feedback)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button 
+                        onClick={() => handleViewFeedback(feedback)}
+                        className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-all active:scale-90"
+                        title="View Details"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
                     </td>
                   </tr>
                 ))

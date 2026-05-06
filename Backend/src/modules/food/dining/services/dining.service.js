@@ -371,7 +371,7 @@ export async function listDiningRestaurantsPublic(query = {}) {
         .populate('categoryIds', 'name slug imageUrl')
         .lean();
 
-    return diningDocs
+    const normalizedDining = diningDocs
         .filter((doc) => doc.restaurantId)
         .map((doc) => ({
             ...doc.restaurantId,
@@ -384,4 +384,35 @@ export async function listDiningRestaurantsPublic(query = {}) {
                 diningType: doc.categoryIds?.[0]?.slug || doc.restaurantId?.diningSettings?.diningType || ''
             }
         }));
+
+    const listedIds = new Set(normalizedDining.map((item) => String(item?._id || '')));
+    const fallbackFilter = {
+        'diningSettings.isEnabled': true,
+        _id: { $nin: Array.from(listedIds).filter(Boolean) }
+    };
+
+    if (cityValue) {
+        fallbackFilter.$or = [
+            { city: { $regex: cityValue, $options: 'i' } },
+            { 'location.city': { $regex: cityValue, $options: 'i' } }
+        ];
+    }
+
+    const fallbackRestaurants = await FoodRestaurant.find(fallbackFilter)
+        .select('restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo')
+        .lean();
+
+    const fallbackItems = fallbackRestaurants.map((restaurant) => ({
+        ...restaurant,
+        restaurant,
+        categories: [],
+        diningSettings: {
+            isEnabled: true,
+            maxGuests: Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6),
+            pureVegRestaurant: restaurant?.pureVegRestaurant === true,
+            diningType: restaurant?.diningSettings?.diningType || ''
+        }
+    }));
+
+    return [...normalizedDining, ...fallbackItems];
 }
