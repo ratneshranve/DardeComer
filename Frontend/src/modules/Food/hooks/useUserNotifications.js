@@ -65,9 +65,17 @@ export const useUserNotifications = () => {
     
     // Auth token
     const token = localStorage.getItem('user_accessToken') || localStorage.getItem('accessToken');
-    if (!token) return;
+    if (!token) {
+      setIsConnected(false);
+      return;
+    }
 
     debugLog('🔌 Connecting to User Socket.IO:', socketUrl);
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
 
     socketRef.current = io(socketUrl, {
       path: '/socket.io/',
@@ -200,7 +208,30 @@ export const useUserNotifications = () => {
       }
     });
 
+    const handleAuthRefreshed = (e) => {
+      if (e.detail?.module !== 'user') return;
+      if (!socketRef.current || !e.detail.token) return;
+      socketRef.current.auth.token = e.detail.token;
+      if (!socketRef.current.connected) {
+        socketRef.current.connect();
+      }
+    };
+
+    const handleAuthRefreshFailed = (e) => {
+      if (e.detail?.module !== 'user') return;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setIsConnected(false);
+    };
+
+    window.addEventListener('authRefreshed', handleAuthRefreshed);
+    window.addEventListener('authRefreshFailed', handleAuthRefreshFailed);
+
     return () => {
+      window.removeEventListener('authRefreshed', handleAuthRefreshed);
+      window.removeEventListener('authRefreshFailed', handleAuthRefreshFailed);
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;

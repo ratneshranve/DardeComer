@@ -55,6 +55,7 @@ import diningBookingRestaurantRoutes from '../../dining/routes/diningBooking.rou
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
 import { getRestaurantFinanceController } from '../controllers/restaurantFinance.controller.js';
+import { pollRateLimiter } from '../../../../middleware/rateLimit.js';
 
 import { cacheResponse, invalidateCache } from '../../../../middleware/cache.js';
 
@@ -193,7 +194,7 @@ router.patch('/addons/:id', authMiddleware, requireRestaurant, updateAddonContro
 router.delete('/addons/:id', authMiddleware, requireRestaurant, deleteAddonController);
 
 // Orders (restaurant dashboard)
-router.get('/orders', authMiddleware, requireRestaurant, orderController.listOrdersRestaurantController);
+router.get('/orders', authMiddleware, requireRestaurant, pollRateLimiter, orderController.listOrdersRestaurantController);
 router.get('/orders/:orderId', authMiddleware, requireRestaurant, orderController.getOrderByIdRestaurantController);
 router.patch('/orders/:orderId/status', authMiddleware, requireRestaurant, orderController.updateOrderStatusRestaurantController);
 router.post('/orders/:orderId/resend-notification', authMiddleware, requireRestaurant, orderController.resendDeliveryNotificationRestaurantController);

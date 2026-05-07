@@ -529,6 +529,15 @@ export default function OrderTracking() {
     return () => window.removeEventListener('orderSocketConnectionChanged', handleSocketConnectionChanged)
   }, [])
 
+  useEffect(() => {
+    const handleAuthRefreshFailed = (event) => {
+      if (event?.detail?.module !== 'user') return
+      terminalPollStopRef.current = true
+    }
+    window.addEventListener('authRefreshFailed', handleAuthRefreshFailed)
+    return () => window.removeEventListener('authRefreshFailed', handleAuthRefreshFailed)
+  }, [])
+
 
   // OTP received via socket event (deliveryDropOtp)
   useEffect(() => {
@@ -970,6 +979,10 @@ export default function OrderTracking() {
           terminalPollStopRef.current = true;
         }
       } catch (err) {
+        if (err?.response?.status === 401) {
+          terminalPollStopRef.current = true;
+          return;
+        }
         if (isInitial && !order) {
           try {
             const matchedOrder = await resolveOrderFromList(orderId);
@@ -1015,7 +1028,7 @@ export default function OrderTracking() {
       if (pollRef.current) pollRef.current(false);
     };
 
-    const pollInterval = (isSocketConnected || window.orderSocketConnected) ? 12000 : 5000;
+    const pollInterval = (isSocketConnected || window.orderSocketConnected) ? 20000 : 5000;
     const interval = setInterval(tick, pollInterval);
 
     return () => clearInterval(interval);

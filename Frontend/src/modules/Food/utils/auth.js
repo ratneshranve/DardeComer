@@ -185,17 +185,41 @@ export function clearRestaurantSessionCache() {
   // Clear all keys starting with 'restaurant_' to prevent data leakage between accounts
   try {
     const keysToRemove = [];
+    
+    // Safely collect keys first
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('restaurant_') || key === 'restaurantName')) {
+      if (key && (
+        key.startsWith('restaurant_') || 
+        key.startsWith('fcm_web_registered_token_restaurant') ||
+        key === 'restaurantName' ||
+        key === 'food_restaurant_notifications'
+      )) {
         keysToRemove.push(key);
       }
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Clear legacy keys just in case
+    // Explicitly add onboarding keys just in case
+    if (!keysToRemove.includes("restaurant_onboarding_data")) {
+      keysToRemove.push("restaurant_onboarding_data");
+    }
+    
+    // Execute removal
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {}
+    });
+    
+    // Also clear any keys matching the onboarding pattern specifically
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('restaurant_onboarding_data_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Clear legacy keys
     localStorage.removeItem("restaurant_onboarding");
-    localStorage.removeItem("restaurant_onboarding_data");
     localStorage.removeItem("restaurant_pendingPhone");
 
     // Clear IndexedDB onboarding files

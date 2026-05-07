@@ -3,6 +3,7 @@ import { upload } from '../../../../middleware/upload.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../../core/roles/role.middleware.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
+import { pollRateLimiter } from '../../../../middleware/rateLimit.js';
 import { registerDeliveryPartnerController, updateDeliveryPartnerProfileController, updateDeliveryPartnerBankDetailsController, listSupportTicketsController, createSupportTicketController, getSupportTicketByIdController, updateDeliveryPartnerDetailsController, updateDeliveryPartnerProfilePhotoBase64Controller, updateAvailabilityController, getWalletController, createWithdrawalRequestController, createCashDepositOrderController, verifyCashDepositPaymentController, getEarningsController, getTripHistoryController, getPocketDetailsController, getEmergencyHelpController, getCashLimitController, getDeliveryReferralStatsController, getActiveEarningAddonsController } from '../controllers/delivery.controller.js';
 
 const router = express.Router();
@@ -34,8 +35,8 @@ router.post('/support-tickets', authMiddleware, requireRoles('DELIVERY_PARTNER')
 router.get('/support-tickets/:id', authMiddleware, requireRoles('DELIVERY_PARTNER'), getSupportTicketByIdController);
 
 // ----- Orders -----
-router.get('/orders/current', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.getCurrentTripDeliveryController);
-router.get('/orders/available', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.listOrdersAvailableDeliveryController);
+router.get('/orders/current', authMiddleware, requireRoles('DELIVERY_PARTNER'), pollRateLimiter, orderController.getCurrentTripDeliveryController);
+router.get('/orders/available', authMiddleware, requireRoles('DELIVERY_PARTNER'), pollRateLimiter, orderController.listOrdersAvailableDeliveryController);
 router.get('/orders/:orderId', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.getOrderByIdDeliveryController);
 router.patch('/orders/:orderId/accept', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.acceptOrderDeliveryController);
 router.patch('/orders/:orderId/reject', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.rejectOrderDeliveryController);

@@ -947,6 +947,21 @@ export const useDeliveryNotifications = () => {
       socketUrl,
     });
 
+    if (!token) {
+      debugWarn('Skipping socket connection: missing delivery auth token');
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setIsConnected(false);
+      return;
+    }
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
     socketRef.current = io(socketUrl, {
       path: '/socket.io/',
       transports: ['polling', 'websocket'], // Allow both
@@ -1207,6 +1222,15 @@ export const useDeliveryNotifications = () => {
     // Auth change/refresh listeners
     const handleAuthChange = () => {
       const newToken = localStorage.getItem('delivery_accessToken') || localStorage.getItem('accessToken');
+      if (!newToken) {
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
+        setIsConnected(false);
+        joinedDeliveryRoomRef.current = null;
+        return;
+      }
       if (socketRef.current && newToken) {
         debugLog('?? Auth changed, updating socket token');
         socketRef.current.auth.token = newToken;
@@ -1225,6 +1249,17 @@ export const useDeliveryNotifications = () => {
           socketRef.current.connect();
         }
       }
+    };
+
+    const handleAuthRefreshFailed = (e) => {
+      if (e.detail?.module !== 'delivery') return;
+      debugWarn('Delivery auth refresh failed, disconnecting socket');
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setIsConnected(false);
+      joinedDeliveryRoomRef.current = null;
     };
 
     // Restore any order that was received while the app was backgrounded or killed.
@@ -1260,6 +1295,7 @@ export const useDeliveryNotifications = () => {
 
     window.addEventListener('deliveryAuthChanged', handleAuthChange);
     window.addEventListener('authRefreshed', handleAuthRefreshed);
+    window.addEventListener('authRefreshFailed', handleAuthRefreshFailed);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
@@ -1289,6 +1325,7 @@ export const useDeliveryNotifications = () => {
       joinedDeliveryRoomRef.current = null;
       window.removeEventListener('deliveryAuthChanged', handleAuthChange);
       window.removeEventListener('authRefreshed', handleAuthRefreshed);
+      window.removeEventListener('authRefreshFailed', handleAuthRefreshFailed);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('native-push-notification', nativePushWrapper);

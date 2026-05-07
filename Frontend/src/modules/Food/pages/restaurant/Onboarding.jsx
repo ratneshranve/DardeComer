@@ -23,6 +23,7 @@ import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { clearModuleAuth, clearAuthData } from "@food/utils/auth"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
+import { compressImage, compressImages } from "@food/utils/imageCompression"
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
@@ -638,9 +639,15 @@ export default function RestaurantOnboarding() {
     setSourcePicker((prev) => ({ ...prev, isOpen: false }))
   }
 
-  const handleMenuImagesSelected = (files = []) => {
-    if (!files.length) return
-    const nextMenuImages = [...(step2.menuImages || []), ...files]
+  const handleMenuImagesSelected = async (files = []) => {
+    if (!files.length) return;
+    
+    // Compress images before adding to state
+    toast.loading("Compressing menu images...", { id: "compressing-menu" });
+    const compressedFiles = await compressImages(files);
+    toast.dismiss("compressing-menu");
+
+    const nextMenuImages = [...(step2.menuImages || []), ...compressedFiles]
     setStep2((prev) => ({
       ...prev,
       menuImages: nextMenuImages,
@@ -648,28 +655,37 @@ export default function RestaurantOnboarding() {
     void persistMenuImagesToDB(nextMenuImages)
   }
 
-  const handleProfileImageSelected = (file) => {
-    if (!file) return
+  const handleProfileImageSelected = async (file) => {
+    if (!file) return;
+
+    // Compress image before adding to state
+    toast.loading("Compressing profile image...", { id: "compressing-profile" });
+    const compressedFile = await compressImage(file);
+    toast.dismiss("compressing-profile");
+
     setStep2((prev) => ({
       ...prev,
-      profileImage: file,
+      profileImage: compressedFile,
     }))
-    void saveFileToDB("profileImage", file)
+    void saveFileToDB("profileImage", compressedFile)
   }
 
-  const handlePanImageSelected = (file) => {
-    if (!file) return
-    setStep3((prev) => ({ ...prev, panImage: file }))
+  const handlePanImageSelected = async (file) => {
+    if (!file) return;
+    const compressed = await compressImage(file);
+    setStep3((prev) => ({ ...prev, panImage: compressed }))
   }
 
-  const handleGstImageSelected = (file) => {
-    if (!file) return
-    setStep3((prev) => ({ ...prev, gstImage: file }))
+  const handleGstImageSelected = async (file) => {
+    if (!file) return;
+    const compressed = await compressImage(file);
+    setStep3((prev) => ({ ...prev, gstImage: compressed }))
   }
 
-  const handleFssaiImageSelected = (file) => {
-    if (!file) return
-    setStep3((prev) => ({ ...prev, fssaiImage: file }))
+  const handleFssaiImageSelected = async (file) => {
+    if (!file) return;
+    const compressed = await compressImage(file);
+    setStep3((prev) => ({ ...prev, fssaiImage: compressed }))
   }
 
   const isPersistedImageValue = (value) =>
@@ -786,6 +802,9 @@ export default function RestaurantOnboarding() {
 
   // Load from localStorage on mount and check URL parameter
   useEffect(() => {
+    // Hard reset of in-memory file cache on mount to prevent cross-account leakage on APK/SPA
+    clearOnboardingFileCache()
+    
     setVerifiedPhoneNumber(getVerifiedPhoneFromStoredRestaurant())
 
     // Check if step is specified in URL (from OTP login redirect)
@@ -808,10 +827,13 @@ export default function RestaurantOnboarding() {
           const savedPhone = normalizePhoneDigits(localData.step1?.ownerPhone || "")
           const normalizedCurrent = normalizePhoneDigits(currentPhone)
 
-          if (normalizedCurrent && savedPhone !== normalizedCurrent) {
-            debugLog("⚠️ Phone mismatch or unverified data. Data belongs to different user. Clearing.")
+          // If we have a current phone but it doesn't match saved phone, OR if current phone is missing
+          // (which shouldn't happen for a logged-in user), we clear the local storage.
+          if (!normalizedCurrent || (savedPhone && savedPhone !== normalizedCurrent)) {
+            debugLog("⚠️ Phone mismatch or session switch detected. Clearing stale local data.")
             clearOnboardingFromLocalStorage()
             await clearAllFilesFromDB()
+            clearOnboardingFileCache()
             return
           }
 

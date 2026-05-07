@@ -103,6 +103,8 @@ export const useRestaurantNotifications = () => {
   const lastConnectErrorLogRef = useRef(0);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
+  const pollInFlightRef = useRef(false);
+  const lastPollAtRef = useRef(0);
   const CONNECT_ERROR_LOG_THROTTLE_MS = 10000;
   const ALERT_LOOP_INTERVAL_MS = 4500;
   const ALERT_LOOP_MAX_MS = 120000;
@@ -247,12 +249,19 @@ export const useRestaurantNotifications = () => {
   // alert flow. This prevents "restaurant didn't receive the order" cases.
   useEffect(() => {
     if (!restaurantId) return;
+    if (isConnected) return;
 
     const ALERT_POLL_MS = 8000;
     let isCancelled = false;
 
     const pollOrders = async () => {
       if (isCancelled) return;
+      if (pollInFlightRef.current) return;
+
+      const now = Date.now();
+      if (now - lastPollAtRef.current < 2000) return;
+      lastPollAtRef.current = now;
+      pollInFlightRef.current = true;
 
       try {
         const response = await restaurantAPI.getOrders({ page: 1, limit: 30 });
@@ -280,7 +289,13 @@ export const useRestaurantNotifications = () => {
           confirmed.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
         }
       } catch (error) {
+        if (error?.response?.status === 401) {
+          isCancelled = true;
+          return;
+        }
         // Non-blocking: keep polling.
+      } finally {
+        pollInFlightRef.current = false;
       }
     };
 
@@ -306,7 +321,7 @@ export const useRestaurantNotifications = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [restaurantId]);
+  }, [restaurantId, isConnected]);
 
   useEffect(() => {
     if (!supportsBrowserNotifications()) return;
@@ -516,6 +531,17 @@ export const useRestaurantNotifications = () => {
     debugLog('?? Is Production Build:', isProductionBuild);
     debugLog('?? Is Production Deployment:', isProductionDeployment);
 
+    const token = localStorage.getItem('restaurant_accessToken') || localStorage.getItem('accessToken');
+    if (!token) {
+      setIsConnected(false);
+      return;
+    }
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
     // Initialize socket connection (default namespace)
     // Use polling only to avoid repeated "WebSocket connection failed" when backend is down
     socketRef.current = io(socketUrl, {
@@ -528,9 +554,7 @@ export const useRestaurantNotifications = () => {
       timeout: 20000,
       forceNew: false,
       autoConnect: true,
-      auth: {
-        token: localStorage.getItem('restaurant_accessToken') || localStorage.getItem('accessToken')
-      }
+      auth: { token }
     });
 
     socketRef.current.on('connect', () => {
@@ -727,7 +751,30 @@ export const useRestaurantNotifications = () => {
     audioRef.current.preload = 'auto';
     audioRef.current.volume = 1;
 
+    const handleAuthRefreshed = (e) => {
+      if (e.detail?.module !== 'restaurant') return;
+      if (!socketRef.current || !e.detail.token) return;
+      socketRef.current.auth.token = e.detail.token;
+      if (!socketRef.current.connected) {
+        socketRef.current.connect();
+      }
+    };
+
+    const handleAuthRefreshFailed = (e) => {
+      if (e.detail?.module !== 'restaurant') return;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setIsConnected(false);
+    };
+
+    window.addEventListener('authRefreshed', handleAuthRefreshed);
+    window.addEventListener('authRefreshFailed', handleAuthRefreshFailed);
+
     return () => {
+      window.removeEventListener('authRefreshed', handleAuthRefreshed);
+      window.removeEventListener('authRefreshFailed', handleAuthRefreshFailed);
       stopAlertLoop();
       if (socketRef.current) {
         socketRef.current.disconnect();

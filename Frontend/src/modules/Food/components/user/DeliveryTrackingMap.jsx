@@ -67,6 +67,8 @@ const DeliveryTrackingMap = ({
   const [smoothLocation, setSmoothLocation] = useState(null);
   const socketRef = useRef(null);
   const interpStateRef = useRef({ lastPos: null, nextPos: null, startTime: 0 });
+  const latestRiderLocationRef = useRef(null);
+  const latestSmoothLocationRef = useRef(null);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
@@ -86,6 +88,14 @@ const DeliveryTrackingMap = ({
 
   const tripStatus = order?.status || order?.orderStatus || 'pending';
   const isOrderPickedUp = ['picked_up', 'out_for_delivery', 'delivered'].includes(tripStatus.toLowerCase());
+
+  useEffect(() => {
+    latestRiderLocationRef.current = riderLocation;
+  }, [riderLocation]);
+
+  useEffect(() => {
+    latestSmoothLocationRef.current = smoothLocation;
+  }, [smoothLocation]);
 
 
   // 1. Initial State from Order Payload
@@ -150,11 +160,11 @@ const DeliveryTrackingMap = ({
         };
         
         // Trigger Smooth Interpolation
-        interpStateRef.current = {
-           lastPos: smoothLocation || riderLocation || nextPos,
-           nextPos: nextPos,
-           startTime: Date.now()
-        };
+          interpStateRef.current = {
+            lastPos: latestSmoothLocationRef.current || latestRiderLocationRef.current || nextPos,
+            nextPos: nextPos,
+            startTime: Date.now()
+          };
         
         setRiderLocation(nextPos);
       }
@@ -164,7 +174,7 @@ const DeliveryTrackingMap = ({
       unsubs.forEach(u => u?.());
       socketRef.current?.disconnect();
     };
-  }, [trackingIds, backendUrl, smoothLocation, riderLocation]);
+  }, [trackingIds, backendUrl]);
 
   // Real-time ETA from rider distance OR user distance (takeaway)
   useEffect(() => {
