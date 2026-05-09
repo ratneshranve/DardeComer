@@ -6,11 +6,7 @@ import { userAPI } from '@food/api';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
 import { UserNotificationContext } from '../context/UserNotificationContext';
 
-const debugLog = (...args) => {
-  if (import.meta.env.DEV) {
-    console.log('📬 [UserSocket]', ...args);
-  }
-};
+const debugLog = (...args) => {};
 
 /**
  * Hook for user to receive real-time order notifications.

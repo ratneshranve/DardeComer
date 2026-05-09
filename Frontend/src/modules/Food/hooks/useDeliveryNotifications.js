@@ -20,16 +20,8 @@ const shouldLogDeliverySocket = () => {
   }
 };
 
-const debugLog = (...args) => {
-  if (shouldLogDeliverySocket()) {
-    console.log('[DeliverySocket]', ...args);
-  }
-};
-const debugWarn = (...args) => {
-  if (shouldLogDeliverySocket()) {
-    console.warn('[DeliverySocket]', ...args);
-  }
-};
+const debugLog = (...args) => {};
+const debugWarn = (...args) => {};
 const debugError = (...args) => {
   console.error('[DeliverySocket]', ...args);
 };
