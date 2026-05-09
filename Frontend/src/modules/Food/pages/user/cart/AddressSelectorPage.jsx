@@ -388,19 +388,28 @@ export default function AddressSelectorPage() {
 
   const handleAddressFormSubmit = async (e) => {
     e.preventDefault()
+    const accessToken = localStorage.getItem("user_accessToken")
+    const isAuthenticated = !!(accessToken && String(accessToken).trim())
     if (!addressFormData.street || !addressFormData.city) {
       toast.error("Please fill required fields")
       return
     }
+    const payload = {
+      ...addressFormData,
+      label: addressFormData.label === "Work" ? "Office" : addressFormData.label,
+      location: { type: "Point", coordinates: [mapPosition[1], mapPosition[0]] },
+      latitude: mapPosition[0],
+      longitude: mapPosition[1]
+    }
+
+    if (!isAuthenticated) {
+      sessionStorage.setItem("pendingUserAddressSave", JSON.stringify(payload))
+      navigate(`/food/user/auth/login?redirect=${encodeURIComponent("/food/user")}`)
+      return
+    }
+
     setLoadingAddress(true)
     try {
-      const payload = {
-        ...addressFormData,
-        label: addressFormData.label === "Work" ? "Office" : addressFormData.label,
-        location: { type: "Point", coordinates: [mapPosition[1], mapPosition[0]] },
-        latitude: mapPosition[0],
-        longitude: mapPosition[1]
-      }
       const created = await addAddress(payload)
       if (created) {
         const id = getAddressId(created)
@@ -410,6 +419,12 @@ export default function AddressSelectorPage() {
         handleBack()
       }
     } catch (error) {
+      const status = error?.response?.status
+      if (status === 401 || status === 403) {
+        sessionStorage.setItem("pendingUserAddressSave", JSON.stringify(payload))
+        navigate(`/food/user/auth/login?redirect=${encodeURIComponent("/food/user")}`)
+        return
+      }
       toast.error("Failed to save address")
     } finally {
       setLoadingAddress(false)

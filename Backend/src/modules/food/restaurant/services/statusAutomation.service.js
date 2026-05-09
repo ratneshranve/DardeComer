@@ -15,16 +15,16 @@ export const autoOfflineRestaurants = async () => {
         const currentMinute = now.getMinutes();
         const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
-        // Fetch restaurants that are currently online
-        const onlineRestaurants = await FoodRestaurant.find({
-            isAcceptingOrders: true,
+        // Fetch restaurants controlled by timing automation.
+        const automationRestaurants = await FoodRestaurant.find({
             status: 'approved',
-            isDeleted: false
-        }).select('_id restaurantName').lean();
+            isDeleted: false,
+            availabilityAutomationEnabled: { $ne: false }
+        }).select('_id restaurantName isAcceptingOrders').lean();
 
-        if (!onlineRestaurants.length) return;
+        if (!automationRestaurants.length) return;
 
-        const restaurantIds = onlineRestaurants.map(r => r._id);
+        const restaurantIds = automationRestaurants.map(r => r._id);
         const allTimings = await FoodRestaurantOutletTimings.find({
             restaurantId: { $in: restaurantIds }
         }).lean();
@@ -32,9 +32,9 @@ export const autoOfflineRestaurants = async () => {
         const timingsMap = new Map(allTimings.map(t => [String(t.restaurantId), t]));
         const io = getIO();
 
-        let offlineCount = 0;
+        let statusChangedCount = 0;
 
-        for (const restaurant of onlineRestaurants) {
+        for (const restaurant of automationRestaurants) {
             const timingsDoc = timingsMap.get(String(restaurant._id));
             let isWithinTimings = true;
 
@@ -67,27 +67,28 @@ export const autoOfflineRestaurants = async () => {
                 }
             }
 
-            if (!isWithinTimings) {
+            const shouldAcceptOrders = Boolean(isWithinTimings);
+            if (Boolean(restaurant.isAcceptingOrders) !== shouldAcceptOrders) {
                 await FoodRestaurant.updateOne(
                     { _id: restaurant._id },
-                    { $set: { isAcceptingOrders: false } }
+                    { $set: { isAcceptingOrders: shouldAcceptOrders } }
                 );
-                offlineCount++;
+                statusChangedCount++;
                 
-                logger.info(`[StatusAutomation] Auto-Offline: Restaurant "${restaurant.restaurantName}" (${restaurant._id}) forced offline due to timings.`);
+                logger.info(`[StatusAutomation] Auto status sync: Restaurant "${restaurant.restaurantName}" (${restaurant._id}) set to ${shouldAcceptOrders ? 'online' : 'offline'} by timings.`);
                 
                 // Emit socket event to the restaurant room
                 if (io) {
                     io.to(rooms.restaurant(restaurant._id)).emit('restaurant_status_update', { 
-                        isAcceptingOrders: false,
-                        reason: 'timings_closed'
+                        isAcceptingOrders: shouldAcceptOrders,
+                        reason: shouldAcceptOrders ? 'timings_open' : 'timings_closed'
                     });
                 }
             }
         }
 
-        if (offlineCount > 0) {
-            logger.info(`[StatusAutomation] Completed cycle. Forced ${offlineCount} restaurants offline.`);
+        if (statusChangedCount > 0) {
+            logger.info(`[StatusAutomation] Completed cycle. Synced ${statusChangedCount} restaurants by timings.`);
         }
     } catch (error) {
         logger.error(`[StatusAutomation] Error in autoOfflineRestaurants: ${error.message}`);

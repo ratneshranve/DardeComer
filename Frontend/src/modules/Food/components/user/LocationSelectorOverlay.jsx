@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { ChevronLeft, ChevronRight, Plus, MapPin, MoreHorizontal, Navigation, Home, Building2, Briefcase, Phone, X, Crosshair } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
@@ -47,6 +48,7 @@ const getAddressIcon = (address) => {
 }
 
 export default function LocationSelectorOverlay({ isOpen, onClose }) {
+  const navigate = useNavigate()
   const { location, loading, requestLocation } = useGeoLocation()
   const { addresses = [], addAddress, updateAddress, setDefaultAddress, userProfile } = useProfile()
   const [showAddressForm, setShowAddressForm] = useState(false)
@@ -1918,6 +1920,9 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
     e.preventDefault()
     let addressToSave = null
 
+    const accessToken = localStorage.getItem("user_accessToken")
+    const isAuthenticated = !!(accessToken && String(accessToken).trim())
+
     // Validate required fields (zipCode is optional)
     if (!addressFormData.street || !addressFormData.city || !addressFormData.state) {
       toast.error("Please fill in all required fields (Street, City, State)")
@@ -1927,6 +1932,29 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
     // Validate that we have coordinates
     if (!mapPosition || mapPosition.length !== 2 || !mapPosition[0] || !mapPosition[1]) {
       toast.error("Please select a location on the map")
+      return
+    }
+
+    // If user is not logged in, redirect to login and save this draft for post-login auto-save.
+    if (!isAuthenticated) {
+      let normalizedLabel = addressFormData.label || "Home"
+      if (normalizedLabel === "Work") normalizedLabel = "Office"
+      if (!["Home", "Office", "Other"].includes(normalizedLabel)) normalizedLabel = "Other"
+
+      const pendingAddressPayload = {
+        label: normalizedLabel,
+        street: addressFormData.street.trim(),
+        additionalDetails: (addressFormData.additionalDetails || "").trim(),
+        city: addressFormData.city.trim(),
+        state: addressFormData.state.trim(),
+        zipCode: (addressFormData.zipCode || "").trim(),
+        latitude: mapPosition[0],
+        longitude: mapPosition[1],
+      }
+
+      sessionStorage.setItem("pendingUserAddressSave", JSON.stringify(pendingAddressPayload))
+      onClose()
+      navigate(`/food/user/auth/login?redirect=${encodeURIComponent("/food/user")}`)
       return
     }
 
@@ -2017,6 +2045,19 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         status: error.response?.status,
         addressData: addressToSave
       })
+
+      const status = error?.response?.status
+      if (status === 401 || status === 403) {
+        try {
+          if (addressToSave) {
+            sessionStorage.setItem("pendingUserAddressSave", JSON.stringify(addressToSave))
+          }
+        } catch {}
+        onClose()
+        navigate(`/food/user/auth/login?redirect=${encodeURIComponent("/food/user")}`)
+        setLoadingAddress(false)
+        return
+      }
 
       // Show more detailed error message
       let errorMessage = "Failed to add address. Please try again."

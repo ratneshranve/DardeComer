@@ -173,7 +173,14 @@ export default function DeliverySettings() {
     try {
       setSavingStatus(true)
       saveDeliveryStatus(nextStatus)
-      await restaurantAPI.updateAcceptingOrders(nextStatus)
+      const response = await restaurantAPI.updateAcceptingOrders(nextStatus)
+      const actualStatus =
+        response?.data?.data?.restaurant?.isAcceptingOrders ??
+        response?.data?.restaurant?.isAcceptingOrders
+      if (typeof actualStatus === "boolean" && actualStatus !== nextStatus) {
+        setDeliveryStatus(actualStatus)
+        syncStatusLocally(actualStatus)
+      }
     } catch (error) {
       setDeliveryStatus(previousStatus)
       syncStatusLocally(previousStatus)

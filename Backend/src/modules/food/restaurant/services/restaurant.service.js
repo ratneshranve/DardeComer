@@ -1,4 +1,5 @@
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
 import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
@@ -77,6 +78,23 @@ const timeToMinutes = (value) => {
     const [h, m] = normalized.split(':').map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
     return h * 60 + m;
+};
+
+const isRestaurantWithinTimingsNow = (timingsDoc, now = new Date()) => {
+    if (!timingsDoc || !Array.isArray(timingsDoc.timings)) return true;
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const dayTiming = timingsDoc.timings.find((t) => t?.day === currentDay);
+    if (!dayTiming) return true;
+    if (dayTiming.isOpen === false) return false;
+    if (!dayTiming.openingTime || !dayTiming.closingTime) return true;
+
+    const openMin = timeToMinutes(dayTiming.openingTime);
+    const closeMin = timeToMinutes(dayTiming.closingTime);
+    if (openMin === null || closeMin === null) return true;
+    if (openMin === closeMin) return true;
+    if (closeMin > openMin) return currentMinutes >= openMin && currentMinutes < closeMin;
+    return currentMinutes >= openMin || currentMinutes < closeMin;
 };
 
 const parseEstimatedDeliveryMinutes = (value) => {
@@ -506,9 +524,23 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
         throw new ValidationError('Invalid restaurant id');
     }
     const value = Boolean(isAcceptingOrders);
+    let nextAcceptingOrders = value;
+    let nextAutomationEnabled = value;
+
+    // Manual ON re-enables timing automation, and status is immediately aligned to current time window.
+    if (value === true) {
+        const timingsDoc = await FoodRestaurantOutletTimings.findOne({ restaurantId }).lean();
+        nextAcceptingOrders = isRestaurantWithinTimingsNow(timingsDoc, new Date());
+    }
+
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
-        { $set: { isAcceptingOrders: value } },
+        {
+            $set: {
+                isAcceptingOrders: nextAcceptingOrders,
+                availabilityAutomationEnabled: nextAutomationEnabled
+            }
+        },
         {
             new: true,
             runValidators: true,
@@ -544,6 +576,7 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
                 'diningSettings',
                 'pendingDiningSettings',
                 'isAcceptingOrders',
+                'availabilityAutomationEnabled',
                 'status',
                 'createdAt',
                 'updatedAt'
@@ -1670,4 +1703,3 @@ export const reverifyRestaurant = async (restaurantId) => {
     await restaurant.save();
     return toRestaurantProfile(restaurant);
 };
-

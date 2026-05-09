@@ -126,6 +126,15 @@ const restaurantSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    /**
+     * When true (default), backend timing automation controls online/offline status.
+     * When false, restaurant is manually forced offline until manually enabled again.
+     */
+    availabilityAutomationEnabled: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
     panNumber: {
       type: String,
     },

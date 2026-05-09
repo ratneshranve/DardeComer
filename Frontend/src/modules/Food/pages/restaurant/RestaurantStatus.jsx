@@ -171,10 +171,15 @@ export default function RestaurantStatus() {
 
     setDeliveryStatus(checked)
     try {
-      await restaurantAPI.updateAcceptingOrders(checked)
-      persistRestaurantOnlineStatus(checked)
+      const response = await restaurantAPI.updateAcceptingOrders(checked)
+      const actualStatus =
+        response?.data?.data?.restaurant?.isAcceptingOrders ??
+        response?.data?.restaurant?.isAcceptingOrders ??
+        checked
+      setDeliveryStatus(Boolean(actualStatus))
+      persistRestaurantOnlineStatus(Boolean(actualStatus))
       window.dispatchEvent(new CustomEvent('restaurantStatusChanged', { 
-        detail: { isOnline: checked } 
+        detail: { isOnline: Boolean(actualStatus) } 
       }))
     } catch (error) {
       debugError("Error saving delivery status:", error)

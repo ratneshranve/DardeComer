@@ -95,7 +95,12 @@ export default function SignIn() {
       }
 
       sessionStorage.setItem("userAuthData", JSON.stringify(authData))
-      navigate("/food/user/auth/otp")
+      const redirect = String(searchParams.get("redirect") || "").trim()
+      navigate(
+        redirect
+          ? `/food/user/auth/otp?redirect=${encodeURIComponent(redirect)}`
+          : "/food/user/auth/otp"
+      )
     } catch (apiError) {
       const message =
         apiError?.response?.data?.message ||

@@ -96,6 +96,8 @@ export default function SelectAddress() {
 
   const onSave = async (e) => {
     e.preventDefault()
+    const accessToken = localStorage.getItem("user_accessToken")
+    const isAuthenticated = !!(accessToken && String(accessToken).trim())
     const street = String(form.street || "").trim()
     const city = String(form.city || "").trim()
     const state = String(form.state || "").trim()
@@ -104,17 +106,24 @@ export default function SelectAddress() {
       return
     }
 
+    const payload = {
+      label: toBackendLabel(label),
+      additionalDetails: String(form.additionalDetails || "").trim(),
+      street,
+      city,
+      state,
+      zipCode: String(form.zipCode || "").trim(),
+      phone: String(form.phone || "").trim(),
+    }
+
+    if (!isAuthenticated) {
+      sessionStorage.setItem("pendingUserAddressSave", JSON.stringify(payload))
+      navigate(`/food/user/auth/login?redirect=${encodeURIComponent("/food/user")}`)
+      return
+    }
+
     setIsSaving(true)
     try {
-      const payload = {
-        label: toBackendLabel(label),
-        additionalDetails: String(form.additionalDetails || "").trim(),
-        street,
-        city,
-        state,
-        zipCode: String(form.zipCode || "").trim(),
-        phone: String(form.phone || "").trim(),
-      }
       const created = await addAddress(payload)
       const newId = getAddressId(created)
       if (newId) {
@@ -123,6 +132,12 @@ export default function SelectAddress() {
       toast.success("Address saved")
       navigate(from, { replace: true })
     } catch (err) {
+      const status = err?.response?.status
+      if (status === 401 || status === 403) {
+        sessionStorage.setItem("pendingUserAddressSave", JSON.stringify(payload))
+        navigate(`/food/user/auth/login?redirect=${encodeURIComponent("/food/user")}`)
+        return
+      }
       toast.error(err?.response?.data?.error || err?.message || "Failed to save address")
     } finally {
       setIsSaving(false)

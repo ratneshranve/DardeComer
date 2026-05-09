@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { authAPI } from "@food/api"
+import { userAPI } from "@food/api"
 import { setAuthData as setUserAuthData } from "@food/utils/auth"
 
 export default function OTP() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [otp, setOtp] = useState(["", "", "", ""]) // exactly 4 digits
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -25,6 +27,46 @@ export default function OTP() {
   const [activePlatform, setActivePlatform] = useState("web")
   const inputRefs = useRef([])
   const submittingRef = useRef(false)
+
+  const savePendingAddressIfAny = async () => {
+    const raw = sessionStorage.getItem("pendingUserAddressSave")
+    if (!raw) return
+    try {
+      const pendingAddress = JSON.parse(raw)
+      if (!pendingAddress || typeof pendingAddress !== "object") return
+
+      const label = String(pendingAddress.label || "Home")
+      const addressesResponse = await userAPI.getAddresses()
+      const addresses =
+        addressesResponse?.data?.data?.addresses ||
+        addressesResponse?.data?.addresses ||
+        []
+      const existing = Array.isArray(addresses)
+        ? addresses.find((a) => String(a?.label || "") === label)
+        : null
+      const existingId = existing?.id || existing?._id
+
+      let savedAddress = null
+      if (existingId) {
+        savedAddress = await userAPI.updateAddress(existingId, pendingAddress)
+      } else {
+        savedAddress = await userAPI.addAddress(pendingAddress)
+      }
+
+      const savedId =
+        savedAddress?.data?.data?.address?.id ||
+        savedAddress?.data?.data?.address?._id ||
+        savedAddress?.data?.address?.id ||
+        savedAddress?.data?.address?._id ||
+        existingId
+      if (savedId) {
+        await userAPI.setDefaultAddress(savedId)
+      }
+      sessionStorage.removeItem("pendingUserAddressSave")
+    } catch (e) {
+      // Keep it in storage if save fails so user can retry later.
+    }
+  }
 
   useEffect(() => {
     // Redirect to home if already authenticated
@@ -251,9 +293,12 @@ export default function OTP() {
 
       setSuccess(true)
 
-      // Redirect to user home after short delay
+      await savePendingAddressIfAny()
+      const redirectPath = String(searchParams.get("redirect") || "").trim() || "/food/user"
+
+      // Redirect after short delay
       setTimeout(() => {
-        navigate("/food/user")
+        navigate(redirectPath)
       }, 500)
     } catch (err) {
       const status = err?.response?.status
@@ -335,8 +380,10 @@ export default function OTP() {
 
       setSuccess(true)
 
+      await savePendingAddressIfAny()
+      const redirectPath = String(searchParams.get("redirect") || "").trim() || "/food/user"
       setTimeout(() => {
-        navigate("/food/user")
+        navigate(redirectPath)
       }, 500)
     } catch (err) {
       const message =
