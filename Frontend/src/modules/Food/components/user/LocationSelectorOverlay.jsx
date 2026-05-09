@@ -2019,6 +2019,22 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         // User saved an address; prefer saved delivery address in Cart.
         try {
           localStorage.setItem("deliveryAddressMode", "saved")
+          
+          // Update global location to the newly saved address
+          const locationData = {
+            label: addressToSave.label,
+            city: addressToSave.city,
+            state: addressToSave.state,
+            address: addressToSave.street,
+            area: addressToSave.additionalDetails,
+            zipCode: addressToSave.zipCode,
+            latitude: addressToSave.latitude,
+            longitude: addressToSave.longitude,
+            formattedAddress: `${addressToSave.street}, ${addressToSave.city}, ${addressToSave.state}`
+          }
+          localStorage.setItem("userLocation", JSON.stringify(locationData))
+          window.dispatchEvent(new Event("locationUpdated"));
+
         } catch {}
       }
 
@@ -2124,6 +2140,8 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         formattedAddress: `${address.street}, ${address.city}, ${address.state}`
       }
       localStorage.setItem("userLocation", JSON.stringify(locationData))
+      window.dispatchEvent(new Event("locationUpdated"));
+
 
       // Update map position to show selected address
       setMapPosition([latitude, longitude])

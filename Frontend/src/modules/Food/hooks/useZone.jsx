@@ -113,7 +113,8 @@ export function useZone(location) {
         setZoneStatus("IN_SERVICE");
       } else {
         // Network/CORS/backend failures should not be treated as confirmed out-of-zone.
-        setZoneStatus("loading");
+        // If we have coordinates but API fails/no zone found, treat as out-of-service
+        setZoneStatus("OUT_OF_SERVICE");
         setZoneId(null);
         setZone(null);
       }

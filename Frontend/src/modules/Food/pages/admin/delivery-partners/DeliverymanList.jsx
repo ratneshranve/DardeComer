@@ -97,18 +97,40 @@ export default function DeliverymanList() {
           walletRows.map((wallet) => [String(wallet.deliveryId), wallet]),
         )
 
+        // Fetch orders to count them accurately per delivery partner
+        const ordersResponse = await adminAPI.getOrders({ limit: 10000 })
+        const allOrders = ordersResponse.data?.data?.orders || []
+        
+        const orderCountsMap = {}
+        allOrders.forEach(order => {
+          const dpId = order.dispatch?.deliveryPartnerId?._id || 
+                       order.deliveryPartnerId?._id || 
+                       order.deliveryPartnerId;
+          if (dpId) {
+            const key = String(dpId);
+            orderCountsMap[key] = (orderCountsMap[key] || 0) + 1;
+          }
+        });
+
         const mergedPartners = partners.map((partner) => {
-          const wallet = walletMap.get(String(partner._id))
+          // Robust matching: Try matching wallet by partner _id OR partner.deliveryId
+          const wallet = walletMap.get(String(partner._id)) || 
+                        (partner.deliveryId ? walletMap.get(String(partner.deliveryId)) : null);
+          
+          const realOrderCount = orderCountsMap[String(partner._id)] || 0;
+
           return {
             ...partner,
             walletSummary: wallet || null,
-            pocketBalance: partner.balance ?? wallet?.pocketBalance ?? 0,
-            cashInHand: wallet?.cashCollected || 0,
-            remainingCashLimit: wallet?.remainingCashLimit || 0,
-            totalEarning: wallet?.totalEarning || 0,
-            bonus: wallet?.bonus || 0,
-            totalWithdrawn: wallet?.totalWithdrawn || 0,
-            availableCashLimit: wallet?.availableCashLimit || 0,
+            // Prefer wallet values as source of truth for financial data
+            pocketBalance: wallet?.pocketBalance ?? partner.balance ?? partner.pocketBalance ?? 0,
+            cashInHand: wallet?.cashCollected ?? partner.cashInHand ?? partner.cashCollected ?? 0,
+            remainingCashLimit: wallet?.remainingCashLimit ?? partner.remainingCashLimit ?? 0,
+            totalOrders: realOrderCount || wallet?.totalOrders || partner.totalOrders || 0,
+            totalEarning: wallet?.totalEarning ?? partner.totalEarning ?? 0,
+            bonus: wallet?.bonus ?? partner.bonus ?? 0,
+            totalWithdrawn: wallet?.totalWithdrawn ?? partner.totalWithdrawn ?? 0,
+            availableCashLimit: wallet?.availableCashLimit ?? partner.availableCashLimit ?? 0,
           }
         })
 
@@ -171,13 +193,14 @@ export default function DeliverymanList() {
         setViewDetails({
           ...response.data.data.delivery,
           walletSummary: deliveryman.walletSummary || null,
-pocketBalance: deliveryman.pocketBalance || 0,
-cashInHand: deliveryman.cashInHand || 0,
-remainingCashLimit: deliveryman.remainingCashLimit || 0,
-totalEarning: deliveryman.totalEarning || 0,
-bonus: deliveryman.bonus || 0,
-totalWithdrawn: deliveryman.totalWithdrawn || 0,
-availableCashLimit: deliveryman.availableCashLimit || 0,
+          pocketBalance: deliveryman.pocketBalance || 0,
+          cashInHand: deliveryman.cashInHand || 0,
+          remainingCashLimit: deliveryman.remainingCashLimit || 0,
+          totalOrders: deliveryman.totalOrders || 0,
+          totalEarning: deliveryman.totalEarning || 0,
+          bonus: deliveryman.bonus || 0,
+          totalWithdrawn: deliveryman.totalWithdrawn || 0,
+          availableCashLimit: deliveryman.availableCashLimit || 0,
         })
         setIsViewOpen(true)
       } else {

@@ -337,9 +337,10 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           // CRITICAL: If the order is only 'assigned' or 'unassigned', it means the rider hasn't accepted it yet.
           // In this case, we should NOT set it as activeOrder in the store. 
           // Setting it as activeOrder would cause the Home page to hide the 'New Order' popup.
-          if (['assigned', 'unassigned'].includes(dispatchStatus) && !['picked_up', 'delivering', 'reached_drop'].includes(backendStatus)) {
-            debugLog('Skipping setActiveOrder on mount because order is pending acceptance', { dispatchStatus, backendStatus });
+          if (['assigned', 'unassigned'].includes(dispatchStatus) && !['picked_up', 'delivering', 'reached_drop', 'completed', 'delivered'].includes(backendStatus)) {
+            debugLog('Order is pending rider acceptance, showing as incoming order', { dispatchStatus, backendStatus });
             clearActiveOrder();
+            setIncomingOrder(syncedOrder);
             return;
           }
 
@@ -599,6 +600,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               nextIncomingOrder?.orderId ||
               nextIncomingOrder?._id ||
               nextIncomingOrder?.orderMongoId;
+            
+            if (prevId !== nextId) {
+              // New order found via polling, trigger alert
+              handleIncomingOrderAlert(nextIncomingOrder);
+            }
             return prevId === nextId && prev ? prev : nextIncomingOrder;
           });
         }

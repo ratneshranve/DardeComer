@@ -943,6 +943,8 @@ export function useLocation() {
               debugLog("?? Saving location:", finalLoc)
               localStorage.setItem("userLocation", JSON.stringify(finalLoc))
               setLocation(finalLoc)
+              // Dispatch event to notify other instances of useLocation
+              window.dispatchEvent(new Event("locationUpdated"));
               setPermissionGranted(true)
               if (showLoading) setLoading(false)
               setError(null)
@@ -1562,11 +1564,43 @@ export function useLocation() {
     // This does NOT trigger browser prompt by itself; it only auto-fetches when permission is already granted.
     checkPermissionAndStart();
 
+    // Listen for storage changes and custom location updates to ensure reactivity across components
+    const handleLocationUpdate = (e) => {
+      // Standard 'storage' event for cross-tab or manual dispatch
+      if (e.type === "storage" && e.key === "userLocation" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setLocation(parsed);
+          debugLog("?? useLocation: Updated from storage event:", parsed);
+        } catch (err) {
+          debugError("Failed to parse userLocation from storage event:", err);
+        }
+      }
+      // Custom 'locationUpdated' event for same-tab reactivity
+      if (e.type === "locationUpdated") {
+        try {
+          const stored = localStorage.getItem("userLocation");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setLocation(parsed);
+            debugLog("?? useLocation: Updated from custom locationUpdated event:", parsed);
+          }
+        } catch (err) {
+          debugError("Failed to update location from custom event:", err);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleLocationUpdate);
+    window.addEventListener("locationUpdated", handleLocationUpdate);
+
     // Cleanup timeout and watcher
     return () => {
       clearTimeout(loadingTimeout)
       debugLog("?? Cleaning up location watcher")
       stopWatchingLocation()
+      window.removeEventListener("storage", handleLocationUpdate);
+      window.removeEventListener("locationUpdated", handleLocationUpdate);
     }
   }, [])
 
@@ -1617,6 +1651,9 @@ export function useLocation() {
         debugLog("??? SUCCESS: Complete detailed address received!")
         debugLog("? Full address:", location.formattedAddress)
       }
+
+      // Dispatch event to notify other instances of useLocation
+      window.dispatchEvent(new Event("locationUpdated"));
 
       return location
     } catch (err) {

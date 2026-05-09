@@ -100,6 +100,16 @@ const debugLog = (...args) => { };
 const debugWarn = (...args) => { };
 const debugError = (...args) => { };
 
+// Global cache to persist data across navigations for better back-button experience
+let globalRestaurantsCache = null;
+let globalCategoriesCache = null;
+
+const roundCoord = (coord, precision = 4) => {
+  if (coord === null || coord === undefined) return null;
+  const factor = Math.pow(10, precision);
+  return Math.round(coord * factor) / factor;
+};
+
 // Animated placeholder for search - moved outside component to prevent recreation
 const placeholders = [
   'Search "burger"',
@@ -563,10 +573,11 @@ export default function Home() {
   const [recommendedRestaurantsFromSettings, setRecommendedRestaurantsFromSettings] = useState([]);
   const [heroVideo, setHeroVideo] = useState(null);
   const [loadingLandingConfig, setLoadingLandingConfig] = useState(true);
-  const [restaurantsData, setRestaurantsData] = useState([]);
-  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
-  const [realCategories, setRealCategories] = useState([]);
-  const [loadingRealCategories, setLoadingRealCategories] = useState(true);
+  const [restaurantsData, setRestaurantsData] = useState(globalRestaurantsCache || []);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(!globalRestaurantsCache);
+
+  const [realCategories, setRealCategories] = useState(globalCategoriesCache || []);
+  const [loadingRealCategories, setLoadingRealCategories] = useState(!globalCategoriesCache);
   const [menuCategories, setMenuCategories] = useState([]);
   const [loadingMenuCategories, setLoadingMenuCategories] = useState(false);
   const [, setRestaurantDietMeta] = useState({});
@@ -1297,7 +1308,10 @@ export default function Home() {
         const categories = await promise
         publicCategoriesInFlightRef.current.delete(zoneKey)
 
-        if (!cancelled) setRealCategories(categories)
+        if (!cancelled) {
+          setRealCategories(categories);
+          globalCategoriesCache = categories;
+        }
       } catch (err) {
         debugWarn("Failed to fetch categories:", err)
         if (!cancelled) setRealCategories([])
@@ -1405,12 +1419,6 @@ export default function Home() {
   } = useZone(defaultSavedAddressLocation);
 
   const hasSavedAddress = Boolean(defaultSavedAddress && savedAddressText);
-  const shouldShowOutOfZoneHome =
-    hasSavedAddress &&
-    Boolean(defaultSavedAddressLocation) &&
-    !savedAddressZoneLoading &&
-    !savedAddressZoneError &&
-    isSavedAddressOutOfService;
 
   // Mock points value - replace with actual points from context/store
   const userPoints = 99;
@@ -1791,7 +1799,9 @@ export default function Home() {
             transformedRestaurants,
           );
           startTransition(() => {
-            setRestaurantsData(sortRestaurantsForDisplay(transformedRestaurants));
+            const finalRestaurants = sortRestaurantsForDisplay(transformedRestaurants);
+            setRestaurantsData(finalRestaurants);
+            globalRestaurantsCache = finalRestaurants;
           });
 
           const restaurantsNeedingOutletTimings = transformedRestaurants.filter(
@@ -1868,8 +1878,8 @@ export default function Home() {
     [
       extractImages,
       buildRestaurantImageCandidates,
-      location?.latitude,
-      location?.longitude,
+      roundCoord(location?.latitude, 4),
+      roundCoord(location?.longitude, 4),
       defaultSavedAddressLocation,
       hasSavedAddress
     ],
@@ -2206,6 +2216,31 @@ export default function Home() {
   const hasMoreRestaurants =
     visibleRestaurantCount < filteredRestaurants.length;
 
+  // Show "Coming Soon" whenever the currently active location is outside any delivery zone.
+  // useZone(location) already tracks the active/selected location (GPS or saved).
+  // Determine which location service status to follow (Current GPS vs Saved Address)
+  const currentServiceStatus = useMemo(() => {
+    let mode = "current";
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current";
+    } catch (e) { }
+
+    if (mode === "saved" && hasSavedAddress) {
+      return {
+        isOutOfService: isSavedAddressOutOfService,
+        loading: savedAddressZoneLoading
+      };
+    }
+    return {
+      isOutOfService: isOutOfService,
+      loading: zoneLoading
+    };
+  }, [isOutOfService, zoneLoading, isSavedAddressOutOfService, savedAddressZoneLoading, hasSavedAddress, location]);
+
+  const shouldShowOutOfZoneHome =
+    currentServiceStatus.isOutOfService ||
+    (!loadingRestaurants && !isLoadingFilterResults && filteredRestaurants.length === 0);
+
   const loadMoreRestaurants = useCallback(() => {
     setVisibleRestaurantCount((previous) =>
       Math.min(previous + RESTAURANTS_BATCH_SIZE, filteredRestaurants.length),
@@ -2462,23 +2497,7 @@ export default function Home() {
   return (
 
     <div className="relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-16 md:pb-6 overflow-x-clip">
-      {shouldShowOutOfZoneHome && (
-        <div className="fixed inset-0 z-[90] pointer-events-none">
-          <div className="absolute inset-0 bg-slate-300/35 backdrop-blur-[1px]" />
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 px-4">
-            <div className="rounded-xl border border-blue-200 bg-blue-50/95 text-blue-700 px-4 py-2 shadow-sm text-sm sm:text-base font-semibold max-w-[calc(100vw-2rem)] text-center">
-              You are out of zone
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div
-        className={
-          shouldShowOutOfZoneHome
-            ? "grayscale opacity-70 transition-all duration-300"
-            : "transition-all duration-300"
-        }>
+      <div className="transition-all duration-300">
         {/* Unified Background for Entire Page - Vibrant Food Theme */}
         <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none overflow-hidden z-0">
           {/* Hero Video Background - Optimized to be compact and non-cropped */}
@@ -2961,6 +2980,43 @@ export default function Home() {
           className="content-auto space-y-0 pt-3 sm:pt-4 lg:pt-6 pb-8 md:pb-10"
           initial={false}
           animate={{ opacity: 1 }}>
+          {shouldShowOutOfZoneHome ? (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="flex flex-col items-center justify-center px-6 py-16 text-center"
+            >
+              {/* Icon */}
+              <div className="relative mb-6">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-[#0d1a4a] dark:to-[#1a2560] flex items-center justify-center shadow-lg">
+                  <MapPin className="w-10 h-10 text-[#001A94] dark:text-blue-400" strokeWidth={1.5} />
+                </div>
+                <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
+                  <span className="text-white text-xs font-bold">!</span>
+                </div>
+              </div>
+
+              {/* Heading */}
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                Coming Soon!
+              </h2>
+
+              {/* Sub text */}
+              <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed mb-1">
+                We are not providing service here yet.
+              </p>
+              <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 max-w-xs">
+                We're working hard to expand to your area. Stay tuned!
+              </p>
+
+              {/* Decorative badge */}
+              <div className="mt-6 px-5 py-2 rounded-full bg-gradient-to-r from-[#001A94] to-blue-600 text-white text-xs font-semibold tracking-wide shadow-md">
+                🚀 Expanding Soon
+              </div>
+            </motion.div>
+          ) : (
+            <>
           <div className="px-4 mb-3 lg:mb-4">
             <div className="flex flex-col gap-0.5 lg:gap-1">
               <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 tracking-widest uppercase">
@@ -3069,6 +3125,8 @@ export default function Home() {
               aria-hidden="true"
             />
           </div>
+            </>
+          )}
         </motion.section>
       </div>
 

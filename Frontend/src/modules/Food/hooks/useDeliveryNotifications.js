@@ -852,9 +852,9 @@ export const useDeliveryNotifications = () => {
   const handleNativePushNotification = useCallback((payload) => {
     if (!payload) return;
     const data = payload.data || payload;
-    const orderId = data.orderId || data.order_id || data.orderMongoId;
+    const orderId = data.orderId || data.order_id || data.orderMongoId || data._id;
 
-    if (!orderId || activeOrderRef.current) return;
+    if (!orderId || (activeOrderRef.current && (activeOrderRef.current.orderId === orderId || activeOrderRef.current._id === orderId))) return;
 
     void (async () => {
       if (await shouldSuppressIncomingCodAlert(data)) {
@@ -1159,6 +1159,21 @@ export const useDeliveryNotifications = () => {
     socketRef.current.on('order_status_update', (statusData) => {
       debugLog('?? Delivery order status update received via socket:', statusData);
       setOrderStatusUpdate(statusData || null);
+
+      // If the status is 'preparing' or 'confirmed' and it's assigned to me,
+      // but not yet my active order, treat it as a new order assignment alert.
+      const statusRaw = String(statusData?.status || statusData?.orderStatus || '').toLowerCase();
+      const dispatchStatusRaw = String(statusData?.dispatch?.status || statusData?.dispatchStatus || '').toLowerCase();
+
+      if (
+        ['confirmed', 'preparing', 'ready_for_pickup'].includes(statusRaw) &&
+        ['assigned', 'unassigned'].includes(dispatchStatusRaw) &&
+        !activeOrderRef.current
+      ) {
+        debugLog('Status update implies new assignment, triggering alert');
+        setNewOrder(statusData);
+        handleIncomingOrderAlert(statusData);
+      }
     });
 
     socketRef.current.on('order_cancelled', (statusData) => {
