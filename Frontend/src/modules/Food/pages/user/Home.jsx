@@ -2354,7 +2354,13 @@ export default function Home() {
       );
     });
 
+    // Filter by zone: only show recommended restaurants that are also in the current zone's restaurant list.
+    const inZoneIds = new Set(
+      (restaurantsData || []).map((r) => String(r.mongoId || r.id)),
+    );
+
     return [...orderedFromSettings, ...fromFetchedMissing]
+      .filter((r) => inZoneIds.has(String(r.mongoId || r.id)))
       .filter(matchesVegMode)
       .slice(0, 12);
   }, [
