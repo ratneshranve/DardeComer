@@ -9,10 +9,12 @@ import { getIO, rooms } from '../../../../config/socket.js';
  */
 export const autoOfflineRestaurants = async () => {
     try {
-        const now = new Date();
-        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
+        // IST = UTC+5:30. Timings are set by owners in IST, so always compare in IST.
+        const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+        const istNow = new Date(Date.now() + IST_OFFSET_MS);
+        const currentDay = istNow.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+        const currentHour = istNow.getUTCHours();
+        const currentMinute = istNow.getUTCMinutes();
         const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
         // Fetch restaurants controlled by timing automation.

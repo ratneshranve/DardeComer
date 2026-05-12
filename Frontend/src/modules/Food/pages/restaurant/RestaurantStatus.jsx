@@ -160,15 +160,7 @@ export default function RestaurantStatus() {
   }, [])
 
   const handleDeliveryStatusChange = async (checked) => {
-    if (checked && isDayClosed) {
-      setShowOutletClosedDialog(true)
-      return
-    }
-    if (checked && isWithinTimings === false && !isDayClosed) {
-      setShowOutsideTimingsDialog(true)
-      return
-    }
-
+    // Allow manual override always — owner can go online/offline regardless of timings
     setDeliveryStatus(checked)
     try {
       const response = await restaurantAPI.updateAcceptingOrders(checked)
@@ -341,21 +333,7 @@ export default function RestaurantStatus() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showOutsideTimingsDialog} onOpenChange={setShowOutsideTimingsDialog}>
-          <DialogContent className="sm:max-w-md p-4 w-[90%] gap-2 flex flex-col">
-            <DialogHeader className="text-center">
-              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
-                <span className="text-3xl">??</span>
-              </div>
-              <DialogTitle className="text-lg font-semibold text-gray-900 text-center">Outside Delivery Timings</DialogTitle>
-              <DialogDescription className="mt-2 text-sm text-gray-600">You are currently outside your scheduled delivery timings. Please change outlet timings to enable delivery status.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button onClick={() => setShowOutsideTimingsDialog(false)} variant="outline" className="w-full sm:w-auto">Cancel</Button>
-              <Button onClick={() => { setShowOutsideTimingsDialog(false); navigate("/restaurant/outlet-timings"); }} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">Change Outlet Timings</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Outside timings dialog removed — owner can manually override status anytime */}
       </div>
     </div>
   )

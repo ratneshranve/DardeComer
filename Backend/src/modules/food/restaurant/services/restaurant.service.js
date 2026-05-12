@@ -80,10 +80,19 @@ const timeToMinutes = (value) => {
     return h * 60 + m;
 };
 
+// IST = UTC+5:30 (330 minutes). Timings are entered by restaurant owners in IST,
+// so we must always compare against IST time regardless of server timezone.
+const getISTDate = (now = new Date()) => {
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // 5h30m in ms
+    return new Date(now.getTime() + IST_OFFSET_MS);
+};
+
 const isRestaurantWithinTimingsNow = (timingsDoc, now = new Date()) => {
     if (!timingsDoc || !Array.isArray(timingsDoc.timings)) return true;
-    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const istNow = getISTDate(now);
+    // Use UTC methods on the IST-adjusted date to get IST hour/minute/day
+    const currentDay = istNow.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const currentMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
     const dayTiming = timingsDoc.timings.find((t) => t?.day === currentDay);
     if (!dayTiming) return true;
     if (dayTiming.isOpen === false) return false;
@@ -524,14 +533,11 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
         throw new ValidationError('Invalid restaurant id');
     }
     const value = Boolean(isAcceptingOrders);
-    let nextAcceptingOrders = value;
-    let nextAutomationEnabled = value;
-
-    // Manual ON re-enables timing automation, and status is immediately aligned to current time window.
-    if (value === true) {
-        const timingsDoc = await FoodRestaurantOutletTimings.findOne({ restaurantId }).lean();
-        nextAcceptingOrders = isRestaurantWithinTimingsNow(timingsDoc, new Date());
-    }
+    // Manual toggle: always respect the owner's explicit choice.
+    // If owner turns ON → save true directly (do NOT override with timing check).
+    // If owner turns OFF → save false and disable automation so cron won't auto-flip it back.
+    const nextAcceptingOrders = value;
+    const nextAutomationEnabled = value; // ON = automation re-enabled for future cron; OFF = disabled
 
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
