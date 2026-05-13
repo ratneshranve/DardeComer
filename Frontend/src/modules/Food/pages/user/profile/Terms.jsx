@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
-import { ArrowLeft, FileText, Loader2 } from "lucide-react"
+import { ArrowLeft, FileText } from "lucide-react"
 import { motion } from "framer-motion"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
@@ -11,7 +11,6 @@ import { API_ENDPOINTS } from "@food/api/config"
 export default function Terms() {
   const navigate = useNavigate()
   const goBack = useAppBackNavigation()
-  const [loading, setLoading] = useState(true)
   const [termsData, setTermsData] = useState({
     title: 'Terms of Service',
     content: ''
@@ -23,15 +22,12 @@ export default function Terms() {
 
   const fetchTermsData = async () => {
     try {
-      setLoading(true)
       const response = await api.get(API_ENDPOINTS.ADMIN.TERMS_PUBLIC)
       if (response.data.success) {
         setTermsData(response.data.data || { title: 'Terms of Service', content: '' })
       }
     } catch (error) {
       console.error('Error fetching terms data:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -41,17 +37,6 @@ export default function Terms() {
     } else {
       navigate('/food/user')
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-[#CB202D]" />
-          <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Loading...</p>
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -485,6 +485,12 @@ export default function UnifiedOTPFastLogin() {
              By continuing, you agree to our <br />
              <Link to="/food/user/profile/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#001A94] transition-colors">Terms of Service</Link> & <Link to="/food/user/profile/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#001A94] transition-colors">Privacy Policy</Link>
            </p>
+           <Link
+             to="/user/support"
+             className="inline-flex items-center justify-center gap-2 rounded-full border border-[#001A94]/20 bg-white/80 px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#001A94] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+           >
+             Need help? Support
+           </Link>
         </div>
       </div>
     </div>

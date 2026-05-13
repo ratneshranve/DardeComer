@@ -9,6 +9,7 @@ const SignIn = lazy(() => import("./pages/auth/SignIn"))
 const OTP = lazy(() => import("./pages/auth/OTP"))
 const SignupStep1 = lazy(() => import("./pages/auth/SignupStep1"))
 const SignupStep2 = lazy(() => import("./pages/auth/SignupStep2"))
+const SupportPublic = lazy(() => import("./pages/SupportPublic"))
 
 // V2 Pages
 import DeliveryHomeV2 from './pages/DeliveryHomeV2';
@@ -47,6 +48,7 @@ const DeliveryV2Router = () => {
           <Route path="signup/documents" element={<SignupStep2 />} />
           <Route path="terms" element={<TermsAndConditionsV2 />} />
           <Route path="privacy" element={<PrivacyPolicyV2 />} />
+          <Route path="support" element={<SupportPublic />} />
 
           {/* Protected Core Routes */}
           <Route path="/" element={<ProtectedRoute><DeliveryHomeV2 tab="feed" /></ProtectedRoute>} />

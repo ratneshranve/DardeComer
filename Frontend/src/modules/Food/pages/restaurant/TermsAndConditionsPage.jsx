@@ -60,9 +60,7 @@ export default function TermsAndConditionsPage() {
             </p>
           </div>
 
-          {loading ? (
-            <p className="text-sm text-gray-500">Loading terms...</p>
-          ) : termsData.content ? (
+          {loading ? null : termsData.content ? (
             <div
               className="prose prose-sm max-w-none text-sm text-gray-700 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: termsData.content }}

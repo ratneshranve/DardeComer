@@ -188,6 +188,13 @@ export default function RestaurantLogin() {
               Privacy Policy
             </button>
           </p>
+          <button
+            type="button"
+            onClick={() => navigate("/food/restaurant/support")}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[#001A94]/20 bg-white/80 px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#001A94] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+          >
+            Need help? Support
+          </button>
         </div>
       </div>
     </div>

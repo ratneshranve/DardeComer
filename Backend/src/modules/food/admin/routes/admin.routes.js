@@ -4,6 +4,7 @@ import * as adminController from '../controllers/admin.controller.js';
 import * as foodApprovalController from '../controllers/foodApproval.controller.js';
 import * as addonsApprovalController from '../controllers/addonsApproval.controller.js';
 import * as businessSettingsController from '../controllers/businessSettings.controller.js';
+import * as supportSettingsController from '../controllers/supportSettings.controller.js';
 import * as feedbackExperienceController from '../controllers/feedbackExperience.controller.js';
 import * as notificationBroadcastController from '../controllers/notificationBroadcast.controller.js';
 import * as diningAdminController from '../../dining/controllers/diningAdmin.controller.js';
@@ -227,6 +228,10 @@ router.patch('/orders/:orderId/assign-delivery', orderController.assignDeliveryP
 // ----- CMS Pages (About + legal) -----
 router.get('/pages-social-media/:key', getAdminPageController);
 router.put('/pages-social-media/:key', upsertAdminPageController);
+
+// ----- Support Settings -----
+router.get('/support-settings/:appType', supportSettingsController.getAdminSupportSettingsController);
+router.put('/support-settings/:appType', supportSettingsController.updateSupportSettingsController);
 
 router.get('/sidebar-badges', adminController.getSidebarBadges);
 router.get('/notifications/fssai-expired', adminController.getExpiredFssaiNotifications);

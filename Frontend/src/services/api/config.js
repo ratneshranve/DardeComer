@@ -61,6 +61,8 @@ export const API_ENDPOINTS = {
     WITHDRAWAL_REQUESTS: "", WITHDRAWAL_APPROVE: "", WITHDRAWAL_REJECT: "", 
     BUSINESS_SETTINGS: "/food/admin/business-settings", 
     BUSINESS_SETTINGS_PUBLIC: "/food/admin/business-settings/public",
+    SUPPORT_SETTINGS: "/food/admin/support-settings",
+    SUPPORT_SETTINGS_PUBLIC: "/food/support-settings",
   },
   ORDER: { CREATE: "", LIST: "", DETAILS: "", CANCEL: "", VERIFY_PAYMENT: "", CALCULATE: "" },
   UPLOAD: { MEDIA: "" },

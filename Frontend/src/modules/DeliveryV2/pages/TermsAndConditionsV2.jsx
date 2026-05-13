@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import api, { API_ENDPOINTS } from "@food/api"
 import useDeliveryBackNavigation from "../hooks/useDeliveryBackNavigation"
 
@@ -54,12 +54,7 @@ export default function TermsAndConditionsV2() {
 
       <div className="w-full px-5 pt-24 pb-6">
         <div className="max-w-4xl mx-auto">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-[#E23744] animate-spin mb-4" />
-              <p className="text-gray-500">Loading terms...</p>
-            </div>
-          ) : (
+          {loading ? null : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
               {content ? (
                 <div

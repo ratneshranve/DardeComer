@@ -60,9 +60,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </div>
 
-          {loading ? (
-            <p className="text-sm text-gray-500">Loading privacy policy...</p>
-          ) : privacyData.content ? (
+          {loading ? null : privacyData.content ? (
             <div
               className="prose prose-sm max-w-none text-sm text-gray-700 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: privacyData.content }}

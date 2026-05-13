@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { ChevronLeft, ChevronRight, Plus, MapPin, MoreHorizontal, Navigation, Home, Building2, Briefcase, Phone, X, Crosshair, Search } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
@@ -46,6 +46,7 @@ const getAddressIcon = (address) => {
 }
 
 export default function AddressSelectorPage() {
+  const routeLocation = useLocation()
   const navigate = useNavigate()
   const goBack = useAppBackNavigation()
   const { location, loading, requestLocation } = useGeoLocation()
@@ -91,6 +92,12 @@ export default function AddressSelectorPage() {
   const handleBack = () => {
     goBack()
   }
+
+  useEffect(() => {
+    if (routeLocation?.state?.openForm) {
+      setShowAddressForm(true)
+    }
+  }, [routeLocation?.state])
 
   const addressAutocompleteSuggestions = useMemo(() => {
     const q = String(addressAutocompleteValue || "").trim().toLowerCase()

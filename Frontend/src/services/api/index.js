@@ -156,6 +156,11 @@ export const supportAPI = {
     }),
 };
 
+export const supportSettingsAPI = {
+  getPublic: (appType) =>
+    apiClient.get(`${API_ENDPOINTS.ADMIN.SUPPORT_SETTINGS_PUBLIC}/${String(appType)}`),
+};
+
 export const notificationAPI = {
   getInbox: (params = {}, config = {}) =>
     apiClient.get("/food/notifications/inbox", {
@@ -913,6 +918,15 @@ export const adminAPI = {
       contextModule: "admin",
     });
   },
+  /** Support Settings (admin) */
+  getSupportSettings: (appType) =>
+    apiClient.get(`${API_ENDPOINTS.ADMIN.SUPPORT_SETTINGS}/${String(appType)}`, {
+      contextModule: "admin",
+    }),
+  updateSupportSettings: (appType, body) =>
+    apiClient.put(`${API_ENDPOINTS.ADMIN.SUPPORT_SETTINGS}/${String(appType)}`, body ?? {}, {
+      contextModule: "admin",
+    }),
 };
 
 /** Restaurant API - OTP login via new backend; no email/password. */
