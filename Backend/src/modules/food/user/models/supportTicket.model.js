@@ -8,7 +8,7 @@ const supportTicketSchema = new mongoose.Schema(
         restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodRestaurant', default: null },
         issueType: { type: String, required: true, trim: true },
         description: { type: String, default: '', trim: true },
-        status: { type: String, enum: ['open', 'in-progress', 'resolved'], default: 'open', index: true },
+        status: { type: String, enum: ['open', 'in-progress', 'resolved', 'rejected'], default: 'open', index: true },
         adminResponse: { type: String, default: '' }
     },
     { collection: 'food_support_tickets', timestamps: true }

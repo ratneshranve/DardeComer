@@ -128,8 +128,15 @@ export async function getRestaurantComplaints(query = {}) {
     const filter = { type: 'order' };
     if (query.status && query.status !== 'all') filter.status = query.status;
     if (query.complaintType && query.complaintType !== 'all') {
-        const typeRegex = query.complaintType.replace(/_/g, '.*');
-        filter.issueType = { $regex: `^${typeRegex}$`, $options: 'i' };
+        const parts = query.complaintType.split('_').filter(Boolean);
+        if (parts.length > 0) {
+            // Build a regex that matches all words in any order
+            // Example: missing_item -> (?=.*missing)(?=.*item)
+            const regexStr = parts.map(p => `(?=.*${p})`).join('');
+            filter.issueType = { $regex: regexStr, $options: 'i' };
+        } else {
+            filter.issueType = { $regex: query.complaintType, $options: 'i' };
+        }
     }
     if (query.restaurantId && mongoose.Types.ObjectId.isValid(query.restaurantId)) {
         filter.restaurantId = new mongoose.Types.ObjectId(query.restaurantId);
@@ -1984,9 +1991,6 @@ export async function getContactMessages(query = {}) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
-    // Fix old records with 'User' instead of 'FoodUser' for population to work
-    await FeedbackExperience.updateMany({ userModel: 'User' }, { $set: { userModel: 'FoodUser' } });
-
     const filter = {};
     if (query.rating && !isNaN(query.rating)) {
         filter.rating = parseInt(query.rating);
@@ -2025,18 +2029,20 @@ export async function getContactMessages(query = {}) {
     ]);
 
     const reviews = list.map((doc) => {
-        const user = (doc.userId && typeof doc.userId === 'object') ? doc.userId : {};
+        // Robust check for populated user
+        const user = (doc.userId && typeof doc.userId === 'object' && (doc.userId.name || doc.userId.restaurantName || doc.userId.phone)) ? doc.userId : null;
+        
         return {
             _id: doc._id,
             customer: {
-                name: user.name || user.restaurantName || 'Unknown',
-                email: user.email || user.ownerEmail || 'N/A',
-                phone: user.phone || user.ownerPhone || 'N/A'
+                name: user ? (user.name || user.restaurantName || 'Unknown') : 'Unknown User',
+                email: user ? (user.email || user.ownerEmail || 'N/A') : 'N/A',
+                phone: user ? (user.phone || user.ownerPhone || 'N/A') : 'N/A'
             },
             comment: doc.comment || '',
             rating: doc.rating || 0,
             submittedAt: doc.createdAt,
-            module: doc.module
+            module: doc.module || 'user'
         };
     });
 

@@ -14,9 +14,9 @@ import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getSourceMeta } from "@food/utils/sourceType"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => { }
+const debugWarn = (...args) => { }
+const debugError = (...args) => { }
 
 // Filter options
 const filterOptions = [
@@ -903,17 +903,33 @@ export default function SearchResults() {
 
             {/* Small Restaurant Cards - Horizontal Scroll */}
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4 lg:gap-5">
-              {filteredRecommended.slice(0, 6).map((restaurant) => {
-                return (
-                  <Link
-                    key={restaurant.id}
-                    to={`/user/restaurants/${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="block"
-                  >
-                        )}
-                      </div>
+              {filteredRecommended.slice(0, 6).map((restaurant) => (
+                <Link
+                  key={restaurant.id}
+                  to={`/user/restaurants/${restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  className="block"
+                >
+                  <div className="bg-white dark:bg-[#1a1a1a] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
 
-                      {/* Rating Badge - Only show if rating exists */}
+                    {/* Image */}
+                    <div className="relative h-28 sm:h-32 overflow-hidden bg-gray-200 dark:bg-gray-800">
+                      {restaurant.image ? (
+                        <img
+                          src={restaurant.image}
+                          alt={restaurant.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-2xl">🍽️</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-2">
+
+                      {/* Rating Badge */}
                       {restaurant.rating && (
                         <div className="flex items-center gap-1 mb-1">
                           <div className="bg-green-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
@@ -927,27 +943,26 @@ export default function SearchResults() {
                       <h3 className="font-semibold text-gray-900 dark:text-white text-xs line-clamp-1">
                         {restaurant.name}
                       </h3>
+
                       <div className="mt-1">
                         <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 dark:text-gray-200">
                           {restaurant.sourceLabel || "Restaurant"}
                         </span>
                       </div>
+
                       {restaurant.deliveryTime && (
-                        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-[10px]">
+                        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-[10px] mt-1">
                           <Clock className="h-2.5 w-2.5" />
                           <span>{restaurant.deliveryTime}</span>
                         </div>
                       )}
                     </div>
-                  )
-                })()}
-              </Link>
-                )
-              })}
+                  </div>
+                </Link>
+              ))}
             </div>
           </section>
         )}
-
         {/* ALL RESTAURANTS Section */}
         <section>
           <h2 className="text-xs sm:text-sm font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-4">
@@ -993,106 +1008,106 @@ export default function SearchResults() {
                             </div>
                           )}
 
-                      {/* Featured Dish Badge - Top Left - Only show if data exists */}
-                      {(() => {
-                        let displayText = null
+                          {/* Featured Dish Badge - Top Left - Only show if data exists */}
+                          {(() => {
+                            let displayText = null
 
-                        // If category is selected and restaurant has menu, show category-specific dish
-                        if (selectedCategory && selectedCategory !== 'all' && restaurant.menu) {
-                          const categoryDish = getCategoryDishFromMenu(restaurant.menu, selectedCategory)
-                          if (categoryDish && restaurant.featuredPrice) {
-                            displayText = `${categoryDish} • ₹${restaurant.featuredPrice}`
-                          }
-                        }
+                            // If category is selected and restaurant has menu, show category-specific dish
+                            if (selectedCategory && selectedCategory !== 'all' && restaurant.menu) {
+                              const categoryDish = getCategoryDishFromMenu(restaurant.menu, selectedCategory)
+                              if (categoryDish && restaurant.featuredPrice) {
+                                displayText = `${categoryDish} • ₹${restaurant.featuredPrice}`
+                              }
+                            }
 
-                        // Fallback to featured dish
-                        if (!displayText && restaurant.featuredDish && restaurant.featuredPrice) {
-                          displayText = `${restaurant.featuredDish} • ₹${restaurant.featuredPrice}`
-                        }
+                            // Fallback to featured dish
+                            if (!displayText && restaurant.featuredDish && restaurant.featuredPrice) {
+                              displayText = `${restaurant.featuredDish} • ₹${restaurant.featuredPrice}`
+                            }
 
-                        return displayText ? (
-                          <div className="absolute top-3 left-3">
-                            <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
-                              {displayText}
+                            return displayText ? (
+                              <div className="absolute top-3 left-3">
+                                <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
+                                  {displayText}
+                                </div>
+                              </div>
+                            ) : null
+                          })()}
+
+                          {/* Ad Badge */}
+                          {restaurant.isAd && (
+                            <div className="absolute top-3 right-14 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded">
+                              Ad
                             </div>
-                          </div>
-                        ) : null
-                      })()}
-
-                      {/* Ad Badge */}
-                      {restaurant.isAd && (
-                        <div className="absolute top-3 right-14 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded">
-                          Ad
-                        </div>
-                      )}
-
-                      {/* Bookmark Icon - Top Right */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-3 right-3 h-9 w-9 bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-[#2a2a2a] transition-colors"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggleFavorite(restaurant.id)
-                        }}
-                      >
-                        <Bookmark className={`h-5 w-5 ${isFavorite ? "fill-gray-800 dark:fill-gray-200 text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
-                      </Button>
-                    </div>
-
-                    {/* Content Section */}
-                    <CardContent className="p-3 sm:p-4 lg:p-5 flex flex-col flex-grow">
-                      {/* Restaurant Name & Rating */}
-                      <div className="flex items-start justify-between gap-2 mb-2 lg:mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white line-clamp-1 lg:line-clamp-2">
-                            {restaurant.name}
-                          </h3>
-                          <div className="mt-1">
-                            <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
-                              {restaurant.sourceLabel || "Restaurant"}
-                            </span>
-                          </div>
-                        </div>
-                        {restaurant.rating && (
-                          <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded-lg flex items-center gap-1">
-                            <span className="text-sm lg:text-base font-semibold">{restaurant.rating}</span>
-                            <Star className="h-3 w-3 lg:h-4 lg:w-4 fill-white text-white" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Delivery Time & Distance - Only show if data exists */}
-                      {(restaurant.deliveryTime || restaurant.distance) && (
-                        <div className="flex items-center gap-1 text-sm lg:text-base text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">
-                          {restaurant.deliveryTime && (
-                            <>
-                              <Clock className="h-4 w-4 lg:h-5 lg:w-5" strokeWidth={1.5} />
-                              <span className="font-medium">{restaurant.deliveryTime}</span>
-                            </>
                           )}
-                          {restaurant.deliveryTime && restaurant.distance && (
-                            <span className="mx-1">|</span>
-                          )}
-                          {restaurant.distance && (
-                            <span className="font-medium">{restaurant.distance}</span>
-                          )}
-                        </div>
-                      )}
 
-                      {/* Offer Badge */}
-                      {restaurant.offer && (
-                        <div className="flex items-center gap-2 text-sm lg:text-base mt-auto">
-                          <BadgePercent className="h-4 w-4 lg:h-5 lg:w-5 text-[#EB590E] dark:text-[#EB590E]" strokeWidth={2} />
-                          <span className="text-gray-700 dark:text-gray-300 font-medium">{restaurant.offer}</span>
+                          {/* Bookmark Icon - Top Right */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-3 right-3 h-9 w-9 bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-[#2a2a2a] transition-colors"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              toggleFavorite(restaurant.id)
+                            }}
+                          >
+                            <Bookmark className={`h-5 w-5 ${isFavorite ? "fill-gray-800 dark:fill-gray-200 text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
+                          </Button>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })()}
-            </Link>
+
+                        {/* Content Section */}
+                        <CardContent className="p-3 sm:p-4 lg:p-5 flex flex-col flex-grow">
+                          {/* Restaurant Name & Rating */}
+                          <div className="flex items-start justify-between gap-2 mb-2 lg:mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white line-clamp-1 lg:line-clamp-2">
+                                {restaurant.name}
+                              </h3>
+                              <div className="mt-1">
+                                <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
+                                  {restaurant.sourceLabel || "Restaurant"}
+                                </span>
+                              </div>
+                            </div>
+                            {restaurant.rating && (
+                              <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 lg:px-3 lg:py-1.5 rounded-lg flex items-center gap-1">
+                                <span className="text-sm lg:text-base font-semibold">{restaurant.rating}</span>
+                                <Star className="h-3 w-3 lg:h-4 lg:w-4 fill-white text-white" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Delivery Time & Distance - Only show if data exists */}
+                          {(restaurant.deliveryTime || restaurant.distance) && (
+                            <div className="flex items-center gap-1 text-sm lg:text-base text-gray-500 dark:text-gray-400 mb-2 lg:mb-3">
+                              {restaurant.deliveryTime && (
+                                <>
+                                  <Clock className="h-4 w-4 lg:h-5 lg:w-5" strokeWidth={1.5} />
+                                  <span className="font-medium">{restaurant.deliveryTime}</span>
+                                </>
+                              )}
+                              {restaurant.deliveryTime && restaurant.distance && (
+                                <span className="mx-1">|</span>
+                              )}
+                              {restaurant.distance && (
+                                <span className="font-medium">{restaurant.distance}</span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Offer Badge */}
+                          {restaurant.offer && (
+                            <div className="flex items-center gap-2 text-sm lg:text-base mt-auto">
+                              <BadgePercent className="h-4 w-4 lg:h-5 lg:w-5 text-[#EB590E] dark:text-[#EB590E]" strokeWidth={2} />
+                              <span className="text-gray-700 dark:text-gray-300 font-medium">{restaurant.offer}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })()}
+                </Link>
               )
             })}
 

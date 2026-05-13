@@ -20,8 +20,8 @@ import {
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
-  { value: 'pending', label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'open', label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'in-progress', label: 'In Progress', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { value: 'resolved', label: 'Resolved', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   { value: 'rejected', label: 'Rejected', color: 'bg-rose-100 text-rose-700 border-rose-200' },
 ]
@@ -43,7 +43,19 @@ const getStatusDetails = (status) => {
 }
 
 const getComplaintTypeLabel = (type) => {
-  return COMPLAINT_TYPE_OPTIONS.find(opt => opt.value === type)?.label || type
+  if (!type) return 'N/A';
+  
+  // Normalize the type for comparison: lowercase, replace spaces with underscores, and sort words
+  const normalize = (s) => String(s || '').toLowerCase().replace(/[\s_]+/g, ' ').split(' ').filter(Boolean).sort().join(' ');
+  const normalizedType = normalize(type);
+
+  const option = COMPLAINT_TYPE_OPTIONS.find(opt => {
+    if (opt.value === 'all') return false;
+    const normalizedOpt = normalize(opt.value);
+    return normalizedOpt === normalizedType || opt.value === type;
+  });
+
+  return option?.label || type;
 }
 
 export default function RestaurantComplaints() {
