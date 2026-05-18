@@ -47,6 +47,8 @@ router.delete('/safety-emergency-reports/:id', adminController.deleteSafetyEmerg
 // ----- Support Tickets (users) -----
 router.get('/support-tickets', adminController.getSupportTicketsController);
 router.patch('/support-tickets/:id', adminController.updateSupportTicketController);
+router.get('/account-deletion-requests', adminController.getAccountDeletionRequestsController);
+router.patch('/account-deletion-requests/:id', adminController.updateAccountDeletionRequestStatusController);
 router.get('/global-search', adminController.globalSearch);
 router.get('/restaurants/complaints', adminController.getRestaurantComplaints);
 router.patch('/restaurants/complaints/:id', adminController.updateRestaurantComplaint);
@@ -59,6 +61,7 @@ router.get('/reports/transactions', adminController.getTransactionReport);
 router.get('/reports/tax', adminController.getTaxReport);
 router.get('/reports/tax/:id', adminController.getTaxReportDetail);
 router.get('/restaurants/pending', adminController.getPendingRestaurants);
+router.get('/restaurants/onboarding-leads', adminController.getRestaurantOnboardingLeads);
 router.get('/restaurants/reviews', adminController.getRestaurantReviews);
 router.get('/restaurants/:id', adminController.getRestaurantById);
 router.get('/restaurants/:id/analytics', adminController.getRestaurantAnalytics);
@@ -171,6 +174,8 @@ router.get('/withdrawals', adminController.getWithdrawals);
 router.patch('/withdrawals/:id', adminController.updateWithdrawalStatus);
 router.get('/delivery/withdrawals', adminController.getDeliveryWithdrawals);
 router.patch('/delivery/withdrawals/:id', adminController.updateDeliveryWithdrawalStatus);
+router.get('/withdrawal-window', adminController.getWithdrawalWindowSettingsController);
+router.put('/withdrawal-window', adminController.upsertWithdrawalWindowSettingsController);
 router.get('/delivery/cash-limit-settlements', adminController.getCashLimitSettlements);
 
 // ----- Delivery partners & general -----

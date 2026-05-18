@@ -14,6 +14,8 @@ import {
   requestAdminForgotPasswordOtp,
   resetAdminPasswordWithOtp,
   deleteMyAccount,
+  createDeleteAccountRequest,
+  getMyDeleteAccountRequest,
 } from "./auth.service.js";
 import { validateUserOtpRequestDto } from "../../dtos/auth/userOtpRequest.dto.js";
 import { validateUserOtpVerifyDto } from "../../dtos/auth/userOtpVerify.dto.js";
@@ -174,6 +176,29 @@ export const deleteMyAccountController = async (req, res, next) => {
       platform,
     );
     return sendResponse(res, 200, "Account deleted successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requestDeleteAccountController = async (req, res, next) => {
+  try {
+    const { userId, role } = req.user;
+    const reason = req.body?.reason || "";
+    const result = await createDeleteAccountRequest(userId, role, reason);
+    return sendResponse(res, 201, "Deletion request submitted successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyDeleteAccountRequestController = async (req, res, next) => {
+  try {
+    const { userId, role } = req.user;
+    const result = await getMyDeleteAccountRequest(userId, role);
+    return sendResponse(res, 200, "Deletion request status fetched successfully", {
+      request: result || null,
+    });
   } catch (error) {
     next(error);
   }

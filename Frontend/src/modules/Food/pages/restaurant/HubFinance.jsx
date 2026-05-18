@@ -32,6 +32,52 @@ export default function HubFinance() {
   const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false)
   const [withdrawalRequests, setWithdrawalRequests] = useState([])
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
+  const [withdrawalWindow, setWithdrawalWindow] = useState(null)
+
+  const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+  const getNowInTimezone = (timeZone = "Asia/Kolkata") => {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+    const parts = fmt.formatToParts(new Date())
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
+    const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+    return {
+      weekday: weekdayMap[map.weekday] ?? -1,
+      minutes: Number(map.hour) * 60 + Number(map.minute),
+    }
+  }
+
+  const toMinutes = (hhmm) => {
+    const m = String(hhmm || "").match(/^(\d{1,2}):(\d{2})$/)
+    if (!m) return null
+    return Number(m[1]) * 60 + Number(m[2])
+  }
+
+  const getWithdrawalWindowState = (windowCfg) => {
+    if (!windowCfg?.isEnabled) return { isOpen: true, message: "Withdrawals are currently open." }
+    const day = Number(windowCfg.dayOfWeek)
+    const start = toMinutes(windowCfg.startTime)
+    const end = toMinutes(windowCfg.endTime)
+    const timezone = windowCfg.timezone || "Asia/Kolkata"
+    const now = getNowInTimezone(timezone)
+    const inDay = now.weekday === day
+    const inRange = start !== null && end !== null
+      ? (start <= end ? (now.minutes >= start && now.minutes <= end) : (now.minutes >= start || now.minutes <= end))
+      : false
+    const isOpen = inDay && inRange
+    return {
+      isOpen,
+      message: isOpen
+        ? `Withdrawals are open now (${DAY_LABELS[day]}, ${windowCfg.startTime}-${windowCfg.endTime}).`
+        : `Withdrawal opens on ${DAY_LABELS[day]} between ${windowCfg.startTime} and ${windowCfg.endTime} (${timezone}).`,
+    }
+  }
 
   // Fetch finance data on mount
   useEffect(() => {
@@ -80,6 +126,18 @@ export default function HubFinance() {
     }
 
     fetchWithdrawals()
+  }, [])
+
+  useEffect(() => {
+    const fetchWithdrawalWindow = async () => {
+      try {
+        const response = await restaurantAPI.getWithdrawalWindow()
+        setWithdrawalWindow(response?.data?.data || null)
+      } catch {
+        setWithdrawalWindow(null)
+      }
+    }
+    fetchWithdrawalWindow()
   }, [])
 
   // Fetch restaurant data for header display
@@ -208,6 +266,13 @@ export default function HubFinance() {
       hour12: true
     })
   }
+
+  const withdrawalWindowState = useMemo(
+    () => getWithdrawalWindowState(withdrawalWindow),
+    [withdrawalWindow],
+  )
+  const canWithdrawByBalance = financeData?.currentCycle?.estimatedPayout > 0
+  const canWithdrawNow = canWithdrawByBalance && withdrawalWindowState.isOpen
 
   // Parse date range string to extract start and end dates
   const parseDateRange = (dateRangeStr) => {
@@ -878,9 +943,9 @@ export default function HubFinance() {
                     </p>
                     <button
                       onClick={() => setShowWithdrawalModal(true)}
-                      disabled={!(financeData?.currentCycle?.estimatedPayout > 0)}
+                      disabled={!canWithdrawNow}
                       className={`w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 mt-4 transition-colors ${
-                        financeData?.currentCycle?.estimatedPayout > 0
+                        canWithdrawNow
                           ? "bg-primary text-white hover:bg-primary/90"
                           : "bg-gray-200 text-gray-500 cursor-not-allowed"
                       }`}
@@ -888,6 +953,7 @@ export default function HubFinance() {
                       <Wallet className="h-5 w-5" />
                       Withdraw
                     </button>
+                    <p className="text-xs text-gray-500 mt-2">{withdrawalWindowState.message}</p>
                   </>
                 )}
               </div>
@@ -1338,6 +1404,10 @@ export default function HubFinance() {
                   </button>
                   <button
                     onClick={async () => {
+                      if (!canWithdrawNow) {
+                        alert(withdrawalWindowState.message || "Withdrawals are currently closed")
+                        return
+                      }
                       const amount = parseFloat(withdrawalAmount)
                       if (!amount || amount <= 0) {
                         alert('Please enter a valid amount')
@@ -1378,7 +1448,7 @@ export default function HubFinance() {
                         setSubmittingWithdrawal(false)
                       }
                     }}
-                    disabled={submittingWithdrawal || !withdrawalAmount || parseFloat(withdrawalAmount) <= 0 || parseFloat(withdrawalAmount) > (financeData?.currentCycle?.estimatedPayout || 0)}
+                    disabled={submittingWithdrawal || !canWithdrawNow || !withdrawalAmount || parseFloat(withdrawalAmount) <= 0 || parseFloat(withdrawalAmount) > (financeData?.currentCycle?.estimatedPayout || 0)}
                     className="flex-1 px-4 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
                     {submittingWithdrawal ? 'Submitting...' : 'Submit Request'}

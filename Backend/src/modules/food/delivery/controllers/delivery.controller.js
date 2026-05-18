@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { registerDeliveryPartner, updateDeliveryPartnerProfile, updateDeliveryPartnerBankDetails, listSupportTicketsByPartner, createSupportTicket, getSupportTicketByIdAndPartner, updateDeliveryPartnerDetails, updateDeliveryPartnerProfilePhotoBase64, updateDeliveryAvailability, getDeliveryPartnerWallet, getDeliveryPartnerEarnings, getDeliveryPartnerTripHistory, getDeliveryPocketDetails, getActiveEarningAddonsForPartner } from '../services/delivery.service.js';
 import { createDeliveryCashDepositOrder, getDeliveryPartnerWalletEnhanced, requestDeliveryWithdrawal, verifyDeliveryCashDepositPayment } from '../services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings, getDeliveryEmergencyHelp } from '../../admin/services/admin.service.js';
+import { getWithdrawalWindowSettings } from '../../admin/services/withdrawalWindow.service.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { validateDeliveryRegisterDto, validateDeliveryProfileUpdateDto, validateDeliveryBankDetailsDto } from '../validators/delivery.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
@@ -234,6 +235,15 @@ export const getTripHistoryController = async (req, res, next) => {
         const deliveryPartnerId = req.user?.userId;
         const data = await getDeliveryPartnerTripHistory(deliveryPartnerId, req.query || {});
         return sendResponse(res, 200, 'Trip history fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getWithdrawalWindowController = async (_req, res, next) => {
+    try {
+        const data = await getWithdrawalWindowSettings();
+        return sendResponse(res, 200, 'Withdrawal window fetched successfully', data);
     } catch (error) {
         next(error);
     }

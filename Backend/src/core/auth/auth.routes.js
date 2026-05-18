@@ -10,6 +10,8 @@ import {
     verifyDeliveryOtpController,
     logoutController,
     deleteMyAccountController,
+    requestDeleteAccountController,
+    getMyDeleteAccountRequestController,
     getMeController,
     updateAdminProfileController,
     changeAdminPasswordController,
@@ -50,6 +52,8 @@ router.post('/logout', logoutController);
 
 // Delete own account (USER / RESTAURANT / DELIVERY_PARTNER)
 router.delete('/delete-account', authMiddleware, deleteMyAccountController);
+router.post('/delete-account/request', authMiddleware, requestDeleteAccountController);
+router.get('/delete-account/request-status', authMiddleware, getMyDeleteAccountRequestController);
 
 // Authenticated user profile (requires Bearer token)
 router.get('/me', authMiddleware, getMeController);

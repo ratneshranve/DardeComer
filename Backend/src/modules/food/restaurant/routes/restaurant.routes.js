@@ -23,7 +23,8 @@ import {
 } from '../controllers/supportTicket.controller.js';
 import {
     createWithdrawalRequestController,
-    listMyWithdrawalsController
+    listMyWithdrawalsController,
+    getWithdrawalWindowController
 } from '../controllers/withdrawal.controller.js';
 import {
     listCategoriesController,
@@ -108,6 +109,7 @@ router.get('/zones', authMiddleware, requireRestaurant, getZonesController);
 router.get('/finance', authMiddleware, requireRestaurant, getRestaurantFinanceController);
 router.post('/withdraw', authMiddleware, requireRestaurant, createWithdrawalRequestController);
 router.get('/withdrawals', authMiddleware, requireRestaurant, listMyWithdrawalsController);
+router.get('/withdrawal-window', authMiddleware, requireRestaurant, getWithdrawalWindowController);
 router.post(
     '/profile/profile-image',
     authMiddleware,

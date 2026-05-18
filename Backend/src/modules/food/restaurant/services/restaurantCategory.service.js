@@ -167,10 +167,21 @@ export async function listPublicCategories(query = {}) {
     const search = typeof query.search === 'string' ? query.search.trim() : '';
     const zoneIdRaw = typeof query.zoneId === 'string' ? query.zoneId.trim() : '';
 
-    const approvedCategoryIds = await FoodItem.distinct('categoryId', {
+    const approvedFoodsFilter = {
         approvalStatus: 'approved',
         categoryId: { $ne: null }
-    });
+    };
+
+    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
+        const zoneObjectId = new mongoose.Types.ObjectId(zoneIdRaw);
+        const zoneRestaurantIds = await FoodRestaurant.distinct('_id', { zoneId: zoneObjectId });
+        if (!zoneRestaurantIds.length) {
+            return { categories: [], total: 0, page, limit };
+        }
+        approvedFoodsFilter.restaurantId = { $in: zoneRestaurantIds };
+    }
+
+    const approvedCategoryIds = await FoodItem.distinct('categoryId', approvedFoodsFilter);
 
     if (!approvedCategoryIds.length) {
         return { categories: [], total: 0, page, limit };

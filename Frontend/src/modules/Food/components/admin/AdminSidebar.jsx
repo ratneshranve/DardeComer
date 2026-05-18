@@ -47,6 +47,7 @@ import {
   PiggyBank,
   Lock,
   HelpCircle,
+  ShieldAlert,
 } from "lucide-react"
 import { cn } from "@food/utils/utils"
 import { Input } from "@food/components/ui/input"
@@ -101,6 +102,7 @@ const iconMap = {
   PiggyBank,
   Lock,
   HelpCircle,
+  ShieldAlert,
   X,
 }
 

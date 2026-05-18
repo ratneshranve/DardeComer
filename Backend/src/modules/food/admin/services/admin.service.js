@@ -31,6 +31,9 @@ import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurantWithdrawal.model.js';
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
+import { RestaurantOnboardingLead } from '../../restaurant/models/restaurantOnboardingLead.model.js';
+import { getWithdrawalWindowSettings, upsertWithdrawalWindowSettings } from './withdrawalWindow.service.js';
+import { AccountDeletionRequest } from '../../../../core/auth/accountDeletionRequest.model.js';
 
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
@@ -2374,6 +2377,24 @@ export async function getPendingRestaurants() {
         ...r,
         sl: i + 1,
         zone: r.zoneId?.zoneName || r.zoneId?.name || null,
+    }));
+}
+
+export async function getRestaurantOnboardingLeads(query = {}) {
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 100, 1), 500);
+    const leads = await RestaurantOnboardingLead.find({})
+        .sort({ lastRequestedAt: -1 })
+        .limit(limit)
+        .lean();
+
+    return leads.map((lead) => ({
+        _id: lead._id,
+        phone: lead.phoneRaw || lead.phoneLast10 || '',
+        phoneLast10: lead.phoneLast10 || '',
+        requestCount: Number(lead.requestCount || 0),
+        firstRequestedAt: lead.firstRequestedAt || null,
+        lastRequestedAt: lead.lastRequestedAt || lead.updatedAt || null,
+        createdAt: lead.createdAt || null,
     }));
 }
 
@@ -4922,6 +4943,110 @@ export async function updateDeliveryWithdrawalStatus(id, { status, adminNote, re
     }
 
     return updated;
+}
+
+export async function getWithdrawalWindowSettingsService() {
+    return getWithdrawalWindowSettings();
+}
+
+export async function upsertWithdrawalWindowSettingsService(body = {}) {
+    return upsertWithdrawalWindowSettings(body);
+}
+
+export async function getAccountDeletionRequests(query = {}) {
+    const status = String(query.status || "pending").trim().toLowerCase();
+    const filter = {};
+    if (["pending", "approved", "rejected"].includes(status)) {
+        filter.status = status;
+    }
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 100, 1), 500);
+    const requests = await AccountDeletionRequest.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
+
+    const userIds = requests.filter(r => r.role === "USER").map(r => r.userId);
+    const restaurantIds = requests.filter(r => r.role === "RESTAURANT").map(r => r.userId);
+    const deliveryIds = requests.filter(r => r.role === "DELIVERY_PARTNER").map(r => r.userId);
+
+    const [users, restaurants, deliveries] = await Promise.all([
+        userIds.length ? FoodUser.find({ _id: { $in: userIds } }).select("name phone email").lean() : [],
+        restaurantIds.length ? FoodRestaurant.find({ _id: { $in: restaurantIds } }).select("restaurantName ownerPhone ownerEmail").lean() : [],
+        deliveryIds.length ? FoodDeliveryPartner.find({ _id: { $in: deliveryIds } }).select("name phone email").lean() : [],
+    ]);
+
+    const userMap = new Map(users.map((u) => [String(u._id), u]));
+    const restaurantMap = new Map(restaurants.map((r) => [String(r._id), r]));
+    const deliveryMap = new Map(deliveries.map((d) => [String(d._id), d]));
+
+    return requests.map((r) => {
+        const id = String(r.userId);
+        let profile = null;
+        if (r.role === "USER") profile = userMap.get(id) || null;
+        if (r.role === "RESTAURANT") profile = restaurantMap.get(id) || null;
+        if (r.role === "DELIVERY_PARTNER") profile = deliveryMap.get(id) || null;
+        return {
+            ...r,
+            profile,
+        };
+    });
+}
+
+export async function updateAccountDeletionRequestStatus(requestId, { status, adminNote = "" }, adminUser) {
+    if (!requestId || !mongoose.Types.ObjectId.isValid(requestId)) {
+        throw new ValidationError("Invalid deletion request id");
+    }
+    const nextStatus = String(status || "").trim().toLowerCase();
+    if (!["approved", "rejected"].includes(nextStatus)) {
+        throw new ValidationError("Status must be approved or rejected");
+    }
+
+    const request = await AccountDeletionRequest.findById(requestId);
+    if (!request) throw new ValidationError("Deletion request not found");
+    if (request.status !== "pending") throw new ValidationError("Deletion request already processed");
+
+    if (nextStatus === "approved") {
+        const role = request.role;
+        const userId = request.userId;
+        let deleted = { deletedCount: 0 };
+        if (role === "USER") {
+            deleted = await FoodUser.deleteOne({ _id: userId });
+        } else if (role === "RESTAURANT") {
+            deleted = await FoodRestaurant.updateOne(
+                { _id: userId },
+                { $set: { isDeleted: true, deletedAt: new Date(), status: "rejected" } },
+            );
+            if (deleted.modifiedCount > 0) {
+                await Promise.all([
+                    FoodItem.deleteMany({ restaurantId: userId }),
+                    FoodCategory.deleteMany({ restaurantId: userId }),
+                    FoodAddon.deleteMany({ restaurantId: userId }),
+                ]);
+                deleted.deletedCount = deleted.modifiedCount;
+            }
+        } else if (role === "DELIVERY_PARTNER") {
+            deleted = await FoodDeliveryPartner.updateOne(
+                { _id: userId },
+                { $set: { isDeleted: true, deletedAt: new Date() } },
+            );
+            deleted.deletedCount = deleted.modifiedCount;
+        } else {
+            throw new ValidationError("Unsupported role for deletion");
+        }
+
+        if (!deleted?.deletedCount) {
+            throw new ValidationError("Account not found or already deleted");
+        }
+        await FoodRefreshToken.deleteMany({ userId });
+    }
+
+    request.status = nextStatus;
+    request.adminNote = String(adminNote || "").trim();
+    request.reviewedAt = new Date();
+    request.reviewedBy = adminUser?.userId || null;
+    await request.save();
+
+    return request.toObject();
 }
 
 /**

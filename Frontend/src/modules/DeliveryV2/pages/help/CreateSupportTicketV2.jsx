@@ -16,6 +16,16 @@ export const CreateSupportTicketV2 = () => {
     category: "other",
     priority: "medium"
   });
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteRequestStatus, setDeleteRequestStatus] = useState(null);
+
+  React.useEffect(() => {
+    deliveryAPI
+      .getDeleteAccountRequestStatus()
+      .then((res) => setDeleteRequestStatus(res?.data?.data?.request || null))
+      .catch(() => setDeleteRequestStatus(null));
+  }, []);
 
   const handleSubmit = async () => {
     if (form.subject.length < 3) return toast.error("Subject too short");
@@ -32,6 +42,22 @@ export const CreateSupportTicketV2 = () => {
       toast.error("Failed to create ticket");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    const reason = deleteReason.trim();
+    if (!reason) return toast.error("Reason is required");
+    setDeleteSubmitting(true);
+    try {
+      const res = await deliveryAPI.requestDeleteAccount(reason);
+      setDeleteRequestStatus(res?.data?.data?.request || null);
+      setDeleteReason("");
+      toast.success("Delete request submitted. Admin approval pending.");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Failed to submit delete request");
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -111,6 +137,31 @@ export const CreateSupportTicketV2 = () => {
            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
            Submit Ticket
          </button>
+
+         <div className="border border-red-200 bg-red-50/30 rounded-2xl p-4 space-y-3">
+            <h2 className="text-sm font-black text-red-700 uppercase tracking-widest">Delete Account Request</h2>
+            {deleteRequestStatus && (
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <p className="text-xs font-black uppercase tracking-wider text-gray-700">Status: {deleteRequestStatus.status || "pending"}</p>
+                <p className="text-xs text-gray-600 mt-1">Reason: {deleteRequestStatus.reason}</p>
+              </div>
+            )}
+            <textarea
+              rows={4}
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Delete reason (mandatory)"
+              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm font-medium text-gray-900 focus:ring-4 focus:ring-red-500/10 transition-all outline-none resize-none"
+              maxLength={500}
+            />
+            <button
+              onClick={handleDeleteRequest}
+              disabled={deleteSubmitting}
+              className="w-full bg-red-600 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest disabled:opacity-50"
+            >
+              {deleteSubmitting ? "Submitting..." : "Submit Delete Request"}
+            </button>
+         </div>
       </div>
     </div>
   );

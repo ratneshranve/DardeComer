@@ -320,6 +320,7 @@ export default function RestaurantsList() {
   }, [restaurantIdFromUrl, restaurants])
 
 
+
   const filteredRestaurants = useMemo(() => {
     let result = [...restaurants]
 

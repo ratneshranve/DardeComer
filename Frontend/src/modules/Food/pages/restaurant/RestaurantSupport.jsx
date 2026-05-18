@@ -41,6 +41,9 @@ export default function RestaurantSupport() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [statusFilter, setStatusFilter] = useState("")
+  const [deleteReason, setDeleteReason] = useState("")
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteRequestStatus, setDeleteRequestStatus] = useState(null)
   const [form, setForm] = useState({
     category: "orders",
     issueType: "",
@@ -80,6 +83,15 @@ export default function RestaurantSupport() {
     loadTickets()
   }, [statusFilter])
 
+  useEffect(() => {
+    restaurantAPI
+      .getDeleteAccountRequestStatus()
+      .then((res) => {
+        setDeleteRequestStatus(res?.data?.data?.request || null)
+      })
+      .catch(() => setDeleteRequestStatus(null))
+  }, [])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.issueType.trim()) {
@@ -103,6 +115,26 @@ export default function RestaurantSupport() {
       toast.error(error?.response?.data?.message || "Failed to submit support ticket")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDeleteRequest = async (e) => {
+    e.preventDefault()
+    const reason = deleteReason.trim()
+    if (!reason) {
+      toast.error("Reason is required")
+      return
+    }
+    try {
+      setDeleteSubmitting(true)
+      const res = await restaurantAPI.requestDeleteAccount(reason)
+      setDeleteRequestStatus(res?.data?.data?.request || null)
+      setDeleteReason("")
+      toast.success("Delete request submitted. Admin approval pending.")
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to submit delete request")
+    } finally {
+      setDeleteSubmitting(false)
     }
   }
 
@@ -205,6 +237,34 @@ export default function RestaurantSupport() {
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Submit Ticket
+          </button>
+        </form>
+
+        <form onSubmit={handleDeleteRequest} className="bg-white rounded-2xl border border-red-200 p-4 space-y-3">
+          <h2 className="text-sm font-bold text-red-600">Delete account request</h2>
+          {deleteRequestStatus ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-900 capitalize">
+                Status: {deleteRequestStatus.status || "pending"}
+              </p>
+              <p className="text-xs text-slate-600 mt-1">
+                Reason: {deleteRequestStatus.reason}
+              </p>
+            </div>
+          ) : null}
+          <textarea
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            placeholder="Delete reason (mandatory)"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-24 resize-none"
+            maxLength={500}
+          />
+          <button
+            type="submit"
+            disabled={deleteSubmitting}
+            className="w-full rounded-lg bg-red-600 text-white py-2.5 text-sm font-semibold disabled:opacity-60"
+          >
+            {deleteSubmitting ? "Submitting..." : "Submit Delete Request"}
           </button>
         </form>
 

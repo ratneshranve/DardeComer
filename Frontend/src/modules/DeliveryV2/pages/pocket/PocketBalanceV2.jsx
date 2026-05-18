@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
    ArrowLeft, AlertTriangle, Loader2, IndianRupee,
@@ -33,6 +33,53 @@ export const PocketBalanceV2 = () => {
       payoutRequestStatus: 'No request'
    });
    const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+   const withdrawInFlightRef = useRef(false);
+   const [withdrawalWindow, setWithdrawalWindow] = useState(null);
+
+   const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+   const getNowInTimezone = (timeZone = "Asia/Kolkata") => {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+         timeZone,
+         weekday: "short",
+         hour: "2-digit",
+         minute: "2-digit",
+         hour12: false,
+      });
+      const parts = fmt.formatToParts(new Date());
+      const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+      const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      return {
+         weekday: weekdayMap[map.weekday] ?? -1,
+         minutes: Number(map.hour) * 60 + Number(map.minute),
+      };
+   };
+
+   const toMinutes = (hhmm) => {
+      const m = String(hhmm || "").match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      return Number(m[1]) * 60 + Number(m[2]);
+   };
+
+   const getWindowState = (cfg) => {
+      if (!cfg?.isEnabled) return { isOpen: true, message: "Withdrawals are currently open." };
+      const day = Number(cfg.dayOfWeek);
+      const start = toMinutes(cfg.startTime);
+      const end = toMinutes(cfg.endTime);
+      const timezone = cfg.timezone || "Asia/Kolkata";
+      const now = getNowInTimezone(timezone);
+      const inDay = now.weekday === day;
+      const inRange = start !== null && end !== null
+         ? (start <= end ? (now.minutes >= start && now.minutes <= end) : (now.minutes >= start || now.minutes <= end))
+         : false;
+      const isOpen = inDay && inRange;
+      return {
+         isOpen,
+         message: isOpen
+            ? `Withdrawals are open now (${DAY_LABELS[day]}, ${cfg.startTime}-${cfg.endTime}).`
+            : `Withdrawal opens on ${DAY_LABELS[day]} between ${cfg.startTime} and ${cfg.endTime} (${timezone}).`,
+      };
+   };
 
    useEffect(() => {
       const fetchData = async () => {
@@ -79,7 +126,27 @@ export const PocketBalanceV2 = () => {
       fetchData();
    }, []);
 
+   useEffect(() => {
+      const fetchWindow = async () => {
+         try {
+            const res = await deliveryAPI.getWithdrawalWindow();
+            setWithdrawalWindow(res?.data?.data || null);
+         } catch {
+            setWithdrawalWindow(null);
+         }
+      };
+      fetchWindow();
+   }, []);
+
+   const windowState = getWindowState(withdrawalWindow);
+   const canWithdrawNow = walletState.canWithdraw && windowState.isOpen;
+
    const handleWithdraw = async () => {
+      if (withdrawInFlightRef.current) return;
+      if (!canWithdrawNow) {
+         toast.error(windowState.message || "Withdrawals are currently closed");
+         return;
+      }
       // Simplified verification
       const profileRes = await deliveryAPI.getProfile();
       const profile = profileRes?.data?.data?.profile || {};
@@ -91,6 +158,7 @@ export const PocketBalanceV2 = () => {
          return;
       }
 
+      withdrawInFlightRef.current = true;
       setWithdrawSubmitting(true);
       try {
          const res = await deliveryAPI.createWithdrawalRequest({
@@ -104,6 +172,7 @@ export const PocketBalanceV2 = () => {
       } catch (err) {
          toast.error("Withdrawal failed");
       } finally {
+         withdrawInFlightRef.current = false;
          setWithdrawSubmitting(false);
       }
    };
@@ -136,13 +205,17 @@ export const PocketBalanceV2 = () => {
          ) : (
             <>
                {/* Warning Banner */}
-               {!walletState.canWithdraw && (
+               {!canWithdrawNow && (
                   <div className="bg-yellow-400 p-4 flex items-start gap-3 border-b border-yellow-500/10">
                      <AlertTriangle className="w-5 h-5 shrink-0" />
                      <div>
                         <p className="text-xs font-bold">Withdraw currently disabled</p>
                         <p className="text-[10px] font-medium opacity-80 leading-tight mt-1">
-                           {walletState.withdrawableAmount <= 0 ? 'Withdrawable amount is ₹0' : `Minimum withdrawal requirement is ₹${walletState.withdrawalLimit}`}
+                           {walletState.withdrawableAmount <= 0
+                              ? "Withdrawable amount is ₹0"
+                              : !windowState.isOpen
+                                 ? windowState.message
+                                 : `Minimum withdrawal requirement is ₹${walletState.withdrawalLimit}`}
                         </p>
                      </div>
                   </div>
@@ -155,8 +228,8 @@ export const PocketBalanceV2 = () => {
 
                   <button
                      onClick={handleWithdraw}
-                     disabled={!walletState.canWithdraw || withdrawSubmitting}
-                     className={`w-full py-4 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-[0.98] ${walletState.canWithdraw
+                     disabled={!canWithdrawNow || withdrawSubmitting}
+                     className={`w-full py-4 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-[0.98] ${canWithdrawNow
                            ? 'bg-primary text-white'
                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         } flex items-center justify-center gap-2`}
@@ -164,6 +237,7 @@ export const PocketBalanceV2 = () => {
                      {withdrawSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                      {withdrawSubmitting ? 'Processing...' : 'Withdraw'}
                   </button>
+                  <p className="text-[10px] text-gray-500 mt-2">{windowState.message}</p>
                </div>
 
                {/* Details Section */}

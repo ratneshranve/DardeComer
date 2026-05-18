@@ -40,5 +40,12 @@ const foodDeliveryWithdrawalSchema = new mongoose.Schema({
 });
 
 foodDeliveryWithdrawalSchema.index({ createdAt: -1 });
+foodDeliveryWithdrawalSchema.index(
+    { deliveryPartnerId: 1, status: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { status: 'pending' }
+    }
+);
 
 export const FoodDeliveryWithdrawal = mongoose.model('FoodDeliveryWithdrawal', foodDeliveryWithdrawalSchema);

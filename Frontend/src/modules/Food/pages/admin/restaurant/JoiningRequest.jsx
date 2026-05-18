@@ -57,6 +57,7 @@ export default function JoiningRequest() {
     }
   }, [activeTab])
 
+
   const fetchRequests = async () => {
     try {
       setLoading(true)

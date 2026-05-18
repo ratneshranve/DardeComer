@@ -2,6 +2,7 @@ import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { getRestaurantFinance } from '../services/restaurantFinance.service.js';
+import { assertWithdrawalWindowOpen, getWithdrawalWindowSettings } from '../../admin/services/withdrawalWindow.service.js';
 
 export const createWithdrawalRequestController = async (req, res, next) => {
     try {
@@ -10,6 +11,7 @@ export const createWithdrawalRequestController = async (req, res, next) => {
 
         if (!restaurantId) return sendError(res, 401, 'Restaurant authentication required');
         if (!amount || amount <= 0) return sendError(res, 400, 'Invalid withdrawal amount');
+        await assertWithdrawalWindowOpen();
 
         // Check if restaurant has enough balance
         const finance = await getRestaurantFinance(restaurantId);
@@ -45,6 +47,15 @@ export const listMyWithdrawalsController = async (req, res, next) => {
             .lean();
 
         return sendResponse(res, 200, 'Withdrawals fetched successfully', withdrawals);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getWithdrawalWindowController = async (_req, res, next) => {
+    try {
+        const data = await getWithdrawalWindowSettings();
+        return sendResponse(res, 200, 'Withdrawal window fetched successfully', data);
     } catch (error) {
         next(error);
     }

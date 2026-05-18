@@ -133,6 +133,10 @@ export const authAPI = {
         : null;
     return authService.deleteAccount("user", token, fcmToken, "web");
   },
+  requestDeleteAccount: (reason) =>
+    authService.requestDeleteAccount("user", reason),
+  getDeleteAccountRequestStatus: () =>
+    authService.getDeleteAccountRequestStatus("user"),
 };
 
 export const supportAPI = {
@@ -152,6 +156,15 @@ export const supportAPI = {
     }),
   updateSupportTicketAdmin: (id, body = {}) =>
     apiClient.patch(`/food/admin/support-tickets/${String(id)}`, body ?? {}, {
+      contextModule: "admin",
+    }),
+  getAccountDeletionRequests: (params = {}) =>
+    apiClient.get("/food/admin/account-deletion-requests", {
+      params,
+      contextModule: "admin",
+    }),
+  updateAccountDeletionRequestStatus: (id, body = {}) =>
+    apiClient.patch(`/food/admin/account-deletion-requests/${String(id)}`, body ?? {}, {
       contextModule: "admin",
     }),
 };
@@ -232,6 +245,11 @@ export const adminAPI = {
   // Restaurant approvals and join requests
   getPendingRestaurants: () =>
     apiClient.get("/food/admin/restaurants/pending", {
+      contextModule: "admin",
+    }),
+  getRestaurantOnboardingLeads: (params = {}) =>
+    apiClient.get("/food/admin/restaurants/onboarding-leads", {
+      params,
       contextModule: "admin",
     }),
   /** List restaurant complaints (admin). */
@@ -316,6 +334,23 @@ export const adminAPI = {
   /** Update status of a delivery withdrawal request. */
   updateDeliveryWithdrawalStatus: (id, body) =>
     apiClient.patch(`/food/admin/delivery/withdrawals/${id}`, body, {
+      contextModule: "admin",
+    }),
+  getWithdrawalWindowSettings: () =>
+    apiClient.get("/food/admin/withdrawal-window", {
+      contextModule: "admin",
+    }),
+  updateWithdrawalWindowSettings: (body) =>
+    apiClient.put("/food/admin/withdrawal-window", body ?? {}, {
+      contextModule: "admin",
+    }),
+  getAccountDeletionRequests: (params = {}) =>
+    apiClient.get("/food/admin/account-deletion-requests", {
+      params,
+      contextModule: "admin",
+    }),
+  updateAccountDeletionRequestStatus: (id, body = {}) =>
+    apiClient.patch(`/food/admin/account-deletion-requests/${String(id)}`, body ?? {}, {
       contextModule: "admin",
     }),
   /** Delivery withdrawal aliases */
@@ -978,6 +1013,10 @@ export const restaurantAPI = {
     apiClient.get("/food/restaurant/withdrawals", {
       contextModule: "restaurant"
     }),
+  getWithdrawalWindow: () =>
+    apiClient.get("/food/restaurant/withdrawal-window", {
+      contextModule: "restaurant"
+    }),
   /** Update restaurant profile fields (name/cuisines/location/menuImages). */
   updateProfile: (body) =>
     apiClient
@@ -1369,6 +1408,10 @@ export const restaurantAPI = {
         : null;
     return authService.deleteAccount("restaurant", token, fcmToken, "web");
   },
+  requestDeleteAccount: (reason) =>
+    authService.requestDeleteAccount("restaurant", reason),
+  getDeleteAccountRequestStatus: () =>
+    authService.getDeleteAccountRequestStatus("restaurant"),
   /** Backend has no email/password login; use phone OTP only. */
   login: (_email, _password) =>
     Promise.reject(new Error("Please use phone number and OTP to sign in.")),
@@ -1679,6 +1722,10 @@ export const deliveryAPI = {
         : null;
     return authService.deleteAccount("delivery", token, fcmToken, "web");
   },
+  requestDeleteAccount: (reason) =>
+    authService.requestDeleteAccount("delivery", reason),
+  getDeleteAccountRequestStatus: () =>
+    authService.getDeleteAccountRequestStatus("delivery"),
   /** POST /food/delivery/register - multipart FormData (new partner, no token). */
   register: (formData) => {
     if (!formData || !(formData instanceof FormData)) {
@@ -2020,6 +2067,10 @@ export const deliveryAPI = {
   /** GET /food/delivery/cash-limit - admin-set cash limit for delivery partner */
   getCashLimit: () =>
     apiClient.get("/food/delivery/cash-limit", {
+      contextModule: "delivery",
+    }),
+  getWithdrawalWindow: () =>
+    apiClient.get("/food/delivery/withdrawal-window", {
       contextModule: "delivery",
     }),
   createWithdrawalRequest: (body) =>

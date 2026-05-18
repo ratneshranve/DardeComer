@@ -24,6 +24,9 @@ export default function Support() {
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [orderSearch, setOrderSearch] = useState("")
   const [restaurantSearch, setRestaurantSearch] = useState("")
+  const [deleteReason, setDeleteReason] = useState("")
+  const [deleteRequestLoading, setDeleteRequestLoading] = useState(false)
+  const [deleteRequestStatus, setDeleteRequestStatus] = useState(null)
 
   useEffect(() => {
     setLoadingTickets(true)
@@ -39,6 +42,38 @@ export default function Support() {
         setLoadingTickets(false)
       })
   }, [])
+
+  useEffect(() => {
+    authAPI
+      .getDeleteAccountRequestStatus()
+      .then((res) => {
+        const req = res?.data?.data?.request || null
+        setDeleteRequestStatus(req)
+      })
+      .catch(() => {
+        setDeleteRequestStatus(null)
+      })
+  }, [])
+
+  const submitDeleteRequest = async () => {
+    const reason = deleteReason.trim()
+    if (!reason) {
+      toast.error("Reason is required")
+      return
+    }
+    setDeleteRequestLoading(true)
+    try {
+      const res = await authAPI.requestDeleteAccount(reason)
+      const req = res?.data?.data?.request || null
+      setDeleteRequestStatus(req)
+      setDeleteReason("")
+      toast.success("Delete request submitted. Waiting for admin approval.")
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Failed to submit delete request")
+    } finally {
+      setDeleteRequestLoading(false)
+    }
+  }
 
   const orderIssues = ["Item missing", "Wrong item", "Not delivered", "Payment issue"]
   const restaurantIssues = ["Bad service", "Wrong info", "Other"]
@@ -361,6 +396,35 @@ export default function Support() {
         </Card>
 
         <TicketList />
+
+        <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-slate-200 dark:border-gray-800 mt-3">
+          <CardContent className="p-4 space-y-3">
+            <h3 className="text-base font-semibold text-red-600">Delete Account Request</h3>
+            {deleteRequestStatus ? (
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50">
+                <p className="text-sm font-semibold text-slate-900 capitalize">
+                  Status: {deleteRequestStatus.status || "pending"}
+                </p>
+                <p className="text-xs text-slate-600 mt-1">
+                  Reason: {deleteRequestStatus.reason}
+                </p>
+              </div>
+            ) : null}
+            <Textarea
+              placeholder="Delete account reason (mandatory)"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              maxLength={500}
+            />
+            <Button
+              onClick={submitDeleteRequest}
+              disabled={deleteRequestLoading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteRequestLoading ? "Submitting..." : "Submit Delete Request"}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </AnimatedPage>
   )

@@ -597,6 +597,38 @@ export async function getPendingRestaurants(req, res, next) {
     }
 }
 
+export async function getAccountDeletionRequestsController(req, res, next) {
+    try {
+        const data = await adminService.getAccountDeletionRequests(req.query || {});
+        res.status(200).json({ success: true, message: 'Account deletion requests fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateAccountDeletionRequestStatusController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const data = await adminService.updateAccountDeletionRequestStatus(id, req.body || {}, req.user || {});
+        res.status(200).json({ success: true, message: 'Account deletion request updated successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getRestaurantOnboardingLeads(req, res, next) {
+    try {
+        const leads = await adminService.getRestaurantOnboardingLeads(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Restaurant onboarding leads fetched successfully',
+            data: leads
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 // ----- Delivery partner bonus (admin) -----
 export async function getDeliveryPartnerBonusTransactions(req, res, next) {
     try {
@@ -1408,6 +1440,24 @@ export async function getSidebarBadges(req, res, next) {
     try {
         const counts = await adminService.getSidebarBadges();
         res.status(200).json({ success: true, counts });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getWithdrawalWindowSettingsController(req, res, next) {
+    try {
+        const data = await adminService.getWithdrawalWindowSettingsService();
+        res.status(200).json({ success: true, message: 'Withdrawal window settings fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function upsertWithdrawalWindowSettingsController(req, res, next) {
+    try {
+        const data = await adminService.upsertWithdrawalWindowSettingsService(req.body || {});
+        res.status(200).json({ success: true, message: 'Withdrawal window settings updated successfully', data });
     } catch (error) {
         next(error);
     }

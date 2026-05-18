@@ -16,6 +16,8 @@ const AUTH = {
   REFRESH_TOKEN: "/food/auth/refresh-token",
   LOGOUT: "/food/auth/logout",
   DELETE_ACCOUNT: "/food/auth/delete-account",
+  DELETE_ACCOUNT_REQUEST: "/food/auth/delete-account/request",
+  DELETE_ACCOUNT_REQUEST_STATUS: "/food/auth/delete-account/request-status",
   ME: "/food/auth/me",
 };
 
@@ -183,6 +185,20 @@ export function deleteAccount(
   }
   return apiClient.delete(AUTH.DELETE_ACCOUNT, {
     data: payload,
+    contextModule: module,
+  });
+}
+
+export function requestDeleteAccount(module, reason) {
+  return apiClient.post(
+    AUTH.DELETE_ACCOUNT_REQUEST,
+    { reason: String(reason || "").trim() },
+    { contextModule: module },
+  );
+}
+
+export function getDeleteAccountRequestStatus(module) {
+  return apiClient.get(AUTH.DELETE_ACCOUNT_REQUEST_STATUS, {
     contextModule: module,
   });
 }

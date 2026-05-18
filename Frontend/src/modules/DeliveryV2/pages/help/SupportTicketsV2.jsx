@@ -63,6 +63,13 @@ export const SupportTicketsV2 = () => {
           Raise New Ticket
         </button>
 
+        <button
+          onClick={() => navigate("/food/delivery/help/tickets/create")}
+          className="w-full border border-red-200 text-red-700 bg-red-50 p-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+        >
+          Delete Account Request
+        </button>
+
         {/* List */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">

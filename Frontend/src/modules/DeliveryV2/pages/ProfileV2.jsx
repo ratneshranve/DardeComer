@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Share2,
   LogOut,
-  Trash2,
   X,
   Loader2,
   Briefcase
@@ -29,9 +28,6 @@ export const ProfileV2 = () => {
   const [referralReward, setReferralReward] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [logoutSubmitting, setLogoutSubmitting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
-  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   // Fetch profile data
   useEffect(() => {
@@ -116,29 +112,6 @@ export const ProfileV2 = () => {
     setLogoutSubmitting(false)
   }
 
-  const handleDeleteAccount = async () => {
-    if (deleteSubmitting) return
-    if (deleteConfirmationText !== "DELETE") {
-      toast.error("Please type DELETE to confirm")
-      return
-    }
-    setShowDeleteConfirm(false)
-    try {
-      setDeleteSubmitting(true)
-      await deliveryAPI.deleteAccount()
-      clearModuleAuth("delivery")
-      localStorage.removeItem("app:isOnline")
-      toast.success("Account deleted successfully")
-      navigate("/food/delivery/login", { replace: true })
-    } catch (error) {
-      const msg = error?.response?.data?.message || "Failed to delete account"
-      toast.error(msg, {
-        description: msg.includes("complete your orders") ? "Please complete all assigned or ongoing deliveries first." : undefined
-      })
-    } finally {
-      setDeleteSubmitting(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -242,20 +215,6 @@ export const ProfileV2 = () => {
               <ArrowRight className="w-5 h-5 text-red-100" />
             </div>
 
-            {/* Delete Account Section */}
-            <div 
-              onClick={() => {
-                setDeleteConfirmationText("")
-                setShowDeleteConfirm(true)
-              }}
-              className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer border border-red-50 hover:bg-red-50/30 active:bg-red-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Trash2 className="w-5 h-5 text-red-600" />
-                <span className="text-sm font-bold text-red-600">Delete account</span>
-              </div>
-              <ArrowRight className="w-5 h-5 text-red-100" />
-            </div>
           </div>
         </div>
       </div>
@@ -291,59 +250,6 @@ export const ProfileV2 = () => {
         </div>
       )}
 
-      {showDeleteConfirm && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center px-4"
-          onClick={() => setShowDeleteConfirm(false)}
-        >
-          <div 
-            className="w-full max-w-sm bg-white rounded-2xl p-6"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-center mb-4">
-              <div className="bg-red-50 p-3 rounded-full">
-                <Trash2 className="w-8 h-8 text-red-600" />
-              </div>
-            </div>
-            
-            <h3 className="text-xl font-black text-center text-slate-800 mb-2">
-              Delete account?
-            </h3>
-            <p className="text-slate-500 text-center text-sm font-medium mb-6">
-              Are you sure you want to delete your account? This action cannot be undone. <span className="text-red-600 font-semibold block mt-2">Your wallet amount and earnings will be permanently deleted.</span>
-            </p>
-
-            <div className="mb-6">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">
-                Type <span className="text-red-600">DELETE</span> to confirm
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmationText}
-                onChange={(e) => setDeleteConfirmationText(e.target.value)}
-                placeholder="Type DELETE here"
-                className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 text-sm font-bold focus:outline-none focus:border-red-500 transition-colors"
-              />
-            </div>
-
-            <div className="flex flex-row-reverse gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 h-11 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deleteSubmitting || deleteConfirmationText !== "DELETE"}
-                className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {deleteSubmitting ? "Deleting..." : "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

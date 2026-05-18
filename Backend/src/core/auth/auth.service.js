@@ -4,6 +4,7 @@ import { FoodUser } from "../users/user.model.js";
 import { FoodAdmin } from "../admin/admin.model.js";
 import { AdminResetOtp } from "../admin/adminResetOtp.model.js";
 import { FoodRestaurant } from "../../modules/food/restaurant/models/restaurant.model.js";
+import { RestaurantOnboardingLead } from "../../modules/food/restaurant/models/restaurantOnboardingLead.model.js";
 import { FoodDeliveryPartner } from "../../modules/food/delivery/models/deliveryPartner.model.js";
 import { FoodReferralSettings } from "../../modules/food/admin/models/referralSettings.model.js";
 import { FoodReferralLog } from "../../modules/food/admin/models/referralLog.model.js";
@@ -20,6 +21,7 @@ import { FoodItem } from "../../modules/food/admin/models/food.model.js";
 import { FoodCategory } from "../../modules/food/admin/models/category.model.js";
 import { FoodAddon } from "../../modules/food/restaurant/models/foodAddon.model.js";
 import { FoodOrder } from "../../modules/food/orders/models/order.model.js";
+import { AccountDeletionRequest } from "./accountDeletionRequest.model.js";
 
 const ACTIVE_ORDER_STATUSES = [
   "payment_pending",
@@ -264,6 +266,42 @@ export const requestRestaurantOtp = async (phone) => {
   if (!phone) {
     throw new ValidationError("Phone is required");
   }
+  const rawPhone = String(phone || "").trim();
+  const digits = rawPhone.replace(/\D/g, "");
+  const last10 = digits.slice(-10);
+  if (last10) {
+    try {
+      const phoneCandidates = [rawPhone, digits, last10].filter(Boolean);
+      const existingRestaurant = await FoodRestaurant.findOne({
+        $or: [
+          { ownerPhone: { $in: phoneCandidates } },
+          { primaryContactNumber: { $in: phoneCandidates } },
+          { ownerPhone: { $regex: new RegExp(`${last10}$`) } },
+          { primaryContactNumber: { $regex: new RegExp(`${last10}$`) } },
+        ],
+        isDeleted: { $ne: true },
+      }).select("_id");
+
+      if (!existingRestaurant) {
+        await RestaurantOnboardingLead.findOneAndUpdate(
+          { phoneLast10: last10 },
+          {
+            $set: {
+              phoneRaw: rawPhone,
+              phoneDigits: digits || last10,
+              phoneLast10: last10,
+              lastRequestedAt: new Date(),
+            },
+            $setOnInsert: { firstRequestedAt: new Date() },
+            $inc: { requestCount: 1 },
+          },
+          { upsert: true, new: false },
+        );
+      }
+    } catch (leadErr) {
+      logger?.warn?.({ err: leadErr, phone: rawPhone }, "Failed to save restaurant onboarding lead");
+    }
+  }
   const otp = await createOrUpdateOtp(phone);
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =
@@ -475,13 +513,7 @@ export const logout = async (refreshToken, fcmToken, platform = "web") => {
   return { invalidated };
 };
 
-export const deleteMyAccount = async (
-  userId,
-  role,
-  refreshToken,
-  fcmToken,
-  platform = "web",
-) => {
+const assertNoActiveOrdersForRole = async (userId, role) => {
   if (!userId || !role) {
     throw new AuthError("Invalid token payload");
   }
@@ -502,6 +534,75 @@ export const deleteMyAccount = async (
       throw new ValidationError("Cannot delete account while you have active orders. Please complete or settle your ongoing orders first.");
     }
   }
+};
+
+export const performAccountDeletionByRole = async (userId, role) => {
+  let deleted = { deletedCount: 0 };
+  switch (role) {
+    case ROLES.USER:
+      deleted = await FoodUser.deleteOne({ _id: userId });
+      break;
+    case ROLES.RESTAURANT:
+      deleted = await FoodRestaurant.updateOne(
+        { _id: userId },
+        { $set: { isDeleted: true, deletedAt: new Date(), status: "rejected" } },
+      );
+      if (deleted.modifiedCount > 0) {
+        await Promise.all([
+          FoodItem.deleteMany({ restaurantId: userId }),
+          FoodCategory.deleteMany({ restaurantId: userId }),
+          FoodAddon.deleteMany({ restaurantId: userId }),
+        ]);
+        deleted.deletedCount = deleted.modifiedCount;
+      }
+      break;
+    case ROLES.DELIVERY_PARTNER:
+      deleted = await FoodDeliveryPartner.updateOne(
+        { _id: userId },
+        { $set: { isDeleted: true, deletedAt: new Date() } },
+      );
+      deleted.deletedCount = deleted.modifiedCount;
+      break;
+    default:
+      throw new AuthError("Delete account is not supported for this role");
+  }
+  if (!deleted?.deletedCount) {
+    throw new AuthError("Account not found");
+  }
+};
+
+export const createDeleteAccountRequest = async (userId, role, reason = "") => {
+  await assertNoActiveOrdersForRole(userId, role);
+  const cleanReason = String(reason || "").trim();
+  if (!cleanReason) throw new ValidationError("Deletion reason is required");
+  try {
+    const request = await AccountDeletionRequest.create({
+      userId,
+      role,
+      reason: cleanReason,
+      status: "pending",
+    });
+    return request.toObject();
+  } catch (err) {
+    if (err?.code === 11000) {
+      throw new ValidationError("A deletion request is already pending");
+    }
+    throw err;
+  }
+};
+
+export const getMyDeleteAccountRequest = async (userId, role) => {
+  return AccountDeletionRequest.findOne({ userId, role }).sort({ createdAt: -1 }).lean();
+};
+
+export const deleteMyAccount = async (
+  userId,
+  role,
+  refreshToken,
+  fcmToken,
+  platform = "web",
+) => {
+  await assertNoActiveOrdersForRole(userId, role);
 
 
   // Best-effort cleanup: remove specific refresh token if provided.
@@ -529,49 +630,7 @@ export const deleteMyAccount = async (
     ]);
   }
 
-  let deleted = { deletedCount: 0 };
-
-  switch (role) {
-    case ROLES.USER:
-      deleted = await FoodUser.deleteOne({ _id: userId });
-      break;
-    case ROLES.RESTAURANT:
-      // Soft delete the restaurant profile
-      deleted = await FoodRestaurant.updateOne(
-        { _id: userId },
-        { 
-          $set: { 
-            isDeleted: true, 
-            deletedAt: new Date(),
-            status: 'rejected' // Ensure they don't appear in active lists
-          } 
-        }
-      );
-      if (deleted.modifiedCount > 0) {
-        // Hard delete associated menu data as requested
-        await Promise.all([
-          FoodItem.deleteMany({ restaurantId: userId }),
-          FoodCategory.deleteMany({ restaurantId: userId }),
-          FoodAddon.deleteMany({ restaurantId: userId })
-        ]);
-        deleted.deletedCount = deleted.modifiedCount;
-      }
-      break;
-    case ROLES.DELIVERY_PARTNER:
-      // Soft delete the delivery partner
-      deleted = await FoodDeliveryPartner.updateOne(
-        { _id: userId },
-        { $set: { isDeleted: true, deletedAt: new Date() } }
-      );
-      deleted.deletedCount = deleted.modifiedCount;
-      break;
-    default:
-      throw new AuthError("Delete account is not supported for this role");
-  }
-
-  if (!deleted?.deletedCount) {
-    throw new AuthError("Account not found");
-  }
+  await performAccountDeletionByRole(userId, role);
 
   return { deleted: true };
 };

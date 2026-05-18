@@ -29,7 +29,6 @@ import {
   Calendar,
   MapPin,
   LogOut,
-  Trash2,
 } from "lucide-react"
 import { Card, CardContent } from "@food/components/ui/card"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
@@ -355,9 +354,6 @@ export default function ExploreMore() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [existingSchedule, setExistingSchedule] = useState(null)
   
-  // Deletion confirmation states
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   const STORAGE_KEY = "restaurant_schedule_off"
 
@@ -482,7 +478,6 @@ export default function ExploreMore() {
   const restaurantDisplayAddress = restaurantData?.location ? formatAddress(restaurantData.location) : ""
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -616,38 +611,6 @@ export default function ExploreMore() {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    if (isDeletingAccount || isLoggingOut) return
-
-    setDeleteConfirmationText("")
-    setShowDeleteConfirm(true)
-  }
-
-  const confirmDeleteAccount = async () => {
-    if (deleteConfirmationText !== "DELETE") return
-    
-    setIsDeletingAccount(true)
-    setShowDeleteConfirm(false)
-    setProfileOpen(false)
-
-    try {
-      await restaurantAPI.deleteAccount()
-      clearModuleAuth("restaurant")
-      localStorage.removeItem("restaurant_onboarding")
-      sessionStorage.removeItem("restaurantAuthData")
-      window.dispatchEvent(new Event("restaurantAuthChanged"))
-      toast.success("Account deleted successfully")
-      navigate("/food/restaurant/login", { replace: true })
-    } catch (error) {
-      debugError("Error deleting account:", error)
-      const msg = error?.response?.data?.message || "Failed to delete account"
-      toast.error(msg, {
-        description: msg.includes("complete your orders") ? "Please deliver or cancel all active orders first." : undefined
-      })
-    } finally {
-      setIsDeletingAccount(false)
-    }
-  }
 
   const scheduleOffReasons = [
     "renovation or relocation of restaurant",
@@ -1043,25 +1006,6 @@ export default function ExploreMore() {
           <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
         </motion.button>
 
-        <motion.button
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55, duration: 0.25 }}
-          onClick={handleDeleteAccount}
-          disabled={isDeletingAccount || isLoggingOut}
-          className="mt-3 w-full flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-left disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-100">
-              <Trash2 className="w-5 h-5 text-red-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-base font-semibold text-red-700">Delete account</p>
-              <p className="text-sm text-red-500">Permanently remove this account</p>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
-        </motion.button>
       </div>
 
       {/* Search Popup */}
@@ -1336,26 +1280,16 @@ export default function ExploreMore() {
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
-                  disabled={isLoggingOut || isDeletingAccount}
+                  disabled={isLoggingOut}
                   className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
                 >
                   {isLoggingOut ? "Logging out..." : "Logout"}
                 </button>
 
-                {/* Delete Account Button */}
-                <button
-                  onClick={handleDeleteAccount}
-                  disabled={isDeletingAccount || isLoggingOut}
-                  className="w-full bg-red-700 hover:bg-red-800 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {isDeletingAccount ? "Deleting account..." : "Delete account"}
-                </button>
-
                 {/* Logout from all devices Button */}
                 <button
                   onClick={handleLogoutAllDevices}
-                  disabled={isLoggingOut || isDeletingAccount}
+                  disabled={isLoggingOut}
                   className="w-full bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors"
                 >
                   {isLoggingOut ? "Logging out..." : "Logout from all devices"}
@@ -1775,82 +1709,6 @@ export default function ExploreMore() {
       </AnimatePresence>
       <BottomNavOrders />
 
-      {/* Delete Account Confirmation Dialog */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-primary/50 z-[10001]"
-              onClick={() => {
-                if (!isDeletingAccount) setShowDeleteConfirm(false)
-              }}
-            />
-
-            {/* Dialog */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 flex items-center justify-center z-[10002] px-4 pointer-events-none"
-            >
-              <div 
-                className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-                    <Trash2 className="w-7 h-7 text-red-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">Delete Account?</h3>
-                  <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                    <p className="text-sm font-semibold text-red-700 leading-tight">
-                      Warning: All your earnings, wallet balance, and restaurant data will be permanently lost.
-                    </p>
-                  </div>
-                  <p className="mt-4 text-sm text-gray-500">
-                    This action cannot be undone. Please type <span className="font-bold text-gray-900">DELETE</span> below to confirm.
-                  </p>
-                </div>
-
-                <div className="mt-5">
-                  <input
-                    type="text"
-                    value={deleteConfirmationText}
-                    onChange={(e) => setDeleteConfirmationText(e.target.value.toUpperCase())}
-                    placeholder="Type DELETE here"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-center font-bold text-gray-900 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-red-500 transition-all uppercase"
-                    autoFocus
-                  />
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeleteAccount}
-                    disabled={deleteConfirmationText !== "DELETE" || isDeletingAccount}
-                    className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isDeletingAccount ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </motion.div>
   )
 }

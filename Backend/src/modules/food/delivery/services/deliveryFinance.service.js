@@ -8,6 +8,7 @@ import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransa
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { createRazorpayOrder, getRazorpayKeyId, isRazorpayConfigured, verifyPaymentSignature } from '../../orders/helpers/razorpay.helper.js';
+import { assertWithdrawalWindowOpen } from '../../admin/services/withdrawalWindow.service.js';
 
 const COD_PAYMENT_METHODS = ['cash', 'cod', 'cash_on_delivery', 'cash on delivery'];
 const COD_COLLECTION_AMOUNT_EXPR = {
@@ -175,6 +176,7 @@ export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {
     const { amount, bankDetails, paymentMethod = 'bank_transfer' } = payload;
 
     if (!amount || amount < 1) throw new ValidationError('Invalid amount');
+    await assertWithdrawalWindowOpen();
 
     const wallet = await getDeliveryPartnerWalletEnhanced(deliveryPartnerId);
     if (amount < wallet.deliveryWithdrawalLimit) {
@@ -187,20 +189,36 @@ export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {
     const partner = await FoodDeliveryPartner.findById(deliveryPartnerId).lean();
     if (!partner) throw new ValidationError('Delivery partner not found');
 
-    const withdrawal = await FoodDeliveryWithdrawal.create({
+    const existingPending = await FoodDeliveryWithdrawal.findOne({
         deliveryPartnerId,
-        amount,
-        paymentMethod,
-        bankDetails: bankDetails || {
-            accountNumber: partner.bankAccountNumber,
-            ifscCode: partner.bankIfscCode,
-            bankName: partner.bankName,
-            accountHolderName: partner.bankAccountHolderName
-        },
-        upiId: partner.upiId,
-        upiQrCode: partner.upiQrCode,
         status: 'pending'
-    });
+    }).select('_id amount createdAt').lean();
+    if (existingPending) {
+        throw new ValidationError('A withdrawal request is already pending. Please wait for admin action.');
+    }
+
+    let withdrawal = null;
+    try {
+        withdrawal = await FoodDeliveryWithdrawal.create({
+            deliveryPartnerId,
+            amount,
+            paymentMethod,
+            bankDetails: bankDetails || {
+                accountNumber: partner.bankAccountNumber,
+                ifscCode: partner.bankIfscCode,
+                bankName: partner.bankName,
+                accountHolderName: partner.bankAccountHolderName
+            },
+            upiId: partner.upiId,
+            upiQrCode: partner.upiQrCode,
+            status: 'pending'
+        });
+    } catch (err) {
+        if (err?.code === 11000) {
+            throw new ValidationError('A withdrawal request is already pending. Please wait for admin action.');
+        }
+        throw err;
+    }
 
     return withdrawal;
 };

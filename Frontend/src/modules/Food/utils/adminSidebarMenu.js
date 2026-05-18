@@ -55,6 +55,7 @@ export const adminSidebarMenu = [
         subItems: [
           { label: "Restaurants List", path: "/admin/food/restaurants" },
           { label: "New Joining Request", path: "/admin/food/restaurants/joining-request" },
+          { label: "Onboarding Interest", path: "/admin/food/restaurants/onboarding-interest" },
           { label: "Restaurant Commission", path: "/admin/food/restaurants/commission" },
           { label: "Restaurant Reviews", path: "/admin/food/restaurants/reviews" },
           { label: "Restaurant Complaints", path: "/admin/food/restaurants/complaints" },
@@ -164,6 +165,7 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "User Feedback", path: "/admin/food/contact-messages", icon: "Mail" },
       { type: "link", label: "Safety Emergency Reports", path: "/admin/food/safety-emergency-reports", icon: "AlertTriangle" },
+      { type: "link", label: "Delete Approvals", path: "/admin/food/delete-approvals", icon: "ShieldAlert" },
     ],
   },
   {
@@ -192,6 +194,7 @@ export const adminSidebarMenu = [
     label: "TRANSACTION MANAGEMENT",
     items: [
       { type: "link", label: "Restaurant Withdraws", path: "/admin/food/restaurant-withdraws", icon: "CreditCard" },
+      { type: "link", label: "Weekly Payment", path: "/admin/food/weekly-payment", icon: "Calendar" },
     ],
   },
   {

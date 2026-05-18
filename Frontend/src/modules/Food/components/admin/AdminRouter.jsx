@@ -29,6 +29,7 @@ const RestaurantComplaints = lazy(() => import("@food/pages/admin/restaurant/Res
 const RestaurantReviews = lazy(() => import("@food/pages/admin/restaurant/RestaurantReviews"));
 const RestaurantsBulkImport = lazy(() => import("@food/pages/admin/restaurant/RestaurantsBulkImport"));
 const RestaurantsBulkExport = lazy(() => import("@food/pages/admin/restaurant/RestaurantsBulkExport"));
+const OnboardingInterest = lazy(() => import("@food/pages/admin/restaurant/OnboardingInterest"));
 // Food Management
 const FoodsList = lazy(() => import("@food/pages/admin/foods/FoodsList"));
 const AddonsList = lazy(() => import("@food/pages/admin/addons/AddonsList"));
@@ -47,6 +48,7 @@ const AdsList = lazy(() => import("@food/pages/admin/advertisement/AdsList"));
 const Chattings = lazy(() => import("@food/pages/admin/Chattings"));
 const ContactMessages = lazy(() => import("@food/pages/admin/ContactMessages"));
 const SafetyEmergencyReports = lazy(() => import("@food/pages/admin/SafetyEmergencyReports"));
+const DeleteApprovals = lazy(() => import("@food/pages/admin/DeleteApprovals"));
 // Customer Management
 const Customers = lazy(() => import("@food/pages/admin/Customers"));
 const SupportTickets = lazy(() => import("@food/pages/admin/SupportTickets"));
@@ -85,6 +87,7 @@ const RestaurantVATReport = lazy(() => import("@food/pages/admin/reports/Restaur
 // Transaction Management
 const RestaurantWithdraws = lazy(() => import("@food/pages/admin/transactions/RestaurantWithdraws"));
 const WithdrawMethod = lazy(() => import("@food/pages/admin/transactions/WithdrawMethod"));
+const WeeklyPayment = lazy(() => import("@food/pages/admin/transactions/WeeklyPayment"));
 // Employee Management
 const EmployeeRole = lazy(() => import("@food/pages/admin/employees/EmployeeRole"));
 const AddEmployee = lazy(() => import("@food/pages/admin/employees/AddEmployee"));
@@ -184,6 +187,7 @@ export default function AdminRouter() {
             <Route path="restaurants/add" element={<AddRestaurant />} />
             <Route path="restaurants/edit/:id" element={<EditRestaurant />} />
             <Route path="restaurants/joining-request" element={<JoiningRequest />} />
+            <Route path="restaurants/onboarding-interest" element={<OnboardingInterest />} />
             <Route path="restaurants/commission" element={<RestaurantCommission />} />
             <Route path="restaurants/complaints" element={<RestaurantComplaints />} />
             <Route path="restaurants/reviews" element={<RestaurantReviews />} />
@@ -212,6 +216,7 @@ export default function AdminRouter() {
             <Route path="chattings" element={<Chattings />} />
             <Route path="contact-messages" element={<ContactMessages />} />
             <Route path="safety-emergency-reports" element={<SafetyEmergencyReports />} />
+            <Route path="delete-approvals" element={<DeleteApprovals />} />
             
             <Route path="customers" element={<Customers />} />
             <Route path="support-tickets" element={<SupportTickets />} />
@@ -251,6 +256,7 @@ export default function AdminRouter() {
             
             <Route path="restaurant-withdraws" element={<RestaurantWithdraws />} />
             <Route path="withdraw-method" element={<WithdrawMethod />} />
+            <Route path="weekly-payment" element={<WeeklyPayment />} />
             
             <Route path="employee-role" element={<EmployeeRole />} />
             <Route path="employees" element={<EmployeeList />} />
