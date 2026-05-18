@@ -393,15 +393,6 @@ const normalizeTimeValue = (value) => {
   return ""
 }
 
-const timeStringToMinutes = (value) => {
-  const normalized = normalizeTimeValue(value)
-  if (!normalized || !/^\d{2}:\d{2}$/.test(normalized)) return null
-  const [hours, minutes] = normalized.split(":").map(Number)
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null
-  return hours * 60 + minutes
-}
-
 const formatTime12Hour = (timeStr) => {
   if (!timeStr || typeof timeStr !== "string" || !timeStr.includes(":")) return "--:-- --"
   const [h, m] = timeStr.split(":").map(Number)
@@ -603,6 +594,7 @@ export default function RestaurantOnboarding() {
   const [locationSearchValue, setLocationSearchValue] = useState("")
   const [locationSuggestions, setLocationSuggestions] = useState([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [isDetectingCurrentLocation, setIsDetectingCurrentLocation] = useState(false)
 
   const getPreviewImageUrl = (value) => {
     if (!value) return null
@@ -797,6 +789,100 @@ export default function RestaurantOnboarding() {
     )
 
     return resolved.filter((image) => image?.url)
+  }
+
+  const handleUseCurrentLocation = async () => {
+    if (isDetectingCurrentLocation) return
+    if (!navigator?.geolocation) {
+      toast.error("Geolocation is not supported in this browser.")
+      return
+    }
+
+    setIsDetectingCurrentLocation(true)
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 60000,
+        })
+      })
+
+      const latitude = Number(position?.coords?.latitude)
+      const longitude = Number(position?.coords?.longitude)
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error("Invalid coordinates")
+      }
+
+      let parsed = null
+      const latRounded = Number(latitude.toFixed(6))
+      const lngRounded = Number(longitude.toFixed(6))
+
+      if (window.google?.maps?.Geocoder) {
+        try {
+          const geocodeResult = await new Promise((resolve) => {
+            const geocoder = new window.google.maps.Geocoder()
+            geocoder.geocode({ location: { lat: latRounded, lng: lngRounded } }, (results, status) => {
+              if (status === "OK" && Array.isArray(results) && results[0]) {
+                resolve(results[0])
+                return
+              }
+              resolve(null)
+            })
+          })
+
+          if (geocodeResult) {
+            const comps = Array.isArray(geocodeResult.address_components) ? geocodeResult.address_components : []
+            const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+            parsed = {
+              formattedAddress: geocodeResult.formatted_address || "",
+              area: get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"]),
+              city: get(["locality"]) || get(["administrative_area_level_2"]),
+              state: get(["administrative_area_level_1"]) || get(["administrative_area_level_2"]),
+              pincode: get(["postal_code"]),
+            }
+          }
+        } catch { }
+      }
+
+      if (!parsed) {
+        const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${encodeURIComponent(String(latRounded))}&lon=${encodeURIComponent(String(lngRounded))}`
+        const reverseRes = await fetch(reverseUrl, { headers: { Accept: "application/json" } })
+        const reverseJson = await reverseRes.json()
+        const addr = reverseJson?.address || {}
+        parsed = {
+          formattedAddress: reverseJson?.display_name || `${latRounded}, ${lngRounded}`,
+          area: addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || "",
+          city: addr.city || addr.town || addr.village || "",
+          state: addr.state || "",
+          pincode: addr.postcode || "",
+        }
+      }
+
+      setStep1((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          formattedAddress: parsed?.formattedAddress || prev.location.formattedAddress,
+          addressLine1: parsed?.formattedAddress || prev.location.addressLine1 || "",
+          area: parsed?.area || prev.location.area,
+          city: parsed?.city || prev.location.city,
+          state: parsed?.state || prev.location.state,
+          pincode: parsed?.pincode || prev.location.pincode,
+          latitude: latRounded,
+          longitude: lngRounded,
+        },
+      }))
+
+      setLocationSearchValue(parsed?.formattedAddress || `${latRounded}, ${lngRounded}`)
+      setLocationSuggestions([])
+      toast.success("Current location selected")
+    } catch (error) {
+      debugError("Current location detect failed:", error)
+      toast.error("Unable to fetch current location. Please allow location permission.")
+    } finally {
+      setIsDetectingCurrentLocation(false)
+    }
   }
 
 
@@ -1273,15 +1359,6 @@ export default function RestaurantOnboarding() {
     }
     if (!step2.closingTime?.trim()) {
       errors.push("Closing time is required")
-    }
-    const openingMinutes = timeStringToMinutes(step2.openingTime)
-    const closingMinutes = timeStringToMinutes(step2.closingTime)
-    if (openingMinutes !== null && closingMinutes !== null) {
-      if (openingMinutes === closingMinutes) {
-        errors.push("Opening time and closing time cannot be same")
-      } else if (closingMinutes < openingMinutes) {
-        errors.push("Closing time cannot be less than opening time")
-      }
     }
     if (!step2.openDays || step2.openDays.length === 0) {
       errors.push("Please select at least one open day")
@@ -1853,6 +1930,14 @@ export default function RestaurantOnboarding() {
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={!isEditing || isDetectingCurrentLocation}
+              className="mt-2 text-xs font-medium text-orange-600 hover:text-orange-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+            >
+              {isDetectingCurrentLocation ? "Detecting current location..." : "Use current location"}
+            </button>
 
             {/* Fallback suggestions dropdown */}
             {locationSuggestions.length > 0 && (
@@ -2472,18 +2557,6 @@ export default function RestaurantOnboarding() {
               value={step2.openingTime || ""}
               onChange={(val) => {
                 const nextOpening = normalizeTimeValue(val) || ""
-                const openingMinutes = timeStringToMinutes(nextOpening)
-                const closingMinutes = timeStringToMinutes(step2.closingTime)
-                if (openingMinutes !== null && closingMinutes !== null) {
-                  if (openingMinutes === closingMinutes) {
-                    toast.error("Opening time and closing time cannot be same")
-                    return
-                  }
-                  if (closingMinutes < openingMinutes) {
-                    toast.error("Closing time cannot be less than opening time")
-                    return
-                  }
-                }
                 setStep2((prev) => ({ ...prev, openingTime: nextOpening }))
               }}
             />
@@ -2492,18 +2565,6 @@ export default function RestaurantOnboarding() {
               value={step2.closingTime || ""}
               onChange={(val) => {
                 const nextClosing = normalizeTimeValue(val) || ""
-                const openingMinutes = timeStringToMinutes(step2.openingTime)
-                const closingMinutes = timeStringToMinutes(nextClosing)
-                if (openingMinutes !== null && closingMinutes !== null) {
-                  if (openingMinutes === closingMinutes) {
-                    toast.error("Opening time and closing time cannot be same")
-                    return
-                  }
-                  if (closingMinutes < openingMinutes) {
-                    toast.error("Closing time cannot be less than opening time")
-                    return
-                  }
-                }
                 setStep2((prev) => ({ ...prev, closingTime: nextClosing }))
               }}
             />
