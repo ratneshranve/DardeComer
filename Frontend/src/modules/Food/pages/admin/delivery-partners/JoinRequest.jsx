@@ -30,6 +30,34 @@ export default function JoinRequest() {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
+  const isPdfUrl = (url) => String(url || "").toLowerCase().includes(".pdf")
+  const getDownloadFileName = (url, fallbackBase = "document") => {
+    const raw = String(url || "").split("?")[0]
+    const lastSegment = raw.split("/").pop() || ""
+    const decoded = decodeURIComponent(lastSegment)
+    if (decoded.toLowerCase().endsWith(".pdf")) return decoded
+    return `${fallbackBase}.pdf`
+  }
+  const downloadDocument = async (url, fallbackBase = "document") => {
+    try {
+      if (!url) return
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch document")
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = getDownloadFileName(url, fallbackBase)
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      debugError("Document download failed:", err)
+      toast.error("Document download failed. Please try again.")
+    }
+  }
+
   // Debounce search so we don't fetch on every keystroke
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500)
@@ -773,14 +801,17 @@ export default function JoinRequest() {
                               <p className="text-sm text-slate-700 mb-1">Number: {viewDetails.documents.aadhar.number}</p>
                             )}
                             {viewDetails.documents.aadhar.document && (
-                              <a 
-                                href={viewDetails.documents.aadhar.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  isPdfUrl(viewDetails.documents.aadhar.document)
+                                    ? downloadDocument(viewDetails.documents.aadhar.document, "aadhar-document")
+                                    : window.open(viewDetails.documents.aadhar.document, "_blank", "noopener,noreferrer")
+                                }
                                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
                               >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
+                                <ExternalLink className="w-3 h-3" /> {isPdfUrl(viewDetails.documents.aadhar.document) ? "Download PDF" : "View Document"}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -795,14 +826,17 @@ export default function JoinRequest() {
                               <p className="text-sm text-slate-700 mb-1">Number: {viewDetails.documents.pan.number}</p>
                             )}
                             {viewDetails.documents.pan.document && (
-                              <a 
-                                href={viewDetails.documents.pan.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  isPdfUrl(viewDetails.documents.pan.document)
+                                    ? downloadDocument(viewDetails.documents.pan.document, "pan-document")
+                                    : window.open(viewDetails.documents.pan.document, "_blank", "noopener,noreferrer")
+                                }
                                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
                               >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
+                                <ExternalLink className="w-3 h-3" /> {isPdfUrl(viewDetails.documents.pan.document) ? "Download PDF" : "View Document"}
+                              </button>
                             )}
                           </div>
                         </div>
@@ -822,14 +856,17 @@ export default function JoinRequest() {
                               </p>
                             )}
                             {viewDetails.documents.drivingLicense.document && (
-                              <a 
-                                href={viewDetails.documents.drivingLicense.document} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  isPdfUrl(viewDetails.documents.drivingLicense.document)
+                                    ? downloadDocument(viewDetails.documents.drivingLicense.document, "driving-license-document")
+                                    : window.open(viewDetails.documents.drivingLicense.document, "_blank", "noopener,noreferrer")
+                                }
                                 className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
                               >
-                                <ExternalLink className="w-3 h-3" /> View Document
-                              </a>
+                                <ExternalLink className="w-3 h-3" /> {isPdfUrl(viewDetails.documents.drivingLicense.document) ? "Download PDF" : "View Document"}
+                              </button>
                             )}
                           </div>
                         </div>

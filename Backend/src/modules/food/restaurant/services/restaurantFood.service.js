@@ -194,7 +194,8 @@ export async function createRestaurantFood(restaurantId, body = {}) {
     const { categoryObjectId, categoryName } = await resolveCategoryForRestaurant(context, { ...body, foodType });
 
     const isHomeKitchen = context.businessModel && (String(context.businessModel).toLowerCase().replace(/\s+/g, '_') === 'home_kitchen');
-    const menuDate = isHomeKitchen ? toStr(body.menuDate) || new Date().toISOString().split('T')[0] : '';
+    // Keep menuDate optional; don't force "today" for home kitchens.
+    const menuDate = isHomeKitchen ? toStr(body.menuDate) : '';
 
     const doc = await FoodItem.create({
         restaurantId,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Upload, X, Check, Camera, Image as ImageIcon } from "lucide-react"
+import { ArrowLeft, Upload, X, Check, Camera, Image as ImageIcon, FileText } from "lucide-react"
 import { deliveryAPI } from "@food/api"
 import { toast } from "sonner"
 import { isFlutterBridgeAvailable, openCamera, convertBase64ToFile, compressImage } from "@food/utils/imageUploadUtils"
@@ -212,9 +212,12 @@ export default function SignupStep2() {
 
   const handleFileSelect = async (docType, file) => {
     if (!file) return
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file")
+    const isProfilePhoto = docType === "profilePhoto"
+    const isPdf = String(file.type || "").toLowerCase() === "application/pdf"
+    const isImage = String(file.type || "").toLowerCase().startsWith("image/")
+    const isAllowedDocType = isProfilePhoto ? isImage : (isImage || isPdf)
+    if (!isAllowedDocType) {
+      toast.error(isProfilePhoto ? "Please select an image file" : "Please select image or PDF file")
       return
     }
     
@@ -225,16 +228,17 @@ export default function SignupStep2() {
     }
 
     try {
-      // Show "compressing" state if possible, or just do it
-      const compressedFile = await compressImage(file, { maxWidth: 1200, quality: 0.7 })
+      const fileToStore = isImage
+        ? await compressImage(file, { maxWidth: 1200, quality: 0.7 })
+        : file
       
       // Revoke the old blob URL for this slot only, then create a fresh one
       if (previewUrlsRef.current[docType]) {
         URL.revokeObjectURL(previewUrlsRef.current[docType])
       }
-      previewUrlsRef.current[docType] = URL.createObjectURL(compressedFile)
+      previewUrlsRef.current[docType] = URL.createObjectURL(fileToStore)
 
-      setDocuments((prev) => ({ ...prev, [docType]: compressedFile }))
+      setDocuments((prev) => ({ ...prev, [docType]: fileToStore }))
       setUploadedDocs((prev) => ({ ...prev, [docType]: { file: true } }))
       toast.success(`${docType.replace(/([A-Z])/g, " $1").trim()} selected`)
     } catch (error) {
@@ -380,6 +384,10 @@ export default function SignupStep2() {
   const DocumentUpload = ({ docType, label, required = true }) => {
     const uploaded = uploadedDocs[docType]
     const isUploading = uploading[docType]
+    const isProfilePhoto = docType === "profilePhoto"
+    const previewSrc = getPreviewSrc(docType)
+    const localFile = documents[docType]
+    const isPdf = isPdfFile(localFile) || isPdfFile(previewSrc)
 
     return (
       <div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -389,11 +397,27 @@ export default function SignupStep2() {
 
         {uploaded ? (
           <div className="relative">
-            <img
-              src={getPreviewSrc(docType)}
-              alt={label}
-              className="w-full h-48 object-cover rounded-lg"
-            />
+            {isPdf ? (
+              <div className="w-full h-48 rounded-lg bg-gray-100 flex flex-col items-center justify-center gap-2 text-gray-600">
+                <FileText className="w-10 h-10 text-red-600" />
+                <span className="text-sm font-medium">PDF selected</span>
+                {previewSrc && (
+                  <button
+                    type="button"
+                    onClick={() => downloadDocument(previewSrc, `delivery-${docType}`)}
+                    className="text-xs text-blue-600 underline"
+                  >
+                    Download PDF
+                  </button>
+                )}
+              </div>
+            ) : (
+              <img
+                src={previewSrc}
+                alt={label}
+                className="w-full h-48 object-cover rounded-lg"
+              />
+            )}
             <button
               type="button"
               onClick={() => handleRemove(docType)}
@@ -418,7 +442,9 @@ export default function SignupStep2() {
                 <>
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
                   <p className="text-sm text-gray-500 mb-1">Upload document</p>
-                  <p className="text-xs text-gray-400">PNG, JPG up to 5MB</p>
+                  <p className="text-xs text-gray-400">
+                    {isProfilePhoto ? "PNG, JPG up to 5MB" : "PNG, JPG, PDF up to 15MB"}
+                  </p>
                 </>
               )}
             </div>
@@ -439,7 +465,7 @@ export default function SignupStep2() {
                   className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#00B761] text-white text-xs font-bold cursor-pointer hover:bg-[#00A055] transition-all active:scale-95"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  <span>Gallery</span>
+                  <span>Upload</span>
                 </button>
               </div>
             )}
@@ -450,7 +476,11 @@ export default function SignupStep2() {
               }}
               type="file"
               className="hidden"
-              accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+              accept={
+                isProfilePhoto
+                  ? ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  : ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+              }
               onClick={(e) => {
                 e.target.value = ""
               }}
@@ -512,3 +542,39 @@ export default function SignupStep2() {
     </div>
   )
 }
+  const isPdfFile = (fileOrUrl) => {
+    if (!fileOrUrl) return false
+    if (fileOrUrl instanceof File) {
+      return String(fileOrUrl.type || "").toLowerCase() === "application/pdf"
+    }
+    const raw = typeof fileOrUrl === "string" ? fileOrUrl : fileOrUrl?.url
+    return String(raw || "").toLowerCase().includes(".pdf")
+  }
+
+  const getDownloadFileName = (url, fallbackBase = "document") => {
+    const raw = String(url || "").split("?")[0]
+    const lastSegment = raw.split("/").pop() || ""
+    const decoded = decodeURIComponent(lastSegment)
+    if (decoded.toLowerCase().endsWith(".pdf")) return decoded
+    return `${fallbackBase}.pdf`
+  }
+
+  const downloadDocument = async (url, fallbackBase = "document") => {
+    try {
+      if (!url) return
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch document")
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = getDownloadFileName(url, fallbackBase)
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      debugError("Document download failed:", err)
+      toast.error("Document download failed. Please try again.")
+    }
+  }

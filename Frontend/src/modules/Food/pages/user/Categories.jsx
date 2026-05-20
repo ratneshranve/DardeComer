@@ -6,18 +6,80 @@ import { adminAPI } from "@food/api";
 import { foodImages } from "@food/constants/images";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { useLocation } from "@food/hooks/useLocation";
+import { useProfile } from "@food/context/ProfileContext";
 import { useZone } from "@food/hooks/useZone";
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation";
 import { API_BASE_URL } from "@food/api/config";
 
 export default function Categories() {
+  // Guard: If deliveryAddressMode is 'saved' but saved address or zone is missing, show nothing
+  const [shouldShowContent, setShouldShowContent] = useState(true);
+  useEffect(() => {
+    let mode = "current";
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current";
+    } catch {}
+    if (mode === "saved" && (!defaultSavedAddress || !effectiveZoneId)) {
+      setShouldShowContent(false);
+    } else {
+      setShouldShowContent(true);
+    }
+  }, [defaultSavedAddress, effectiveZoneId]);
   const navigate = useNavigate();
   const goBack = useAppBackNavigation();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const { location } = useLocation();
-  const { zoneId } = useZone(location);
+  const { getDefaultAddress } = useProfile();
+  const defaultSavedAddress = useMemo(() => getDefaultAddress?.() || null, [getDefaultAddress]);
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0]);
+      const lat = parseFloat(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+
+    const lat = parseFloat(defaultSavedAddress?.latitude || defaultSavedAddress?.lat);
+    const lng = parseFloat(defaultSavedAddress?.longitude || defaultSavedAddress?.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+  const effectiveLocation = useMemo(() => {
+    let mode = "current";
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current";
+    } catch {
+      mode = "current";
+    }
+
+    if (mode === "saved" && defaultSavedAddress) {
+      return {
+        latitude: defaultSavedAddressLocation?.latitude ?? null,
+        longitude: defaultSavedAddressLocation?.longitude ?? null,
+        area: defaultSavedAddress.area || defaultSavedAddress.street || "",
+        city: defaultSavedAddress.city || "",
+        state: defaultSavedAddress.state || "",
+      };
+    }
+
+    return location;
+  }, [defaultSavedAddress, defaultSavedAddressLocation, location]);
+  const { zoneId } = useZone(effectiveLocation);
+  const effectiveZoneId = useMemo(() => {
+    if (zoneId) return zoneId;
+    try {
+      return localStorage.getItem("userZoneId") || null;
+    } catch {
+      return null;
+    }
+  }, [zoneId]);
 
   const BACKEND_ORIGIN = useMemo(() => API_BASE_URL.replace(/\/api\/?$/, ""), []);
 
@@ -43,7 +105,11 @@ export default function Categories() {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
+        if (!effectiveZoneId) {
+          setCategories([]);
+          return;
+        }
+        const response = await adminAPI.getPublicCategories(effectiveZoneId ? { zoneId: effectiveZoneId } : {});
         const list =
           response?.data?.data?.categories ||
           response?.data?.categories ||
@@ -66,12 +132,17 @@ export default function Categories() {
       }
     };
     fetchCategories();
-  }, [zoneId, BACKEND_ORIGIN]);
+  }, [effectiveZoneId, BACKEND_ORIGIN]);
 
   const filteredCategories = categories.filter((cat) =>
     (cat.name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (!shouldShowContent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-neutral-500 text-lg">No data for selected address/zone.</div>
+    );
+  }
   return (
     <div className="min-h-screen bg-white pb-10">
       {/* Header */}

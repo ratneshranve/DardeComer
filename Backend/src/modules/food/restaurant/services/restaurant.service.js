@@ -1,6 +1,6 @@
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
-import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
+import { uploadImageBuffer, uploadMediaBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
@@ -366,13 +366,28 @@ export const registerRestaurant = async (payload, files) => {
         images.profileImage = await uploadImageBuffer(files.profileImage[0].buffer, 'food/restaurants/profile');
     }
     if (files?.panImage?.[0]) {
-        images.panImage = await uploadImageBuffer(files.panImage[0].buffer, 'food/restaurants/pan');
+        images.panImage = await uploadMediaBuffer(
+            files.panImage[0].buffer,
+            'food/restaurants/pan',
+            files.panImage[0].mimetype,
+            files.panImage[0].originalname
+        );
     }
     if (files?.gstImage?.[0]) {
-        images.gstImage = await uploadImageBuffer(files.gstImage[0].buffer, 'food/restaurants/gst');
+        images.gstImage = await uploadMediaBuffer(
+            files.gstImage[0].buffer,
+            'food/restaurants/gst',
+            files.gstImage[0].mimetype,
+            files.gstImage[0].originalname
+        );
     }
     if (files?.fssaiImage?.[0]) {
-        images.fssaiImage = await uploadImageBuffer(files.fssaiImage[0].buffer, 'food/restaurants/fssai');
+        images.fssaiImage = await uploadMediaBuffer(
+            files.fssaiImage[0].buffer,
+            'food/restaurants/fssai',
+            files.fssaiImage[0].mimetype,
+            files.fssaiImage[0].originalname
+        );
     }
 
     let menuImages = [];

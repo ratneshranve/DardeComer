@@ -41,9 +41,110 @@ const CATEGORY_PAGE_FILTERS_STORAGE_KEY = "food-category-page-filters-v1"
 export default function CategoryPage() {
   const { category } = useParams()
   const navigate = useNavigate()
-  const { vegMode } = useProfile()
+  const { vegMode, getDefaultAddress } = useProfile()
   const { location } = useLocation()
-  const { zoneId, isOutOfService } = useZone(location)
+  const defaultSavedAddress = useMemo(() => getDefaultAddress?.() || null, [getDefaultAddress])
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0])
+      const lat = parseFloat(coords[1])
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng }
+      }
+    }
+
+    const lat = parseFloat(defaultSavedAddress?.latitude || defaultSavedAddress?.lat)
+    const lng = parseFloat(defaultSavedAddress?.longitude || defaultSavedAddress?.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng }
+    }
+
+    return null
+  }, [defaultSavedAddress])
+  const storedUserLocation = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("userLocation")
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [location])
+  const preferredDeliveryMode = useMemo(() => {
+    let mode = "current"
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current"
+    } catch {
+      mode = "current"
+    }
+
+    const savedLat = Number(defaultSavedAddressLocation?.latitude)
+    const savedLng = Number(defaultSavedAddressLocation?.longitude)
+    const storedLat = Number(storedUserLocation?.latitude)
+    const storedLng = Number(storedUserLocation?.longitude)
+    const hasSavedCoords = Number.isFinite(savedLat) && Number.isFinite(savedLng)
+    const hasStoredCoords = Number.isFinite(storedLat) && Number.isFinite(storedLng)
+    const coordsMatch = hasSavedCoords && hasStoredCoords &&
+      Math.abs(savedLat - storedLat) < 0.0001 &&
+      Math.abs(savedLng - storedLng) < 0.0001
+
+    const hasStoredSavedLocation = Number.isFinite(storedLat) && Number.isFinite(storedLng)
+    if (mode === "saved" && (defaultSavedAddress || hasStoredSavedLocation)) {
+      return "saved"
+    }
+    if (coordsMatch && defaultSavedAddress) {
+      return "saved"
+    }
+    return "current"
+  }, [defaultSavedAddress, defaultSavedAddressLocation, storedUserLocation])
+  const savedLocationAvailable = useMemo(() => {
+    if (defaultSavedAddressLocation?.latitude && defaultSavedAddressLocation?.longitude) return true
+    return Boolean(storedUserLocation?.latitude && storedUserLocation?.longitude)
+  }, [defaultSavedAddressLocation, storedUserLocation])
+  const effectiveLocation = useMemo(() => {
+    if (preferredDeliveryMode === "saved") {
+      if (defaultSavedAddress) {
+        return {
+          latitude: defaultSavedAddressLocation?.latitude ?? null,
+          longitude: defaultSavedAddressLocation?.longitude ?? null,
+          area: defaultSavedAddress.area || defaultSavedAddress.street || "",
+          city: defaultSavedAddress.city || "",
+          state: defaultSavedAddress.state || "",
+        }
+      }
+      if (storedUserLocation?.latitude && storedUserLocation?.longitude) {
+        return {
+          latitude: storedUserLocation.latitude,
+          longitude: storedUserLocation.longitude,
+          area: storedUserLocation.area || "",
+          city: storedUserLocation.city || "",
+          state: storedUserLocation.state || "",
+        }
+      }
+    }
+
+    return location
+  }, [preferredDeliveryMode, defaultSavedAddress, defaultSavedAddressLocation, storedUserLocation, location])
+  const { zoneId, isOutOfService } = useZone(effectiveLocation)
+  const effectiveZoneId = useMemo(() => {
+    if (preferredDeliveryMode === "saved") {
+      try {
+        return localStorage.getItem("userZoneId") || null
+      } catch {
+        return null
+      }
+    }
+    if (zoneId) return zoneId
+    try {
+      const cachedZoneId = localStorage.getItem("userZoneId") || null
+      if (preferredDeliveryMode === "saved") {
+        return storedUserLocation?.latitude && storedUserLocation?.longitude ? cachedZoneId : null
+      }
+      return cachedZoneId
+    } catch {
+      return null
+    }
+  }, [zoneId, preferredDeliveryMode, storedUserLocation])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState(category?.toLowerCase() || 'all')
   const [activeFilters, setActiveFilters] = useState(new Set())
@@ -168,6 +269,16 @@ export default function CategoryPage() {
 
     return approvedFoodsInFlightRef.current
   }
+
+  // Guard: If deliveryAddressMode is 'saved' but saved address or zone is missing, show nothing
+  const [shouldShowContent, setShouldShowContent] = useState(true);
+  useEffect(() => {
+    if (preferredDeliveryMode === "saved" && (!savedLocationAvailable || !effectiveZoneId)) {
+      setShouldShowContent(false)
+    } else {
+      setShouldShowContent(true)
+    }
+  }, [preferredDeliveryMode, savedLocationAvailable, effectiveZoneId])
 
   useEffect(() => {
     let cancelled = false
@@ -573,7 +684,11 @@ export default function CategoryPage() {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true)
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+        if (!effectiveZoneId) {
+          setCategories([{ id: 'all', name: "All", image: null, slug: 'all' }])
+          return
+        }
+        const response = await adminAPI.getPublicCategories(effectiveZoneId ? { zoneId: effectiveZoneId } : {})
 
         if (isCancelled) return;
 
@@ -625,7 +740,7 @@ export default function CategoryPage() {
     return () => {
       isCancelled = true;
     }
-  }, [zoneId])
+  }, [effectiveZoneId])
 
   // Helper function to check if menu has dishes matching category keywords
   const getCategoryKeywords = (categoryId) => {
@@ -809,9 +924,15 @@ export default function CategoryPage() {
     const fetchRestaurants = async () => {
       try {
         setLoadingRestaurants(true)
+        if (!effectiveZoneId) {
+          startTransition(() => {
+            setRestaurantsData([])
+          })
+          return
+        }
         const params = {}
-        if (zoneId) {
-          params.zoneId = zoneId
+        if (effectiveZoneId) {
+          params.zoneId = effectiveZoneId
         }
         const response = await restaurantAPI.getRestaurants(params)
 
@@ -1025,7 +1146,7 @@ export default function CategoryPage() {
     }
 
     fetchRestaurants()
-  }, [zoneId, isOutOfService])
+  }, [effectiveZoneId, isOutOfService])
 
   // Update selected category when URL changes
   useEffect(() => {
@@ -1278,6 +1399,12 @@ export default function CategoryPage() {
   // Check if should show grayscale (user out of service)
   const shouldShowGrayscale = isOutOfService
   const isCategoryView = selectedCategory && selectedCategory !== 'all'
+
+  if (!shouldShowContent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-neutral-500 text-lg">No data for selected address/zone.</div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-white dark:bg-[#0a0a0a] ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>

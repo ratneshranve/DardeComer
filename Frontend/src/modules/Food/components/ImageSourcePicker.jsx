@@ -19,7 +19,8 @@ export const ImageSourcePicker = ({
   title = "Update photo",
   description = "Choose how you want to upload your photo.",
   fileNamePrefix = "upload",
-  galleryInputRef = null
+  galleryInputRef = null,
+  galleryAccept = "image/*"
 }) => {
   
   const handleOpenCamera = async () => {
@@ -33,9 +34,10 @@ export const ImageSourcePicker = ({
 
   const handlePickFromDevice = async () => {
     onClose()
+    const supportsPdf = String(galleryAccept || "").toLowerCase().includes("pdf")
     
     // 1. Try Bridge first
-    if (isFlutterBridgeAvailable()) {
+    if (isFlutterBridgeAvailable() && !supportsPdf) {
       await openGallery({
         onSelectFile: onFileSelect,
         fileNamePrefix: fileNamePrefix
@@ -50,7 +52,7 @@ export const ImageSourcePicker = ({
       // 3. Last resort - generic browser input
       const input = document.createElement("input")
       input.type = "file"
-      input.accept = "image/*"
+      input.accept = galleryAccept || "image/*"
       input.onchange = (e) => {
         const file = e.target.files?.[0]
         if (file) onFileSelect(file)

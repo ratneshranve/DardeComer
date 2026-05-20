@@ -104,21 +104,7 @@ export async function getRestaurantMenu(restaurantId) {
         throw new ValidationError('Invalid restaurant id');
     }
 
-    const restaurant = await FoodRestaurant.findById(restaurantId)
-        .select('businessModel')
-        .lean();
-
-    const isHomeKitchen = restaurant?.businessModel && (String(restaurant.businessModel).toLowerCase().replace(/\s+/g, '_') === 'home_kitchen');
     const query = { restaurantId };
-
-    if (isHomeKitchen) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        query.$or = [
-            { menuDate: todayStr },
-            { menuDate: '' },
-            { menuDate: { $exists: false } }
-        ];
-    }
 
     const foods = await FoodItem.find(query)
         .sort({ createdAt: -1 })
@@ -153,17 +139,7 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
         return null;
     }
 
-    const isHomeKitchen = restaurant.businessModel && (String(restaurant.businessModel).toLowerCase().replace(/\s+/g, '_') === 'home_kitchen');
     const query = { restaurantId: restaurant._id, approvalStatus: 'approved' };
-
-    if (isHomeKitchen) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        query.$or = [
-            { menuDate: todayStr },
-            { menuDate: '' },
-            { menuDate: { $exists: false } }
-        ];
-    }
 
     const foods = await FoodItem.find(query)
         .sort({ createdAt: -1 })

@@ -8,7 +8,7 @@ import { Textarea } from "@food/components/ui/textarea"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { toast } from "sonner"
-import { locationAPI, userAPI } from "@food/api"
+import { locationAPI, userAPI, zoneAPI } from "@food/api"
 import { Loader } from '@googlemaps/js-api-loader'
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -78,6 +78,35 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
   const [keywordAddressSuggestions, setKeywordAddressSuggestions] = useState([])
   const [isKeywordSearching, setIsKeywordSearching] = useState(false)
   const [lockMapToAutocomplete, setLockMapToAutocomplete] = useState(true)
+
+  const persistSelectedZoneByCoords = async (latitude, longitude) => {
+    const lat = Number(latitude)
+    const lng = Number(longitude)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      localStorage.removeItem("userZoneId")
+      localStorage.removeItem("userZone")
+      window.dispatchEvent(new Event("zoneVisibilityChanged"))
+      return
+    }
+
+    try {
+      const response = await zoneAPI.detectZone(lat, lng)
+      const data = response?.data?.data
+      if (data?.status === "IN_SERVICE" && data?.zoneId) {
+        localStorage.setItem("userZoneId", String(data.zoneId))
+        localStorage.setItem("userZone", JSON.stringify(data.zone || null))
+      } else {
+        localStorage.removeItem("userZoneId")
+        localStorage.removeItem("userZone")
+      }
+    } catch {
+      localStorage.removeItem("userZoneId")
+      localStorage.removeItem("userZone")
+    } finally {
+      window.dispatchEvent(new Event("zoneVisibilityChanged"))
+      window.dispatchEvent(new Event("locationUpdated"))
+    }
+  }
   const [GOOGLE_MAPS_API_KEY, setGOOGLE_MAPS_API_KEY] = useState(null)
   // Backend reverse geocode (on by default unless explicitly disabled)
   const ENABLE_LOCATION_REVERSE_GEOCODE =
@@ -945,6 +974,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
       try {
         localStorage.setItem("deliveryAddressMode", "current");
       } catch {}
+      await persistSelectedZoneByCoords(locationData?.latitude, locationData?.longitude)
       setShowAddressForm(false)
       setAddressFormData((prev) => ({
         ...prev,
@@ -2033,6 +2063,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
             formattedAddress: `${addressToSave.street}, ${addressToSave.city}, ${addressToSave.state}`
           }
           localStorage.setItem("userLocation", JSON.stringify(locationData))
+          await persistSelectedZoneByCoords(addressToSave.latitude, addressToSave.longitude)
           window.dispatchEvent(new Event("locationUpdated"));
 
         } catch {}
@@ -2140,6 +2171,7 @@ export default function LocationSelectorOverlay({ isOpen, onClose }) {
         formattedAddress: `${address.street}, ${address.city}, ${address.state}`
       }
       localStorage.setItem("userLocation", JSON.stringify(locationData))
+      await persistSelectedZoneByCoords(latitude, longitude)
       window.dispatchEvent(new Event("locationUpdated"));
 
 

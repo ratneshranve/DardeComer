@@ -30,14 +30,10 @@ const applyZonePayload = (data, { setZoneId, setZone, setZoneStatus }) => {
     setZoneId(data.zoneId)
     setZone(data.zone || null)
     setZoneStatus('IN_SERVICE')
-    localStorage.setItem('userZoneId', data.zoneId)
-    localStorage.setItem('userZone', JSON.stringify(data.zone))
   } else {
     setZoneId(null)
     setZone(null)
     setZoneStatus('OUT_OF_SERVICE')
-    localStorage.removeItem('userZoneId')
-    localStorage.removeItem('userZone')
   }
 }
 
@@ -125,6 +121,42 @@ export function useZone(location) {
 
   // Auto-detect zone when location changes
   useEffect(() => {
+    let deliveryMode = "current"
+    try {
+      deliveryMode = localStorage.getItem("deliveryAddressMode") || "current"
+    } catch {
+      deliveryMode = "current"
+    }
+
+    // In saved-address mode, zone must remain tied to the selected address.
+    // It should be written only from address selection flow, not auto-detected here.
+    if (deliveryMode === "saved") {
+      try {
+        const cachedZoneId = localStorage.getItem("userZoneId")
+        if (cachedZoneId) {
+          const cachedZone = localStorage.getItem("userZone")
+          setZoneId(cachedZoneId)
+          setZone(cachedZone ? JSON.parse(cachedZone) : null)
+          setZoneStatus("IN_SERVICE")
+        } else {
+          setZoneStatus("OUT_OF_SERVICE")
+          setZoneId(null)
+          setZone(null)
+        }
+      } catch {
+        setZoneStatus("OUT_OF_SERVICE")
+        setZoneId(null)
+        setZone(null)
+      }
+
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current)
+          debounceTimerRef.current = null
+        }
+      }
+    }
+
     const lat = roundCoord(location?.latitude, 6)
     const lng = roundCoord(location?.longitude, 6)
 
@@ -171,8 +203,21 @@ export function useZone(location) {
 
   // Manual refresh zone
   const refreshZone = useCallback(() => {
-    const lat = location?.latitude;
-    const lng = location?.longitude;
+    let lat = location?.latitude;
+    let lng = location?.longitude;
+    try {
+      const mode = localStorage.getItem("deliveryAddressMode") || "current"
+      if (mode === "saved") {
+        const raw = localStorage.getItem("userLocation")
+        if (raw) {
+          const saved = JSON.parse(raw)
+          lat = Number(saved?.latitude)
+          lng = Number(saved?.longitude)
+        }
+      }
+    } catch {
+      // ignore
+    }
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       detectZone(lat, lng);
     }

@@ -271,6 +271,35 @@ export default function JoiningRequest() {
     return image?.url || ""
   }
 
+  const isPdfUrl = (url) => String(url || "").toLowerCase().includes(".pdf")
+  const getDownloadFileName = (url, fallbackBase = "document") => {
+    const raw = String(url || "").split("?")[0]
+    const lastSegment = raw.split("/").pop() || ""
+    const decoded = decodeURIComponent(lastSegment)
+    if (decoded.toLowerCase().endsWith(".pdf")) return decoded
+    return `${fallbackBase}.pdf`
+  }
+
+  const downloadDocument = async (url, fallbackBase = "document") => {
+    try {
+      if (!url) return
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch document")
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = getDownloadFileName(url, fallbackBase)
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      debugError("Document download failed:", err)
+      window.alert("Document download failed. Please try again.")
+    }
+  }
+
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -1116,16 +1145,21 @@ export default function JoiningRequest() {
                               {(typeof r.panImage === "string" ? r.panImage : r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url) && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">PAN Document</p>
-                                  <a
-                                    href={typeof r.panImage === "string" ? r.panImage : (r.panImage?.url || r.onboarding?.step3?.pan?.image?.url)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  {(() => {
+                                    const panDocUrl = typeof r.panImage === "string" ? r.panImage : (r.panImage?.url || r.onboarding?.step3?.pan?.image?.url)
+                                    const panIsPdf = isPdfUrl(panDocUrl)
+                                    return (
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadDocument(panDocUrl, "pan-document")}
                                     className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
                                   >
-                                    <ImageIcon className="w-4 h-4" />
-                                    <span>View PAN Document</span>
+                                    {panIsPdf ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+                                    <span>{panIsPdf ? "Download PAN PDF" : "Download PAN Document"}</span>
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -1167,16 +1201,21 @@ export default function JoiningRequest() {
                               {(typeof r.gstImage === "string" ? r.gstImage : r?.gstImage?.url || r?.onboarding?.step3?.gst?.image?.url) && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">GST Document</p>
-                                  <a
-                                    href={typeof r.gstImage === "string" ? r.gstImage : (r.gstImage?.url || r.onboarding?.step3?.gst?.image?.url)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  {(() => {
+                                    const gstDocUrl = typeof r.gstImage === "string" ? r.gstImage : (r.gstImage?.url || r.onboarding?.step3?.gst?.image?.url)
+                                    const gstIsPdf = isPdfUrl(gstDocUrl)
+                                    return (
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadDocument(gstDocUrl, "gst-document")}
                                     className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
                                   >
-                                    <ImageIcon className="w-4 h-4" />
-                                    <span>View GST Document</span>
+                                    {gstIsPdf ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+                                    <span>{gstIsPdf ? "Download GST PDF" : "Download GST Document"}</span>
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -1212,16 +1251,21 @@ export default function JoiningRequest() {
                               {(typeof r.fssaiImage === "string" ? r.fssaiImage : r?.fssaiImage?.url || r?.onboarding?.step3?.fssai?.image?.url) && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">FSSAI Document</p>
-                                  <a
-                                    href={typeof r.fssaiImage === "string" ? r.fssaiImage : (r.fssaiImage?.url || r.onboarding?.step3?.fssai?.image?.url)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  {(() => {
+                                    const fssaiDocUrl = typeof r.fssaiImage === "string" ? r.fssaiImage : (r.fssaiImage?.url || r.onboarding?.step3?.fssai?.image?.url)
+                                    const fssaiIsPdf = isPdfUrl(fssaiDocUrl)
+                                    return (
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadDocument(fssaiDocUrl, "fssai-document")}
                                     className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
                                   >
-                                    <ImageIcon className="w-4 h-4" />
-                                    <span>View FSSAI Document</span>
+                                    {fssaiIsPdf ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
+                                    <span>{fssaiIsPdf ? "Download FSSAI PDF" : "Download FSSAI Document"}</span>
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>

@@ -31,6 +31,7 @@ let globalReverseGeocodeLastSuccess = null
 // Default behavior: only resolve an address once on initial app load,
 // then rely on localStorage/DB. Live watching is enabled only via explicit user action.
 const AUTO_START_LIVE_WATCH = false
+const AUTO_PERSIST_KEY = "userLocationInitialized"
 
 const reverseGeocodeDirect = async (latitude, longitude) => {
   const now = Date.now()
@@ -124,6 +125,7 @@ export function useLocation() {
   const watchIdRef = useRef(null)
   const updateTimerRef = useRef(null)
   const prevLocationCoordsRef = useRef({ latitude: null, longitude: null })
+  const locationSnapshotRef = useRef(null)
   const lastGeocodeAtRef = useRef(0)
   const lastGeocodedCoordsRef = useRef({ latitude: null, longitude: null })
   const lastResolvedAddressRef = useRef(null)
@@ -137,6 +139,75 @@ export function useLocation() {
   const DB_LOCATION_FETCH_TTL_MS = 2 * 60 * 1000
   const DB_UPDATE_MIN_DISTANCE_METERS = 30
   const DB_UPDATE_MIN_INTERVAL_MS = 90 * 1000
+  const canAutoPersist = () => {
+    try {
+      return !localStorage.getItem(AUTO_PERSIST_KEY)
+    } catch {
+      return false
+    }
+  }
+  const markAutoPersisted = () => {
+    try {
+      localStorage.setItem(AUTO_PERSIST_KEY, "true")
+    } catch {
+      // ignore write failures
+    }
+  }
+  const normalizeLocationSnapshot = (loc) => {
+    if (!loc) return null
+    const lat = Number(loc.latitude)
+    const lng = Number(loc.longitude)
+    const round = (v) => (Number.isFinite(v) ? Number(v.toFixed(5)) : null)
+    return {
+      lat: round(lat),
+      lng: round(lng),
+      formattedAddress: String(loc.formattedAddress || "").trim(),
+      address: String(loc.address || "").trim(),
+      city: String(loc.city || "").trim(),
+      area: String(loc.area || "").trim(),
+      state: String(loc.state || "").trim(),
+      label: String(loc.label || "").trim(),
+    }
+  }
+  const isSameLocationSnapshot = (a, b) => {
+    if (!a && !b) return true
+    if (!a || !b) return false
+    return (
+      a.lat === b.lat &&
+      a.lng === b.lng &&
+      a.formattedAddress === b.formattedAddress &&
+      a.address === b.address &&
+      a.city === b.city &&
+      a.area === b.area &&
+      a.state === b.state &&
+      a.label === b.label
+    )
+  }
+  const setLocationIfChanged = (next) => {
+    const nextSnapshot = normalizeLocationSnapshot(next)
+    if (isSameLocationSnapshot(locationSnapshotRef.current, nextSnapshot)) {
+      return false
+    }
+    locationSnapshotRef.current = nextSnapshot
+    setLocation(next)
+    return true
+  }
+  const persistLocationIfChanged = (loc, { allowOverwrite = true } = {}) => {
+    if (!loc) return
+    if (!allowOverwrite && !canAutoPersist()) return
+    try {
+      const storedRaw = localStorage.getItem("userLocation")
+      const stored = storedRaw ? JSON.parse(storedRaw) : null
+      const storedSnapshot = normalizeLocationSnapshot(stored)
+      const nextSnapshot = normalizeLocationSnapshot(loc)
+      if (isSameLocationSnapshot(storedSnapshot, nextSnapshot)) return
+      localStorage.setItem("userLocation", JSON.stringify(loc))
+      markAutoPersisted()
+    } catch {
+      localStorage.setItem("userLocation", JSON.stringify(loc))
+      markAutoPersisted()
+    }
+  }
   const getDistanceMeters = (lat1, lng1, lat2, lng2) => {
     if (
       typeof lat1 !== "number" ||
@@ -783,11 +854,11 @@ export function useLocation() {
   }
 
   /* ===================== MAIN LOCATION ===================== */
-  const getLocation = async (updateDB = true, forceFresh = false, showLoading = false) => {
+  const getLocation = async (updateDB = true, forceFresh = false, showLoading = false, persistLocal = true) => {
     // If not forcing fresh, try DB first (faster)
     let dbLocation = !forceFresh ? await fetchLocationFromDB() : null
     if (dbLocation && !forceFresh) {
-      setLocation(dbLocation)
+      setLocationIfChanged(dbLocation)
       if (showLoading) setLoading(false)
       return dbLocation
     }
@@ -932,7 +1003,7 @@ export function useLocation() {
                   address: finalLoc.address,
                   formattedAddress: finalLoc.formattedAddress
                 }
-                setLocation(coordOnlyLoc)
+                setLocationIfChanged(coordOnlyLoc)
                 setPermissionGranted(true)
                 if (showLoading) setLoading(false)
                 setError(null)
@@ -941,8 +1012,8 @@ export function useLocation() {
               }
 
               debugLog("?? Saving location:", finalLoc)
-              localStorage.setItem("userLocation", JSON.stringify(finalLoc))
-              setLocation(finalLoc)
+              persistLocationIfChanged(finalLoc, { allowOverwrite: persistLocal })
+              setLocationIfChanged(finalLoc)
               // Dispatch event to notify other instances of useLocation
               window.dispatchEvent(new Event("locationUpdated"));
               setPermissionGranted(true)
@@ -977,8 +1048,8 @@ export function useLocation() {
                     accuracy: pos.coords.accuracy || null
                   }
                   debugLog("? Last resort geocoding succeeded:", lastResortLoc)
-                  localStorage.setItem("userLocation", JSON.stringify(lastResortLoc))
-                  setLocation(lastResortLoc)
+                  persistLocationIfChanged(lastResortLoc, { allowOverwrite: persistLocal })
+                  setLocationIfChanged(lastResortLoc)
                   setPermissionGranted(true)
                   if (showLoading) setLoading(false)
                   setError(null)
@@ -1005,7 +1076,7 @@ export function useLocation() {
               // Don't save placeholder values to localStorage
               // Only set in state for display
               debugWarn("?? Skipping save - all geocoding failed, using placeholder")
-              setLocation(fallbackLoc)
+              setLocationIfChanged(fallbackLoc)
               setPermissionGranted(true)
               if (showLoading) setLoading(false)
               // Don't try to update DB with placeholder
@@ -1054,7 +1125,7 @@ export function useLocation() {
 
               if (fallback) {
                 debugLog("? Using fallback location:", fallback)
-                setLocation(fallback)
+                setLocationIfChanged(fallback)
                 // Don't set error for timeout when we have fallback
                 if (err.code !== 3) {
                   setError(err.message)
@@ -1070,7 +1141,7 @@ export function useLocation() {
                   address: "Select location",
                   formattedAddress: "Select location"
                 }
-                setLocation(defaultLocation)
+                setLocationIfChanged(defaultLocation)
                 setError(err.code === 3 ? "Location request timed out. Please try again." : err.message)
                 setPermissionGranted(false)
                 if (showLoading) setLoading(false)
@@ -1078,7 +1149,7 @@ export function useLocation() {
               }
             } catch (fallbackErr) {
               debugWarn("?? Fallback retrieval failed:", fallbackErr)
-              setLocation(null)
+              setLocationIfChanged(null)
               setError(err.code === 3 ? "Location request timed out. Please try again." : err.message)
               setPermissionGranted(false)
               if (showLoading) setLoading(false)
@@ -1286,14 +1357,14 @@ export function useLocation() {
             if (coordsChanged) {
               prevLocationCoordsRef.current = { latitude: loc.latitude, longitude: loc.longitude }
               debugLog("?? Updating live location:", loc)
-              localStorage.setItem("userLocation", JSON.stringify(persistedLocation))
-              setLocation(persistedLocation)
+              persistLocationIfChanged(persistedLocation, { allowOverwrite: true })
+              setLocationIfChanged(persistedLocation)
               setPermissionGranted(true)
               setError(null)
             } else {
               // Coordinates haven't changed significantly, skip state update to prevent re-renders
               // Still update localStorage silently for persistence
-              localStorage.setItem("userLocation", JSON.stringify(persistedLocation))
+              persistLocationIfChanged(persistedLocation, { allowOverwrite: true })
             }
 
             // Debounce DB updates - only update every 5 seconds
@@ -1320,7 +1391,7 @@ export function useLocation() {
             // Don't save placeholder values to localStorage
             // Only set in state for display
             debugWarn("?? Skipping localStorage save - fallback location contains placeholder values")
-            setLocation(fallbackLoc)
+            setLocationIfChanged(fallbackLoc)
             setPermissionGranted(true)
           }
         },
@@ -1401,6 +1472,10 @@ export function useLocation() {
     let hasInitialLocation = false
 
     if (stored) {
+      markAutoPersisted()
+    }
+
+    if (stored) {
       try {
         const parsedLocation = JSON.parse(stored)
 
@@ -1411,7 +1486,8 @@ export function useLocation() {
         const hasLatLng = Number.isFinite(lat) && Number.isFinite(lng)
 
         if (parsedLocation && hasLatLng) {
-          setLocation(parsedLocation)
+          setLocationIfChanged(parsedLocation)
+          markAutoPersisted()
           setPermissionGranted(true)
           setLoading(false) // Set loading to false immediately
           hasInitialLocation = true
@@ -1433,7 +1509,8 @@ export function useLocation() {
       fetchLocationFromDB()
         .then((dbLoc) => {
           if (dbLoc && Number.isFinite(Number(dbLoc.latitude)) && Number.isFinite(Number(dbLoc.longitude))) {
-            setLocation(dbLoc)
+            setLocationIfChanged(dbLoc)
+            persistLocationIfChanged(dbLoc, { allowOverwrite: false })
             setPermissionGranted(true)
             setLoading(false)
             hasInitialLocation = true
@@ -1461,11 +1538,13 @@ export function useLocation() {
             if (!currentLocation ||
               (currentLocation.formattedAddress === "Select location" &&
                 !currentLocation.latitude && !currentLocation.city)) {
-              return {
+              const fallback = {
                 city: "Select location",
                 address: "Select location",
                 formattedAddress: "Select location"
               }
+              locationSnapshotRef.current = normalizeLocationSnapshot(fallback)
+              return fallback
             }
             return currentLocation
           })
@@ -1514,6 +1593,12 @@ export function useLocation() {
           return;
         }
 
+        if (!canAutoPersist()) {
+          // Auto-fetch should only happen once. Skip on later mounts.
+          setLoading(false)
+          return
+        }
+
         debugLog("?? Permission granted! Fetching/Watching location...", shouldForceRefresh ? "(FORCE REFRESH)" : "");
 
         // Only fetch once on initial app open if we have no stored coordinates yet.
@@ -1522,7 +1607,7 @@ export function useLocation() {
 
         if (shouldFetch) {
           debugLog("?? Fetching location - shouldForceRefresh:", shouldForceRefresh, "hasInitialLocation:", hasInitialLocation)
-          getLocation(true, shouldForceRefresh) // forceFresh = true if cached location is incomplete
+          getLocation(true, shouldForceRefresh, false, false) // persist only on first auto-load
             .then((location) => {
               if (location &&
                 location.formattedAddress !== "Select location" &&
@@ -1536,7 +1621,7 @@ export function useLocation() {
                   area: location?.area
                 })
                 // CRITICAL: Update state with fresh location so PageNavbar displays it
-                setLocation(location)
+                setLocationIfChanged(location)
                 setPermissionGranted(true)
                 if (AUTO_START_LIVE_WATCH) startWatchingLocation()
               } else {
@@ -1570,7 +1655,7 @@ export function useLocation() {
       if (e.type === "storage" && e.key === "userLocation" && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          setLocation(parsed);
+          setLocationIfChanged(parsed);
           debugLog("?? useLocation: Updated from storage event:", parsed);
         } catch (err) {
           debugError("Failed to parse userLocation from storage event:", err);
@@ -1582,7 +1667,7 @@ export function useLocation() {
           const stored = localStorage.getItem("userLocation");
           if (stored) {
             const parsed = JSON.parse(stored);
-            setLocation(parsed);
+            setLocationIfChanged(parsed);
             debugLog("?? useLocation: Updated from custom locationUpdated event:", parsed);
           }
         } catch (err) {
@@ -1617,7 +1702,7 @@ export function useLocation() {
       // Show loading, so pass showLoading = true
       // forceFresh = true, updateDB = true, showLoading = true
       // This ensures we get fresh GPS coordinates and reverse geocode
-      const location = await getLocation(true, true, true)
+      const location = await getLocation(true, true, true, true)
 
       debugLog("??? Fresh location requested successfully:", location)
       debugLog("??? Complete Location details:", {

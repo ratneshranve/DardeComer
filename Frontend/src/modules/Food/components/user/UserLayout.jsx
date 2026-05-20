@@ -104,6 +104,20 @@ function LocationSelectorProvider({ children }) {
 
 export default function UserLayout() {
   const location = useLocation()
+  const [hasAnyActiveZone, setHasAnyActiveZone] = useState(() => {
+    try {
+      return Boolean(localStorage.getItem("userZoneId"))
+    } catch {
+      return false
+    }
+  })
+  const [hideHomeBottomNavOutOfZone, setHideHomeBottomNavOutOfZone] = useState(() => {
+    try {
+      return localStorage.getItem("hideUserBottomNavOutOfZone") === "true"
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     // Reset scroll to top whenever location changes (pathname, search, or hash)
@@ -111,6 +125,27 @@ export default function UserLayout() {
   }, [location.pathname, location.search, location.hash])
 
   useUserNotifications()
+
+  useEffect(() => {
+    const syncBottomNavVisibility = () => {
+      try {
+        setHideHomeBottomNavOutOfZone(localStorage.getItem("hideUserBottomNavOutOfZone") === "true")
+        setHasAnyActiveZone(Boolean(localStorage.getItem("userZoneId")))
+      } catch {
+        setHideHomeBottomNavOutOfZone(false)
+        setHasAnyActiveZone(false)
+      }
+    }
+    syncBottomNavVisibility()
+    window.addEventListener("storage", syncBottomNavVisibility)
+    window.addEventListener("zoneVisibilityChanged", syncBottomNavVisibility)
+    window.addEventListener("locationUpdated", syncBottomNavVisibility)
+    return () => {
+      window.removeEventListener("storage", syncBottomNavVisibility)
+      window.removeEventListener("zoneVisibilityChanged", syncBottomNavVisibility)
+      window.removeEventListener("locationUpdated", syncBottomNavVisibility)
+    }
+  }, [])
 
   // Note: Authentication checks and redirects are handled by ProtectedRoute components
   // UserLayout should not interfere with authentication redirects
@@ -125,8 +160,12 @@ export default function UserLayout() {
   const isProfileRoot =
     normalizedPath === "/profile" ||
     normalizedPath === "/user/profile"
+  const isHomeRoot =
+    normalizedPath === "/" ||
+    normalizedPath === "/user" ||
+    normalizedPath === ""
 
-  const showBottomNav = normalizedPath === "/" ||
+  const showBottomNav = (normalizedPath === "/" ||
     normalizedPath === "/user" ||
     normalizedPath === "/dining" ||
     normalizedPath === "/user/dining" ||
@@ -135,7 +174,9 @@ export default function UserLayout() {
     normalizedPath === "/home-kitchens" ||
     normalizedPath === "/user/home-kitchens" ||
     isProfileRoot ||
-    normalizedPath === "" // Handle empty string case for root relative to /food
+    normalizedPath === "") &&
+    hasAnyActiveZone &&
+    !(isHomeRoot && hideHomeBottomNavOutOfZone) // Handle empty string case for root relative to /food
 
   const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250"
 

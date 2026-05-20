@@ -338,9 +338,15 @@ export default function Under250() {
   // Fetch restaurants with dishes under ?250 from backend
   useEffect(() => {
     const fetchRestaurantsUnder250 = async () => {
+      if (!zoneId) {
+        setUnder250Restaurants([])
+        setLoadingRestaurants(false)
+        return
+      }
+
       try {
         setLoadingRestaurants(true)
-        const response = await restaurantAPI.getRestaurants(zoneId ? { zoneId } : {})
+        const response = await restaurantAPI.getRestaurants({ zoneId })
         const restaurantsRaw = Array.isArray(response?.data?.data?.restaurants)
           ? response.data.data.restaurants
           : []
@@ -446,8 +452,13 @@ export default function Under250() {
     let cancelled = false
 
     const fetchCategories = async () => {
+      if (!zoneId) {
+        if (!cancelled) setCategories([])
+        return
+      }
+
       try {
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+        const response = await adminAPI.getPublicCategories({ zoneId })
         const categoriesRaw = Array.isArray(response?.data?.data?.categories)
           ? response.data.data.categories
           : []

@@ -556,7 +556,10 @@ export default function Home() {
   const [showVegModal, setShowVegModal] = useState(false);
   const [showVegModePopup, setShowVegModePopup] = useState(false);
   const [showSwitchOffPopup, setShowSwitchOffPopup] = useState(false);
-  const [vegModeOption, setVegModeOption] = useState("all"); // "all" or "pure-veg"
+  const [vegModeOption, setVegModeOption] = useState(() => {
+    const saved = localStorage.getItem("userVegModeOption");
+    return saved === "pure-veg" || saved === "only-veg" ? saved : "only-veg";
+  }); // "only-veg" or "pure-veg"
   const [isApplyingVegMode, setIsApplyingVegMode] = useState(false);
   const [isSwitchingOffVegMode, setIsSwitchingOffVegMode] = useState(false);
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0, triangleLeft: 0 });
@@ -929,9 +932,12 @@ export default function Home() {
     setPrevVegMode(vegMode);
     setShowVegModePopup(false);
     setShowSwitchOffPopup(false);
-    setVegModeOption("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("userVegModeOption", vegModeOption);
+  }, [vegModeOption]);
 
   // Handle vegMode toggle - show popup when turned ON or OFF
   const handleVegModeChange = (newValue) => {
@@ -943,6 +949,11 @@ export default function Home() {
     // Toggle the value in context immediately for better feedback
     setVegModeContext(newValue);
     setPrevVegMode(newValue);
+    if (newValue) {
+      setShowVegModePopup(true);
+    } else {
+      setShowVegModePopup(false);
+    }
 
     // Show the premium centered status modal
     setShowVegModal(true);
@@ -2191,9 +2202,12 @@ export default function Home() {
   const matchesVegMode = useCallback(
     (restaurant) => {
       if (!vegMode) return true;
-      return restaurant?.pureVegRestaurant === true;
+      if (vegModeOption === "pure-veg") {
+        return restaurant?.pureVegRestaurant === true;
+      }
+      return true;
     },
-    [vegMode],
+    [vegMode, vegModeOption],
   );
 
   // Filter restaurants and foods based on active filters
@@ -2205,8 +2219,8 @@ export default function Home() {
 
   const restaurantLazyLoadResetKey = useMemo(() => {
     const activeFilterKey = Array.from(activeFilters).sort().join("|");
-    return `${restaurantsData.length}:${activeFilterKey}:${selectedCuisine || ""}:${sortBy || ""}:${vegMode ? "1" : "0"}`;
-  }, [activeFilters, restaurantsData.length, selectedCuisine, sortBy, vegMode]);
+    return `${restaurantsData.length}:${activeFilterKey}:${selectedCuisine || ""}:${sortBy || ""}:${vegMode ? "1" : "0"}:${vegModeOption}`;
+  }, [activeFilters, restaurantsData.length, selectedCuisine, sortBy, vegMode, vegModeOption]);
 
   const visibleRestaurants = useMemo(
     () => filteredRestaurants.slice(0, visibleRestaurantCount),
@@ -2240,6 +2254,16 @@ export default function Home() {
   const shouldShowOutOfZoneHome =
     currentServiceStatus.isOutOfService ||
     (!loadingRestaurants && !isLoadingFilterResults && filteredRestaurants.length === 0);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "hideUserBottomNavOutOfZone",
+        currentServiceStatus.isOutOfService ? "true" : "false",
+      );
+    } catch { }
+    window.dispatchEvent(new Event("zoneVisibilityChanged"));
+  }, [currentServiceStatus.isOutOfService]);
 
   const loadMoreRestaurants = useCallback(() => {
     setVisibleRestaurantCount((previous) =>
@@ -2642,6 +2666,8 @@ export default function Home() {
             placeholders={placeholders}
             heroVideo={heroVideo}
             isVegMode={vegMode}
+            showVegToggle={!shouldShowOutOfZoneHome}
+            showSearch={!shouldShowOutOfZoneHome}
             handleVegModeChange={(val) => {
               handleVegModeChange(val);
               setShowVegModal(true);
@@ -2688,14 +2714,18 @@ export default function Home() {
                     {vegMode ? 'Veg Mode ON' : 'Veg Mode OFF'}
                   </h3>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400 leading-tight">
-                    {vegMode ? 'Showing only pure veg options' : 'Showing all food options'}
+                    {vegMode
+                      ? vegModeOption === "pure-veg"
+                        ? "Showing only pure veg restaurants and their dishes"
+                        : "Showing veg dishes from pure veg and mixed restaurants"
+                      : 'Showing all food options'}
                   </p>
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {hasScrolledPastBanner && (
+          {hasScrolledPastBanner && !shouldShowOutOfZoneHome && (
             <div
               ref={stickyHeaderRef}
               className="fixed top-0 inset-x-0 z-[80] px-4 pt-2 pb-2 bg-[#001A94]/95 backdrop-blur-md shadow-lg"
@@ -2715,32 +2745,66 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Veg Mode Toggle in Sticky Header */}
-                <div
-                  className={`flex flex-col items-center justify-center min-w-[64px] h-12 rounded-2xl backdrop-blur-md border transition-all cursor-pointer ${vegMode
-                      ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
-                      : 'bg-white/20 border-white/30'
-                    }`}
-                  onClick={() => handleVegModeChange(!vegMode)}
-                >
-                  <div className="flex flex-col items-center leading-none mb-1">
-                    <span className={`text-[10px] font-black tracking-tight ${vegMode ? 'text-emerald-400' : 'text-white'}`}>VEG</span>
-                    <span className={`text-[8px] font-bold tracking-[0.1em] opacity-80 ${vegMode ? 'text-emerald-400/80' : 'text-white/60'}`}>MODE</span>
+                {!shouldShowOutOfZoneHome && (
+                  <div
+                    className={`flex flex-col items-center justify-center min-w-[64px] h-12 rounded-2xl backdrop-blur-md border transition-all cursor-pointer ${vegMode
+                        ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                        : 'bg-white/20 border-white/30'
+                      }`}
+                    onClick={() => handleVegModeChange(!vegMode)}
+                  >
+                    <div className="flex flex-col items-center leading-none mb-1">
+                      <span className={`text-[10px] font-black tracking-tight ${vegMode ? 'text-emerald-400' : 'text-white'}`}>VEG</span>
+                      <span className={`text-[8px] font-bold tracking-[0.1em] opacity-80 ${vegMode ? 'text-emerald-400/80' : 'text-white/60'}`}>MODE</span>
+                    </div>
+                    <div className={`relative w-9 h-4.5 rounded-full transition-colors ${vegMode ? 'bg-emerald-500' : 'bg-white/30'}`}>
+                      <motion.div
+                        animate={{ x: vegMode ? 18 : 2 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        className="absolute top-0.5 left-0 w-3.5 h-3.5 bg-white rounded-full shadow-lg flex items-center justify-center"
+                      >
+                        <div className={`w-2 h-2 rounded-full ${vegMode ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                      </motion.div>
+                    </div>
                   </div>
-                  <div className={`relative w-9 h-4.5 rounded-full transition-colors ${vegMode ? 'bg-emerald-500' : 'bg-white/30'}`}>
-                    <motion.div
-                      animate={{ x: vegMode ? 18 : 2 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      className="absolute top-0.5 left-0 w-3.5 h-3.5 bg-white rounded-full shadow-lg flex items-center justify-center"
-                    >
-                      <div className={`w-2 h-2 rounded-full ${vegMode ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                    </motion.div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
 
+          {shouldShowOutOfZoneHome && (
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="px-4 pt-8 pb-2"
+            >
+              <div className="flex flex-col items-center justify-center rounded-3xl bg-white/95 dark:bg-[#121212] border border-gray-100 dark:border-gray-800 px-6 pt-10 pb-8 text-center shadow-lg">
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-[#0d1a4a] dark:to-[#1a2560] flex items-center justify-center shadow-lg">
+                    <MapPin className="w-10 h-10 text-[#001A94] dark:text-blue-400" strokeWidth={1.5} />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                  Coming Soon!
+                </h2>
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed mb-1">
+                  We are not providing service here yet.
+                </p>
+                <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 max-w-xs">
+                  We're working hard to expand to your area. Stay tuned!
+                </p>
+                <div className="mt-6 px-5 py-2 rounded-full bg-gradient-to-r from-[#001A94] to-blue-600 text-white text-xs font-semibold tracking-wide shadow-md">
+                  Expanding Soon
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {!shouldShowOutOfZoneHome && (
           <div className={`${heroVideo ? 'bg-transparent' : 'bg-white dark:bg-[#0a0a0a]'}`}>
             {/* Flavour Fest Banner */}
             <FestBanner
@@ -2868,9 +2932,10 @@ export default function Home() {
             {/* Admin Hero Banners Section - Now below filters */}
             {HeroBannerSection}
           </div>
+          )}
         </div>
 
-        {recommendedForYouRestaurants.length > 0 && (
+        {!shouldShowOutOfZoneHome && recommendedForYouRestaurants.length > 0 && (
           <motion.section
             className="content-auto pt-1 sm:pt-2"
             initial={false}
@@ -2913,40 +2978,41 @@ export default function Home() {
           </motion.section>
         )}
 
-        <motion.section
-          className="content-auto pt-1 sm:pt-2"
-          initial={false}
-          animate={{ opacity: 1, y: 0 }}>
-          <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-2 sm:mb-3 lg:mb-4 px-4">
-            {exploreMoreHeading}
-          </h2>
-          <div
-            className="flex justify-center gap-4 sm:gap-6 lg:gap-8 overflow-x-auto scrollbar-hide pb-2 lg:pb-3 min-h-[132px] w-full px-4"
-            style={{
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            }}>
-            {showExploreSkeleton ? (
-              <div className="w-full min-w-full shrink-0">
-                <ExploreGridSkeleton />
-              </div>
-            ) : (
-              finalExploreItems.map((item, index) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 30, scale: 0.8 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 20,
-                    delay: index * 0.1,
-                  }}
-                  whileHover={{ y: -8 }}
-                  whileTap={{ scale: 0.92 }}>
-                  <Link to={item.href} className="flex-shrink-0">
-                    <div className="flex flex-col items-center gap-3 w-24 sm:w-28 group">
+        {!shouldShowOutOfZoneHome && (
+          <motion.section
+            className="content-auto pt-1 sm:pt-2"
+            initial={false}
+            animate={{ opacity: 1, y: 0 }}>
+            <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-2 sm:mb-3 lg:mb-4 px-4">
+              {exploreMoreHeading}
+            </h2>
+            <div
+              className="flex justify-center gap-4 sm:gap-6 lg:gap-8 overflow-x-auto scrollbar-hide pb-2 lg:pb-3 min-h-[132px] w-full px-4"
+              style={{
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}>
+              {showExploreSkeleton ? (
+                <div className="w-full min-w-full shrink-0">
+                  <ExploreGridSkeleton />
+                </div>
+              ) : (
+                finalExploreItems.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 20,
+                      delay: index * 0.1,
+                    }}
+                    whileHover={{ y: -8 }}
+                    whileTap={{ scale: 0.92 }}>
+                    <Link to={item.href} className="flex-shrink-0">
+                      <div className="flex flex-col items-center gap-3 w-24 sm:w-28 group">
                       <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(0,0,0,0.12)] group-hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.2)] transition-all duration-500 overflow-hidden p-3 border border-gray-100/80 dark:border-gray-800 group-hover:border-[#001A94]/40">
                         {/* Colorful Glow Background */}
                         <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${index % 3 === 0 ? 'from-blue-600 to-[#001A94]' : index % 3 === 1 ? 'from-indigo-500 to-blue-700' : 'from-blue-400 to-indigo-600'}`} />
@@ -2971,13 +3037,14 @@ export default function Home() {
                       <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors text-center tracking-wide">
                         {item.label}
                       </span>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))
-            )}
-          </div>
-        </motion.section>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </motion.section>
+        )}
 
         {/* Featured Foods - Horizontal Scroll */}
 
@@ -2986,42 +3053,7 @@ export default function Home() {
           className="content-auto space-y-0 pt-3 sm:pt-4 lg:pt-6 pb-8 md:pb-10"
           initial={false}
           animate={{ opacity: 1 }}>
-          {shouldShowOutOfZoneHome ? (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="flex flex-col items-center justify-center px-6 py-16 text-center"
-            >
-              {/* Icon */}
-              <div className="relative mb-6">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-[#0d1a4a] dark:to-[#1a2560] flex items-center justify-center shadow-lg">
-                  <MapPin className="w-10 h-10 text-[#001A94] dark:text-blue-400" strokeWidth={1.5} />
-                </div>
-                <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
-                  <span className="text-white text-xs font-bold">!</span>
-                </div>
-              </div>
-
-              {/* Heading */}
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                Coming Soon!
-              </h2>
-
-              {/* Sub text */}
-              <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed mb-1">
-                We are not providing service here yet.
-              </p>
-              <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 max-w-xs">
-                We're working hard to expand to your area. Stay tuned!
-              </p>
-
-              {/* Decorative badge */}
-              <div className="mt-6 px-5 py-2 rounded-full bg-gradient-to-r from-[#001A94] to-blue-600 text-white text-xs font-semibold tracking-wide shadow-md">
-                🚀 Expanding Soon
-              </div>
-            </motion.div>
-          ) : (
+          {!shouldShowOutOfZoneHome && (
             <>
           <div className="px-4 mb-3 lg:mb-4">
             <div className="flex flex-col gap-0.5 lg:gap-1">
@@ -3138,7 +3170,7 @@ export default function Home() {
 
       {/* Filter Modal - Bottom Sheet */}
       <AnimatePresence>
-        {isFilterOpen && (
+        {!shouldShowOutOfZoneHome && isFilterOpen && (
           <div className="fixed inset-0 z-[100]">
             {/* Backdrop */}
             <motion.div
@@ -3858,6 +3890,60 @@ export default function Home() {
                 </motion.p>
               </motion.div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showVegModePopup && vegMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10001] bg-black/40 flex items-center justify-center px-4"
+            onClick={() => setShowVegModePopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="w-full max-w-sm rounded-2xl bg-white p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-bold text-gray-900">Choose Veg Filter</h3>
+              <p className="text-xs text-gray-600 mt-1 mb-4">
+                Veg mode ON hai. Select how you want to filter restaurants and dishes.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setVegModeOption("pure-veg");
+                  setShowVegModePopup(false);
+                }}
+                className={`w-full text-left rounded-xl border p-3 mb-3 ${vegModeOption === "pure-veg" ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"}`}
+              >
+                <div className="text-sm font-semibold text-gray-900">Pure Veg</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  Sirf pure veg restaurants dikhenge, aur unhi ki dishes.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setVegModeOption("only-veg");
+                  setShowVegModePopup(false);
+                }}
+                className={`w-full text-left rounded-xl border p-3 ${vegModeOption === "only-veg" ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"}`}
+              >
+                <div className="text-sm font-semibold text-gray-900">Only Veg</div>
+                <div className="text-xs text-gray-600 mt-1">
+                  Pure veg aur mixed restaurants me se sirf veg dishes dikhenge.
+                </div>
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

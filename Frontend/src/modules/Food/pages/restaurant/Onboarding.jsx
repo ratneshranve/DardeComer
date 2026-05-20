@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { Label } from "@food/components/ui/label"
-import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut } from "lucide-react"
+import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut, FileText } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { Calendar } from "@food/components/ui/calendar"
 import {
@@ -45,6 +45,8 @@ const BUSINESS_MODEL_HOME_KITCHEN = "Home Kitchen"
 const LOCAL_IMAGE_FILE_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.heif"
 const GALLERY_IMAGE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+const DOCUMENT_FILE_ACCEPT =
+  ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
 let onboardingFileCache = {
   step2: {
     menuImages: [],
@@ -588,6 +590,7 @@ export default function RestaurantOnboarding() {
     onSelectFile: null,
     fileNamePrefix: "camera-image",
     fallbackInputRef: null,
+    galleryAccept: LOCAL_IMAGE_FILE_ACCEPT,
   })
 
   // Manual search states for fallback
@@ -617,13 +620,23 @@ export default function RestaurantOnboarding() {
     return null
   }
 
-  const openImageSourcePicker = ({ title, onSelectFile, fileNamePrefix, fallbackInputRef }) => {
+  const isPdfDocument = (value) => {
+    if (!value) return false
+    if (typeof value === "string") return value.toLowerCase().includes(".pdf")
+    const url = typeof value?.url === "string" ? value.url.toLowerCase() : ""
+    if (url.includes(".pdf")) return true
+    const type = typeof value?.type === "string" ? value.type.toLowerCase() : ""
+    return type === "application/pdf"
+  }
+
+  const openImageSourcePicker = ({ title, onSelectFile, fileNamePrefix, fallbackInputRef, galleryAccept }) => {
     setSourcePicker({
       isOpen: true,
       title: title || "Select image source",
       onSelectFile,
       fileNamePrefix: fileNamePrefix || "camera-image",
       fallbackInputRef: fallbackInputRef || null,
+      galleryAccept: galleryAccept || LOCAL_IMAGE_FILE_ACCEPT,
     })
   }
 
@@ -664,18 +677,30 @@ export default function RestaurantOnboarding() {
 
   const handlePanImageSelected = async (file) => {
     if (!file) return;
+    if (String(file?.type || "").toLowerCase() === "application/pdf") {
+      setStep3((prev) => ({ ...prev, panImage: file }))
+      return
+    }
     const compressed = await compressImage(file);
     setStep3((prev) => ({ ...prev, panImage: compressed }))
   }
 
   const handleGstImageSelected = async (file) => {
     if (!file) return;
+    if (String(file?.type || "").toLowerCase() === "application/pdf") {
+      setStep3((prev) => ({ ...prev, gstImage: file }))
+      return
+    }
     const compressed = await compressImage(file);
     setStep3((prev) => ({ ...prev, gstImage: compressed }))
   }
 
   const handleFssaiImageSelected = async (file) => {
     if (!file) return;
+    if (String(file?.type || "").toLowerCase() === "application/pdf") {
+      setStep3((prev) => ({ ...prev, fssaiImage: file }))
+      return
+    }
     const compressed = await compressImage(file);
     setStep3((prev) => ({ ...prev, fssaiImage: compressed }))
   }
@@ -2647,16 +2672,17 @@ export default function RestaurantOnboarding() {
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">PAN image</Label>
+          <Label className="text-xs text-gray-700">PAN document (Image or PDF)</Label>
           <Button
             type="button"
             variant="outline"
             className="mt-2 w-full text-xs"
             onClick={() =>
               openImageSourcePicker({
-                title: "Upload PAN image",
+                title: "Upload PAN document",
                 fileNamePrefix: "pan-image",
                 fallbackInputRef: panImageInputRef,
+                galleryAccept: DOCUMENT_FILE_ACCEPT,
                 onSelectFile: handlePanImageSelected,
               })
             }
@@ -2666,7 +2692,7 @@ export default function RestaurantOnboarding() {
           </Button>
           <input
             type="file"
-            accept={GALLERY_IMAGE_ACCEPT}
+            accept={DOCUMENT_FILE_ACCEPT}
             className="hidden"
             ref={panImageInputRef}
             onChange={(e) => {
@@ -2676,7 +2702,22 @@ export default function RestaurantOnboarding() {
           />
           {step3.panImage && (
             <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
-              {getPreviewImageUrl(step3.panImage) ? (
+              {isPdfDocument(step3.panImage) ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-xs text-gray-600">
+                  <FileText className="w-8 h-8 text-red-600" />
+                  <span>PDF selected</span>
+                  {getPreviewImageUrl(step3.panImage) && (
+                    <a
+                      href={getPreviewImageUrl(step3.panImage)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      View PDF
+                    </a>
+                  )}
+                </div>
+              ) : getPreviewImageUrl(step3.panImage) ? (
                 <img
                   src={getPreviewImageUrl(step3.panImage)}
                   alt="PAN document"
@@ -2760,9 +2801,10 @@ export default function RestaurantOnboarding() {
               className="w-full text-xs"
               onClick={() =>
                 openImageSourcePicker({
-                  title: "Upload GST image",
+                  title: "Upload GST document",
                   fileNamePrefix: "gst-image",
                   fallbackInputRef: gstImageInputRef,
+                  galleryAccept: DOCUMENT_FILE_ACCEPT,
                   onSelectFile: handleGstImageSelected,
                 })
               }
@@ -2772,7 +2814,7 @@ export default function RestaurantOnboarding() {
             </Button>
             <input
               type="file"
-              accept={GALLERY_IMAGE_ACCEPT}
+              accept={DOCUMENT_FILE_ACCEPT}
               className="hidden"
               ref={gstImageInputRef}
               onChange={(e) => {
@@ -2782,7 +2824,22 @@ export default function RestaurantOnboarding() {
             />
             {step3.gstImage && (
               <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
-                {getPreviewImageUrl(step3.gstImage) ? (
+                {isPdfDocument(step3.gstImage) ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-xs text-gray-600">
+                    <FileText className="w-8 h-8 text-red-600" />
+                    <span>PDF selected</span>
+                    {getPreviewImageUrl(step3.gstImage) && (
+                      <a
+                        href={getPreviewImageUrl(step3.gstImage)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View PDF
+                      </a>
+                    )}
+                  </div>
+                ) : getPreviewImageUrl(step3.gstImage) ? (
                   <img
                     src={getPreviewImageUrl(step3.gstImage)}
                     alt="GST document"
@@ -2871,9 +2928,10 @@ export default function RestaurantOnboarding() {
           className="w-full text-xs"
           onClick={() =>
             openImageSourcePicker({
-              title: "Upload FSSAI image",
+              title: "Upload FSSAI document",
               fileNamePrefix: "fssai-image",
               fallbackInputRef: fssaiImageInputRef,
+              galleryAccept: DOCUMENT_FILE_ACCEPT,
               onSelectFile: handleFssaiImageSelected,
             })
           }
@@ -2883,7 +2941,7 @@ export default function RestaurantOnboarding() {
         </Button>
         <input
           type="file"
-          accept={GALLERY_IMAGE_ACCEPT}
+          accept={DOCUMENT_FILE_ACCEPT}
           className="hidden"
           ref={fssaiImageInputRef}
           onChange={(e) => {
@@ -2893,7 +2951,22 @@ export default function RestaurantOnboarding() {
         />
         {step3.fssaiImage && (
           <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
-            {getPreviewImageUrl(step3.fssaiImage) ? (
+            {isPdfDocument(step3.fssaiImage) ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-xs text-gray-600">
+                <FileText className="w-8 h-8 text-red-600" />
+                <span>PDF selected</span>
+                {getPreviewImageUrl(step3.fssaiImage) && (
+                  <a
+                    href={getPreviewImageUrl(step3.fssaiImage)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    View PDF
+                  </a>
+                )}
+              </div>
+            ) : getPreviewImageUrl(step3.fssaiImage) ? (
               <img
                 src={getPreviewImageUrl(step3.fssaiImage)}
                 alt="FSSAI document"
@@ -3062,6 +3135,7 @@ export default function RestaurantOnboarding() {
           title={sourcePicker.title}
           fileNamePrefix={sourcePicker.fileNamePrefix}
           galleryInputRef={sourcePicker.fallbackInputRef}
+          galleryAccept={sourcePicker.galleryAccept}
         />
 
         {error && (

@@ -4,7 +4,7 @@ import { DeliverySupportTicket } from '../models/supportTicket.model.js';
 import { DeliveryBonusTransaction } from '../../admin/models/deliveryBonusTransaction.model.js';
 import { FoodEarningAddon } from '../../admin/models/earningAddon.model.js';
 import { FoodOrder } from '../../orders/models/order.model.js';
-import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
+import { uploadImageBuffer, uploadMediaBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 
@@ -41,15 +41,27 @@ export const registerDeliveryPartner = async (payload, files) => {
         images.profilePhoto = await uploadImageBuffer(files.profilePhoto[0].buffer, 'food/delivery/profile');
     }
     if (files?.aadharPhoto?.[0]) {
-        images.aadharPhoto = await uploadImageBuffer(files.aadharPhoto[0].buffer, 'food/delivery/aadhar');
+        images.aadharPhoto = await uploadMediaBuffer(
+            files.aadharPhoto[0].buffer,
+            'food/delivery/aadhar',
+            files.aadharPhoto[0].mimetype,
+            files.aadharPhoto[0].originalname
+        );
     }
     if (files?.panPhoto?.[0]) {
-        images.panPhoto = await uploadImageBuffer(files.panPhoto[0].buffer, 'food/delivery/pan');
+        images.panPhoto = await uploadMediaBuffer(
+            files.panPhoto[0].buffer,
+            'food/delivery/pan',
+            files.panPhoto[0].mimetype,
+            files.panPhoto[0].originalname
+        );
     }
     if (files?.drivingLicensePhoto?.[0]) {
-        images.drivingLicensePhoto = await uploadImageBuffer(
+        images.drivingLicensePhoto = await uploadMediaBuffer(
             files.drivingLicensePhoto[0].buffer,
-            'food/delivery/license'
+            'food/delivery/license',
+            files.drivingLicensePhoto[0].mimetype,
+            files.drivingLicensePhoto[0].originalname
         );
     }
 

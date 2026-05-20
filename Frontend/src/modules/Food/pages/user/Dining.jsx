@@ -141,7 +141,47 @@ export default function Dining() {
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { addFavorite, removeFavorite, isFavorite, getDefaultAddress } = useProfile()
+  const defaultSavedAddress = useMemo(() => getDefaultAddress?.() || null, [getDefaultAddress])
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0])
+      const lat = parseFloat(coords[1])
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng }
+      }
+    }
+
+    const lat = parseFloat(defaultSavedAddress?.latitude || defaultSavedAddress?.lat)
+    const lng = parseFloat(defaultSavedAddress?.longitude || defaultSavedAddress?.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng }
+    }
+
+    return null
+  }, [defaultSavedAddress])
+
+  const effectiveLocation = useMemo(() => {
+    let mode = "current"
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current"
+    } catch {
+      mode = "current"
+    }
+
+    if (mode === "saved" && defaultSavedAddress) {
+      return {
+        latitude: defaultSavedAddressLocation?.latitude ?? null,
+        longitude: defaultSavedAddressLocation?.longitude ?? null,
+        area: defaultSavedAddress.area || defaultSavedAddress.street || "",
+        city: defaultSavedAddress.city || "",
+        state: defaultSavedAddress.state || "",
+      }
+    }
+
+    return location
+  }, [defaultSavedAddress, defaultSavedAddressLocation, location])
 
   const [categories, setCategories] = useState([])
   const [restaurantList, setRestaurantList] = useState([])
@@ -162,7 +202,7 @@ export default function Dining() {
         const [bannerResponse, cats, rests] = await Promise.all([
           diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
-          diningAPI.getRestaurants(location?.city ? { city: location.city } : {}),
+          diningAPI.getRestaurants(effectiveLocation?.city ? { city: effectiveLocation.city } : {}),
         ])
 
         const heroBanners = Array.isArray(bannerResponse?.data?.data?.banners)
@@ -194,7 +234,7 @@ export default function Dining() {
       }
     }
     fetchDiningData()
-  }, [location?.city])
+  }, [effectiveLocation?.city])
 
   const safeCategories = useMemo(() => {
     return (Array.isArray(categories) ? categories : [])
@@ -218,7 +258,7 @@ export default function Dining() {
     return (Array.isArray(restaurantList) ? restaurantList : [])
       .filter((restaurant) => String(restaurant?.restaurantName || restaurant?.name || "").trim().length > 0)
       .map((restaurant, index) => {
-        const distanceKm = getDistanceKm(location, restaurant)
+        const distanceKm = getDistanceKm(effectiveLocation, restaurant)
         const restaurantName = String(restaurant?.restaurantName || restaurant?.name || "").trim()
         return {
           ...restaurant,
@@ -252,7 +292,7 @@ export default function Dining() {
           diningType: restaurant?.diningSettings?.diningType || restaurant?.categories?.[0]?.slug || "dining",
         }
       })
-  }, [restaurantList, location])
+  }, [restaurantList, effectiveLocation])
 
   const categoryRestaurantKeys = useMemo(() => {
     const keySet = new Set()

@@ -8,7 +8,7 @@ import { Textarea } from "@food/components/ui/textarea"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { toast } from "sonner"
-import { locationAPI, userAPI } from "@food/api"
+import { locationAPI, userAPI, zoneAPI } from "@food/api"
 import { Loader } from '@googlemaps/js-api-loader'
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
@@ -88,6 +88,34 @@ export default function AddressSelectorPage() {
   const ENABLE_LOCATION_REVERSE_GEOCODE = import.meta.env.VITE_ENABLE_LOCATION_REVERSE_GEOCODE !== "false"
   const ENABLE_NOMINATIM_SEARCH = import.meta.env.VITE_ENABLE_NOMINATIM_SEARCH !== "false"
   const getAddressId = (address) => address?.id || address?._id || null
+  const persistSelectedZoneByCoords = async (latitude, longitude) => {
+    const lat = Number(latitude)
+    const lng = Number(longitude)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      localStorage.removeItem("userZoneId")
+      localStorage.removeItem("userZone")
+      window.dispatchEvent(new Event("zoneVisibilityChanged"))
+      return
+    }
+
+    try {
+      const response = await zoneAPI.detectZone(lat, lng)
+      const data = response?.data?.data
+      if (data?.status === "IN_SERVICE" && data?.zoneId) {
+        localStorage.setItem("userZoneId", String(data.zoneId))
+        localStorage.setItem("userZone", JSON.stringify(data.zone || null))
+      } else {
+        localStorage.removeItem("userZoneId")
+        localStorage.removeItem("userZone")
+      }
+    } catch {
+      localStorage.removeItem("userZoneId")
+      localStorage.removeItem("userZone")
+    } finally {
+      window.dispatchEvent(new Event("zoneVisibilityChanged"))
+      window.dispatchEvent(new Event("locationUpdated"))
+    }
+  }
 
   const handleBack = () => {
     goBack()
@@ -281,6 +309,10 @@ export default function AddressSelectorPage() {
         }
         
         try { localStorage.setItem("deliveryAddressMode", "current") } catch {}
+        try {
+          localStorage.setItem("userLocation", JSON.stringify(loc))
+        } catch {}
+        await persistSelectedZoneByCoords(loc.latitude, loc.longitude)
         toast.success("Location updated", { id: "geo" })
         handleBack()
       }
@@ -294,6 +326,24 @@ export default function AddressSelectorPage() {
     if (id) {
       await setDefaultAddress(id)
       try { localStorage.setItem("deliveryAddressMode", "saved") } catch {}
+      const coordinates = address?.location?.coordinates || []
+      const longitude = Number(coordinates?.[0])
+      const latitude = Number(coordinates?.[1])
+      const userLocationPayload = {
+        label: address?.label || "Home",
+        city: address?.city || "",
+        state: address?.state || "",
+        address: address?.street || "",
+        area: address?.additionalDetails || "",
+        zipCode: address?.zipCode || "",
+        latitude,
+        longitude,
+        formattedAddress: [address?.street, address?.city, address?.state].filter(Boolean).join(", "),
+      }
+      try {
+        localStorage.setItem("userLocation", JSON.stringify(userLocationPayload))
+      } catch {}
+      await persistSelectedZoneByCoords(latitude, longitude)
       toast.success("Address selected")
       handleBack()
     }
@@ -422,6 +472,21 @@ export default function AddressSelectorPage() {
         const id = getAddressId(created)
         if (id) await setDefaultAddress(id)
         try { localStorage.setItem("deliveryAddressMode", "saved") } catch {}
+        try {
+          const locationData = {
+            label: payload.label || "Home",
+            city: payload.city || "",
+            state: payload.state || "",
+            address: payload.street || "",
+            area: payload.additionalDetails || "",
+            zipCode: payload.zipCode || "",
+            latitude: payload.latitude,
+            longitude: payload.longitude,
+            formattedAddress: [payload.street, payload.city, payload.state].filter(Boolean).join(", "),
+          }
+          localStorage.setItem("userLocation", JSON.stringify(locationData))
+        } catch {}
+        await persistSelectedZoneByCoords(payload.latitude, payload.longitude)
         toast.success("Address saved")
         handleBack()
       }

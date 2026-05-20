@@ -58,7 +58,16 @@ export function ProfileProvider({ children }) {
   
   const [loading, setLoading] = useState(true)
 
-  const [addresses, setAddresses] = useState([])
+  const [addresses, setAddresses] = useState(() => {
+    const saved = localStorage.getItem("userAddresses")
+    if (!saved) return []
+    try {
+      return dedupeAddressesByLabel(JSON.parse(saved))
+    } catch (e) {
+      debugError("Error parsing userAddresses from localStorage:", e)
+      return []
+    }
+  })
 
   const [paymentMethods, setPaymentMethods] = useState(() => {
     const saved = localStorage.getItem("userPaymentMethods")
@@ -290,6 +299,19 @@ export function ProfileProvider({ children }) {
   const getDefaultAddress = useCallback(() => {
     return addresses.find((addr) => addr.isDefault) || addresses[0] || null
   }, [addresses])
+
+  useEffect(() => {
+    try {
+      const currentMode = localStorage.getItem("deliveryAddressMode")
+      if (currentMode) return
+      const defaultAddress = getDefaultAddress()
+      if (defaultAddress) {
+        localStorage.setItem("deliveryAddressMode", "saved")
+      }
+    } catch {
+      // ignore storage access failures
+    }
+  }, [getDefaultAddress])
 
   // Payment method functions - memoized with useCallback
   const addPaymentMethod = useCallback((payment) => {

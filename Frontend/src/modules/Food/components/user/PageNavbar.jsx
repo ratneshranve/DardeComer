@@ -8,6 +8,7 @@ import { useLocationSelector } from "./UserLayout"
 import { FaLocationDot } from "react-icons/fa6"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import quickSpicyLogo from "@food/assets/quicky-spicy-logo.png"
+import { useProfile } from "@food/context/ProfileContext"
 
 export default function PageNavbar({
   textColor = "white",
@@ -16,9 +17,10 @@ export default function PageNavbar({
   showLogo = true,
   onNavClick
 }) {
-  const { location, loading, requestLocation } = useLocation()
+  const { location: rawLocation, loading, requestLocation } = useLocation()
   const { getCartCount } = useCart()
   const { openLocationSelector } = useLocationSelector()
+  const { getDefaultAddress } = useProfile()
   const cartCount = getCartCount()
   const [logoUrl, setLogoUrl] = useState(null)
   const [companyName, setCompanyName] = useState(null)
@@ -35,9 +37,61 @@ export default function PageNavbar({
     requestLocationRef.current = requestLocation
   }, [requestLocation])
 
+  const formatSavedAddress = (address) => {
+    if (!address) return ""
+    if (address.formattedAddress && address.formattedAddress !== "Select location") {
+      return address.formattedAddress
+    }
+    const parts = [
+      address.additionalDetails,
+      address.street,
+      address.city,
+      address.state,
+      address.zipCode,
+    ].filter(Boolean)
+    if (parts.length > 0) return parts.join(", ")
+    if (address.address && address.address !== "Select location") return address.address
+    return ""
+  }
+
+  const activeLocation = useMemo(() => {
+    let mode = "current"
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current"
+    } catch {
+      mode = "current"
+    }
+
+    if (mode === "saved") {
+      const defaultAddress = getDefaultAddress?.()
+      if (defaultAddress) {
+        const formatted = formatSavedAddress(defaultAddress)
+        return {
+          area: defaultAddress.area || defaultAddress.street || "",
+          city: defaultAddress.city || "",
+          state: defaultAddress.state || "",
+          address: formatted,
+          formattedAddress: formatted,
+          label: defaultAddress.label || "",
+        }
+      }
+    }
+
+    return rawLocation
+  }, [getDefaultAddress, rawLocation])
+
+  const location = activeLocation || rawLocation
+
   // Auto-trigger location fetch once when location is missing/placeholder and permission is already granted.
   useEffect(() => {
     if (autoLocationAttemptedRef.current || loading || !requestLocationRef.current) return
+
+    try {
+      const autoPersisted = localStorage.getItem("userLocationInitialized")
+      if (autoPersisted) return
+    } catch {
+      // ignore storage access issues
+    }
 
     // If we already have stored coordinates, do not auto-geocode again.
     // We only update location when the user changes it manually.
@@ -53,9 +107,9 @@ export default function PageNavbar({
     }
 
     const hasMissingOrPlaceholderLocation =
-      !location ||
-      location.formattedAddress === "Select location" ||
-      location.city === "Current Location"
+      !rawLocation ||
+      rawLocation.formattedAddress === "Select location" ||
+      rawLocation.city === "Current Location"
 
     if (!hasMissingOrPlaceholderLocation) return
     // Reserve a single background attempt to avoid repeated checks on re-renders.
@@ -95,16 +149,16 @@ export default function PageNavbar({
       cancelled = true
       clearTimeout(timeoutId)
     }
-  }, [location, loading])
+  }, [rawLocation, loading])
 
   // Reset one-time auto-attempt if location becomes valid, so future invalid states can retry.
   useEffect(() => {
-    if (location &&
-      location.formattedAddress !== "Select location" &&
-      location.city !== "Current Location") {
+    if (rawLocation &&
+      rawLocation.formattedAddress !== "Select location" &&
+      rawLocation.city !== "Current Location") {
       autoLocationAttemptedRef.current = false
     }
-  }, [location])
+  }, [rawLocation])
 
   // Load business settings logo
   useEffect(() => {
@@ -911,15 +965,15 @@ export default function PageNavbar({
 
     // Debug log
     debugLog("?? PageNavbar Location Display:", {
-      location: location,
-      city: location?.city,
-      state: location?.state,
+      location: activeLocation,
+      city: activeLocation?.city,
+      state: activeLocation?.state,
       hasCity,
       hasState,
       mainLocation,
       subLocation,
-      formattedAddress: location?.formattedAddress,
-      address: location?.address,
+      formattedAddress: activeLocation?.formattedAddress,
+      address: activeLocation?.address,
       finalSubLocation: subLocation || "EMPTY"
     })
 
@@ -930,8 +984,8 @@ export default function PageNavbar({
       debugLog("Forcing re-extraction from formattedAddress")
 
       // Force re-extraction
-      if (location?.formattedAddress) {
-        const parts = location.formattedAddress.split(',').map(part => part.trim()).filter(part => part.length > 0)
+      if (activeLocation?.formattedAddress) {
+        const parts = activeLocation.formattedAddress.split(',').map(part => part.trim()).filter(part => part.length > 0)
         if (parts.length >= 6) {
           const cityPart = parts[4]
           const statePart = parts[5]
@@ -951,13 +1005,13 @@ export default function PageNavbar({
       main: mainLocation,
       sub: subLocation
     }
-  }, [location])
+  }, [activeLocation])
 
   const mainLocationName = locationDisplay.main
   const subLocationName = locationDisplay.sub
   const savedAddressLabel = useMemo(() => {
-    if (location?.label && String(location.label).trim()) {
-      return String(location.label).trim()
+    if (activeLocation?.label && String(activeLocation.label).trim()) {
+      return String(activeLocation.label).trim()
     }
     try {
       const stored = localStorage.getItem("userLocation")
@@ -967,7 +1021,7 @@ export default function PageNavbar({
     } catch {
       return ""
     }
-  }, [location?.label])
+  }, [activeLocation?.label])
   const locationSubText = savedAddressLabel ? `Delivering to ${savedAddressLabel}` : subLocationName
 
   const handleLocationClick = () => {

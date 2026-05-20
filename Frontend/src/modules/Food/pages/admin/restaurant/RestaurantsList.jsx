@@ -90,6 +90,14 @@ const normalizeImageUrl = (image) => {
   return ""
 }
 
+const getDownloadFileName = (url, fallbackBase = "document") => {
+  const raw = String(url || "").split("?")[0]
+  const lastSegment = raw.split("/").pop() || ""
+  const decoded = decodeURIComponent(lastSegment)
+  if (decoded.toLowerCase().endsWith(".pdf")) return decoded
+  return `${fallbackBase}.pdf`
+}
+
 const getPrimaryRestaurantImage = (restaurant, fallback = "") => {
   const coverImages = Array.isArray(restaurant?.coverImages) ? restaurant.coverImages : []
   const firstCoverImage = coverImages.map(normalizeImageUrl).find(Boolean)
@@ -162,6 +170,26 @@ export default function RestaurantsList() {
   })
   const locationSearchInputRef = useRef(null)
   const placesAutocompleteRef = useRef(null)
+
+  const downloadDocument = async (url, fallbackBase = "document") => {
+    try {
+      if (!url) return
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Failed to fetch document")
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = getDownloadFileName(url, fallbackBase)
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      debugError("Document download failed:", err)
+      window.alert("Document download failed. Please try again.")
+    }
+  }
 
   // Format Restaurant ID to REST format (e.g., REST422829)
   const formatRestaurantId = (id) => {
@@ -1987,11 +2015,11 @@ export default function RestaurantsList() {
                               {panDocumentUrl && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">PAN Document</p>
-                                  <a href={panDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                                  <button type="button" onClick={() => downloadDocument(panDocumentUrl, "pan-document")} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
                                     <ImageIcon className="w-4 h-4" />
-                                    <span>View PAN Document</span>
+                                    <span>Download PAN Document</span>
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -2035,11 +2063,11 @@ export default function RestaurantsList() {
                               {gstDocumentUrl && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">GST Document</p>
-                                  <a href={gstDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                                  <button type="button" onClick={() => downloadDocument(gstDocumentUrl, "gst-document")} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
                                     <ImageIcon className="w-4 h-4" />
-                                    <span>View GST Document</span>
+                                    <span>Download GST Document</span>
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -2071,11 +2099,11 @@ export default function RestaurantsList() {
                               {fssaiDocumentUrl && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">FSSAI Document</p>
-                                  <a href={fssaiDocumentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                                  <button type="button" onClick={() => downloadDocument(fssaiDocumentUrl, "fssai-document")} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
                                     <ImageIcon className="w-4 h-4" />
-                                    <span>View FSSAI Document</span>
+                                    <span>Download FSSAI Document</span>
                                     <ExternalLink className="w-3 h-3" />
-                                  </a>
+                                  </button>
                                 </div>
                               )}
                             </div>
