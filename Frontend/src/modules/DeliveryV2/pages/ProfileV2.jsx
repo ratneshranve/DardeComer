@@ -10,7 +10,8 @@ import {
   LogOut,
   X,
   Loader2,
-  Briefcase
+  Briefcase,
+  Trash2
 } from "lucide-react"
 import { deliveryAPI } from "@food/api"
 import { toast } from "sonner"
@@ -28,6 +29,8 @@ export const ProfileV2 = () => {
   const [referralReward, setReferralReward] = useState(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [logoutSubmitting, setLogoutSubmitting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
 
   // Fetch profile data
   useEffect(() => {
@@ -110,6 +113,52 @@ export const ProfileV2 = () => {
     toast.success("Logged out successfully")
     navigate("/food/delivery/login", { replace: true })
     setLogoutSubmitting(false)
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteSubmitting) return
+    setShowDeleteConfirm(false)
+    try {
+      setDeleteSubmitting(true)
+      let fcmToken = null
+      let platform = "web"
+      try {
+        if (typeof window !== "undefined" && window.flutter_inappwebview) {
+          platform = "mobile"
+          const handlerNames = [
+            "getFcmToken",
+            "getFCMToken",
+            "getPushToken",
+            "getFirebaseToken",
+          ]
+          for (const handlerName of handlerNames) {
+            try {
+              const t = await window.flutter_inappwebview.callHandler(handlerName, {
+                module: "delivery",
+              })
+              if (t && typeof t === "string" && t.length > 20) {
+                fcmToken = t.trim()
+                break
+              }
+            } catch (e) {}
+          }
+        } else {
+          fcmToken = localStorage.getItem("fcm_web_registered_token_delivery") || null
+        }
+      } catch (e) {}
+      
+      try {
+        await deliveryAPI.deleteAccount(null, fcmToken, platform)
+      } catch (apiError) {
+        // Continue even if API fails
+      }
+    } catch (error) {}
+    clearModuleAuth("delivery")
+    localStorage.removeItem("app:isOnline")
+    localStorage.removeItem("fcm_web_registered_token_delivery")
+    toast.success("Account deleted successfully")
+    navigate("/food/delivery/login", { replace: true })
+    setDeleteSubmitting(false)
   }
 
 
@@ -215,6 +264,17 @@ export const ProfileV2 = () => {
               <ArrowRight className="w-5 h-5 text-red-100" />
             </div>
 
+            <div 
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-white rounded-xl p-4 flex items-center justify-between cursor-pointer border border-red-50 hover:bg-red-50/30 active:bg-red-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Trash2 className="w-5 h-5 text-red-600" />
+                <span className="text-sm font-bold text-red-600">Delete Account</span>
+              </div>
+              <ArrowRight className="w-5 h-5 text-red-100" />
+            </div>
+
           </div>
         </div>
       </div>
@@ -244,6 +304,36 @@ export const ProfileV2 = () => {
                 className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60"
               >
                 {logoutSubmitting ? "Logging out..." : "Yes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center px-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-black text-gray-900 mb-2">Delete Account?</h3>
+            <p className="text-sm text-gray-500 mb-5">Are you sure you want to delete your account? This action is permanent and cannot be undone.</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-gray-700 font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteSubmitting}
+                className="flex-1 h-11 rounded-xl bg-red-600 text-white font-bold disabled:opacity-60"
+              >
+                {deleteSubmitting ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

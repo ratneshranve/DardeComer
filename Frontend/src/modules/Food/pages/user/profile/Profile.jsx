@@ -22,6 +22,7 @@ import {
   Share2,
   Utensils,
   UtensilsCrossed,
+  Trash2,
 } from "lucide-react";
 
 import AnimatedPage from "@food/components/user/AnimatedPage";
@@ -92,6 +93,8 @@ export default function Profile() {
   const [vegModeOpen, setVegModeOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [referralReward, setReferralReward] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   const [tableBookings, setTableBookings] = useState([]);
@@ -410,6 +413,71 @@ export default function Profile() {
   const handleLogoutClick = () => {
     if (isLoggingOut) return;
     setLogoutConfirmOpen(true);
+  };
+
+  const handleDeleteClick = () => {
+    if (isDeleting || isLoggingOut) return;
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (isDeleting) return; // Prevent multiple clicks
+    setIsDeleting(true);
+
+    try {
+      // Call backend delete account API
+      try {
+        await authAPI.deleteAccount();
+      } catch (apiError) {
+        debugWarn("Delete Account API call failed, continuing with local cleanup:", apiError);
+      }
+
+      // Sign out from Firebase if user logged in via Google
+      try {
+        const { signOut } = await import("firebase/auth");
+        if (firebaseAuth) {
+          const currentUser = firebaseAuth.currentUser;
+          if (currentUser) {
+            await signOut(firebaseAuth);
+          }
+        }
+      } catch (firebaseError) {
+        debugWarn("Firebase signout failed during account deletion:", firebaseError);
+      }
+
+      // Clear user module authentication data
+      clearModuleAuth("user");
+
+      // Clear local storage and session data
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user_authenticated");
+      localStorage.removeItem("user_user");
+      localStorage.removeItem("user");
+      localStorage.removeItem("cart");
+      USER_SESSION_PREFERENCE_KEYS.forEach((key) => localStorage.removeItem(key));
+
+      // Dispatch auth change event to notify other components
+      window.dispatchEvent(new Event("userAuthChanged"));
+
+      // Navigate to login page
+      navigate("/user/auth/login", { replace: true });
+    } catch (err) {
+      debugError("Error during account deletion:", err);
+
+      // Fallback cleanup
+      clearModuleAuth("user");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user_authenticated");
+      localStorage.removeItem("user_user");
+      localStorage.removeItem("user");
+      localStorage.removeItem("cart");
+      USER_SESSION_PREFERENCE_KEYS.forEach((key) => localStorage.removeItem(key));
+      window.dispatchEvent(new Event("userAuthChanged"));
+
+      navigate("/user/auth/login", { replace: true });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
 
@@ -951,6 +1019,35 @@ export default function Profile() {
               </Card>
             </motion.div>
 
+            <motion.div
+              whileHover={{ x: 4, scale: 1.01 }}
+              transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
+              <Card
+                className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2 border-red-100 dark:border-red-950/20"
+                onClick={handleDeleteClick}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      className="bg-red-50 dark:bg-red-950/20 rounded-full p-2"
+                      whileHover={{ rotate: 15, scale: 1.1 }}
+                      transition={{ duration: 0.3 }}>
+                      <Trash2
+                        className={`h-5 w-5 text-red-600 dark:text-red-400 ${isDeleting ? "animate-pulse" : ""}`}
+                      />
+                    </motion.div>
+                    <span className="text-base font-medium text-red-600 dark:text-red-400">
+                      {isDeleting ? "Deleting account..." : "Delete Account"}
+                    </span>
+                  </div>
+                  <motion.div
+                    whileHover={{ x: 4 }}
+                    transition={{ duration: 0.2 }}>
+                    <ChevronRight className="h-5 w-5 text-red-400 dark:text-red-500" />
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
           </div>
         </div>
       </div>
@@ -1054,6 +1151,42 @@ export default function Profile() {
                 disabled={isLoggingOut}
               >
                 Yes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Popup */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#1a1a1a] p-5 shadow-2xl border border-gray-200 dark:border-gray-800">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Delete Account?
+            </h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete your account? This action is permanent and cannot be undone.
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setDeleteConfirmOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 rounded-xl bg-[#CB202D] hover:bg-[#b01c27] text-white"
+                onClick={() => {
+                  setDeleteConfirmOpen(false);
+                  handleDeleteAccount();
+                }}
+                disabled={isDeleting}
+              >
+                Yes, Delete
               </Button>
             </div>
           </div>
