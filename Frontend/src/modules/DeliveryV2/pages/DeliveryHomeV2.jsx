@@ -783,9 +783,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
       )}
 
       {/* ─── 2. MAIN CONTENT ─── */}
-      <div className={`flex-1 relative overflow-y-auto ${currentTab === 'history' ? 'pt-0' : 'pt-[120px]'} no-scrollbar`}>
+      <div className={`flex-1 relative overflow-y-auto ${currentTab === 'history' ? 'pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+120px)]'} no-scrollbar`}>
          {currentTab === 'feed' ? (
-           <div className="absolute inset-0 top-[-120px]">
+           <div className="absolute inset-0 top-[calc((env(safe-area-inset-top,0px)+120px)*-1)]">
              <LiveMap 
                onMapLoad={(m) => mapRef.current = m}
                onMapClick={handleMapClick}
@@ -803,7 +803,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
              
              {/* SIMULATION INDICATOR */}
              {isSimMode && (
-               <div className="absolute top-[180px] left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl">
+               <div className="absolute top-[calc(env(safe-area-inset-top,0px)+210px)] left-4 right-4 z-[100] bg-black/80 backdrop-blur-md rounded-xl p-4 border border-white/20 flex items-center justify-between shadow-2xl">
                   <div className="flex items-center gap-4">
                      <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center animate-pulse">
                         <Play className="w-4 h-4 text-white fill-current" />

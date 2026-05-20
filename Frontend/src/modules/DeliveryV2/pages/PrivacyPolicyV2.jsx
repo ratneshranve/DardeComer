@@ -39,7 +39,7 @@ export default function PrivacyPolicyV2() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-x-hidden">
-      <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-4 py-4 flex items-center gap-4 sticky top-0 z-10 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-4 py-4 safe-top flex items-center gap-4 sticky top-0 z-10 shadow-sm">
         <button
           onClick={goBack}
           className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"

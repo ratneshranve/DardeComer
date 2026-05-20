@@ -183,3 +183,22 @@
   z-index: 999999 !important;
   pointer-events: auto !important;
 }
+
+/* Safe-area top spacing for notched devices and status bar clearance */
+.safe-top {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 24px) !important;
+}
+
+/* User app layout padding on page wrapper to maintain page backgrounds */
+@media (max-width: 767px) {
+  .user-main-content > * {
+    padding-top: 24px !important;
+    padding-bottom: 48px !important;
+  }
+  .user-main-content-with-nav > * {
+    padding-top: 24px !important;
+    padding-bottom: 112px !important;
+  }
+}
+
+

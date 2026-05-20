@@ -100,7 +100,7 @@ export const PocketDetailsV2 = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-12 font-poppins">
       {/* ─── HEADER ─── */}
-      <div className="bg-white border-b border-gray-100 px-6 py-5 flex items-center justify-between sticky top-0 z-[100]">
+      <div className="bg-white border-b border-gray-100 px-6 py-5 safe-top flex items-center justify-between sticky top-0 z-[100]">
         <div className="flex items-center gap-4">
           <button onClick={goBack} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-900 border border-gray-100 active:scale-90 transition-all">
             <ArrowLeft className="w-5 h-5" />

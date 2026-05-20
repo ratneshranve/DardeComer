@@ -130,7 +130,7 @@ export const HistoryV2 = () => {
   return (
     <div className="min-h-screen bg-white font-poppins pb-32">
        {/* 1. Header (Premium V2 Styled) */}
-       <div className="bg-[#121212] border-b border-white/10 px-6 py-3 flex items-center justify-between sticky top-0 z-[100] backdrop-blur-2xl">
+       <div className="bg-[#121212] border-b border-white/10 px-6 py-3 safe-top flex items-center justify-between sticky top-0 z-[100] backdrop-blur-2xl">
           <div className="flex items-center gap-4">
             <button onClick={goBack} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/10 active:scale-90 transition-all">
                <ArrowLeft className="w-5 h-5" />
@@ -160,7 +160,7 @@ export const HistoryV2 = () => {
        </div>
 
        {/* 2. Selection Tabs (Matched to Image) */}
-       <div className="bg-white px-4 flex items-center gap-8 sticky top-[61px] z-[90] border-b border-gray-100">
+       <div className="bg-white px-4 flex items-center gap-8 sticky top-[calc(env(safe-area-inset-top,0px)+76px)] z-[90] border-b border-gray-100">
           {['daily', 'weekly', 'monthly'].map((tab) => (
              <button
                key={tab}
@@ -174,7 +174,7 @@ export const HistoryV2 = () => {
        </div>
 
        {/* 3. Filter Controls (Matched to Image) */}
-       <div className="bg-white px-4 py-4 flex gap-3 sticky top-[118px] z-[80]">
+       <div className="bg-white px-4 py-4 flex gap-3 sticky top-[calc(env(safe-area-inset-top,0px)+132px)] z-[80]">
           <button 
              onClick={() => { setShowDatePicker(!showDatePicker); setShowTripTypePicker(false); }}
              className="flex-1 px-4 py-3 bg-[#f8f9fa] border border-gray-100 rounded-xl flex items-center justify-between text-gray-800"

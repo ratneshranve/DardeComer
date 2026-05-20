@@ -82,7 +82,7 @@ export default function DeliveryLayout({
 
   return (
     <>
-      <main>
+      <main className={`pt-6 pb-12 ${showBottomNav ? "pb-28 md:pb-0" : "md:pb-0"}`}>
         {children}
       </main>
       {showBottomNav && (

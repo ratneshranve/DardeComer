@@ -95,7 +95,7 @@ export default function NotificationsV2() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <div className="px-4 pt-4 pb-3 flex items-center gap-3 border-b border-gray-200">
+      <div className="px-4 pt-4 pb-3 safe-top flex items-center gap-3 border-b border-gray-200">
         <button
           onClick={() => navigate("/food/delivery/profile")}
           className="p-2 rounded-full hover:bg-gray-100"

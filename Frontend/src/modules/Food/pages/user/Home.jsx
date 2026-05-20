@@ -2251,19 +2251,64 @@ export default function Home() {
     };
   }, [isOutOfService, zoneLoading, isSavedAddressOutOfService, savedAddressZoneLoading, hasSavedAddress, location]);
 
-  const shouldShowOutOfZoneHome =
-    currentServiceStatus.isOutOfService ||
-    (!loadingRestaurants && !isLoadingFilterResults && filteredRestaurants.length === 0);
+  const shouldShowOutOfZoneHome = false; // Set to false to never block home page content with Coming Soon section
 
   useEffect(() => {
     try {
       localStorage.setItem(
         "hideUserBottomNavOutOfZone",
-        currentServiceStatus.isOutOfService ? "true" : "false",
+        "false", // Always show bottom navigation
       );
     } catch { }
     window.dispatchEvent(new Event("zoneVisibilityChanged"));
   }, [currentServiceStatus.isOutOfService]);
+
+  // Fallback to Indore when out of service (so we display Indore zone's data instead of Coming Soon)
+  useEffect(() => {
+    if (!loading && !zoneLoading) {
+      const isOut =
+        currentServiceStatus.isOutOfService ||
+        (!loadingRestaurants && !isLoadingFilterResults && filteredRestaurants.length === 0);
+
+      if (isOut) {
+        const INDORE_LOCATION = {
+          latitude: 22.7196,
+          longitude: 75.8577,
+          city: "Indore",
+          state: "Madhya Pradesh",
+          area: "New Palasia",
+          address: "New Palasia, Indore",
+          formattedAddress: "New Palasia, Indore, Madhya Pradesh"
+        };
+
+        const currentLat = location?.latitude;
+        const currentLng = location?.longitude;
+        const isAlreadyIndore =
+          currentLat !== null &&
+          currentLng !== null &&
+          Math.abs(currentLat - 22.7196) < 0.01 &&
+          Math.abs(currentLng - 75.8577) < 0.01;
+
+        if (!isAlreadyIndore) {
+          debugLog("User location is out of service/empty. Automatically falling back to Indore.");
+          try {
+            localStorage.setItem("userLocation", JSON.stringify(INDORE_LOCATION));
+            localStorage.setItem("deliveryAddressMode", "current");
+          } catch (e) {}
+          window.dispatchEvent(new Event("locationUpdated"));
+        }
+      }
+    }
+  }, [
+    loading,
+    zoneLoading,
+    loadingRestaurants,
+    isLoadingFilterResults,
+    currentServiceStatus.isOutOfService,
+    filteredRestaurants.length,
+    location?.latitude,
+    location?.longitude
+  ]);
 
   const loadMoreRestaurants = useCallback(() => {
     setVisibleRestaurantCount((previous) =>
@@ -2772,7 +2817,7 @@ export default function Home() {
             </div>
           )}
 
-          {shouldShowOutOfZoneHome && (
+          {/* {shouldShowOutOfZoneHome && (
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2802,7 +2847,7 @@ export default function Home() {
                 </div>
               </div>
             </motion.div>
-          )}
+          )} */}
 
           {!shouldShowOutOfZoneHome && (
           <div className={`${heroVideo ? 'bg-transparent' : 'bg-white dark:bg-[#0a0a0a]'}`}>

@@ -42,7 +42,7 @@ export default function TermsAndConditionsV2() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-x-hidden">
-      <div className="fixed top-0 left-0 right-0 z-20 bg-white border-b border-gray-200 px-4 py-4 flex items-center gap-4 shadow-sm">
+      <div className="fixed top-0 left-0 right-0 z-20 bg-white border-b border-gray-200 px-4 py-4 safe-top flex items-center gap-4 shadow-sm">
         <button
           onClick={goBack}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -52,7 +52,7 @@ export default function TermsAndConditionsV2() {
         <h1 className="text-lg font-bold text-gray-900">Terms and Conditions</h1>
       </div>
 
-      <div className="w-full px-5 pt-24 pb-6">
+      <div className="w-full px-5 pt-[calc(env(safe-area-inset-top,0px)+96px)] pb-6">
         <div className="max-w-4xl mx-auto">
           {loading ? null : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>

@@ -23,6 +23,11 @@ export default function UnifiedOTPFastLogin() {
   const navigate = useNavigate()
   const submitting = useRef(false)
 
+  const handleSkip = () => {
+    console.log("Skip clicked! Navigating to /food/user");
+    navigate("/food/user", { replace: true })
+  }
+
   // Load logo for branding
   useEffect(() => {
     const loadLogo = async () => {
@@ -291,15 +296,23 @@ export default function UnifiedOTPFastLogin() {
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0">
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pb-[calc(env(safe-area-inset-bottom,0px)+24px)]">
       {/* Top Banner section - Zomato Red */}
-      <div className="w-full bg-[#001A94] dark:bg-[#001166] rounded-b-[2.5rem] p-6 text-center text-white relative overflow-hidden shadow-2xl">
+      <div className="w-full bg-[#001A94] dark:bg-[#001166] rounded-b-[2.5rem] px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+24px)] text-center text-white relative overflow-hidden shadow-2xl">
         <div className="absolute inset-0 bg-white/5 opacity-50 blur-3xl rounded-full -top-1/2 -left-1/4 animate-pulse" />
         <div className="absolute right-0 bottom-0 w-32 h-32 md:w-48 md:h-48 opacity-10 pointer-events-none">
            <svg viewBox="0 0 200 200" fill="currentColor">
               <path d="M100 0C44.8 0 0 44.8 0 100s44.8 100 100 100 100-44.8 100-100S155.2 0 100 0zm0 180c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/>
            </svg>
         </div>
+
+        <button
+          type="button"
+          onClick={handleSkip}
+          className="absolute top-[calc(env(safe-area-inset-top,0px)+36px)] right-6 z-50 cursor-pointer pointer-events-auto text-xs font-semibold uppercase tracking-[0.2em] text-white/90 hover:text-white transition-colors"
+        >
+          Skip
+        </button>
         
         <div className="relative z-10 flex flex-col items-center">
           <motion.div 

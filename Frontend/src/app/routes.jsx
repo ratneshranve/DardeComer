@@ -62,8 +62,8 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Root → Redirect to Food User Module */}
-      <Route path="/" element={<Navigate to="/food/user" replace />} />
+      {/* Root → Redirect to Login */}
+      <Route path="/" element={<Navigate to="/user/auth/login" replace />} />
 
       {/* Auth Module */}
       <Route path="/user/auth/*" element={<AuthApp />} />

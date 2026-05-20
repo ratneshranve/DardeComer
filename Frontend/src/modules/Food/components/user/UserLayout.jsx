@@ -175,8 +175,7 @@ export default function UserLayout() {
     normalizedPath === "/user/home-kitchens" ||
     isProfileRoot ||
     normalizedPath === "") &&
-    hasAnyActiveZone &&
-    !(isHomeRoot && hideHomeBottomNavOutOfZone) // Handle empty string case for root relative to /food
+    !(isHomeRoot && hideHomeBottomNavOutOfZone) // Always show bottom nav on main routes regardless of active zone state
 
   const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250"
 
@@ -210,7 +209,7 @@ export default function UserLayout() {
                   {showBottomNav && <DesktopNavbar showLogo={!isUnder250} />}
                 </div>
                 {/* <LocationPrompt /> */}
-                <main className={showBottomNav ? "md:pt-40" : ""}>
+                <main className={`w-full ${showBottomNav ? "user-main-content-with-nav md:pt-40 md:pb-0" : "user-main-content md:pt-0 md:pb-0"}`}>
                   <Outlet />
                 </main>
                 {showBottomNav && <BottomNavigation />}
