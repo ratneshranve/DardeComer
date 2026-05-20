@@ -1,12 +1,9 @@
 import AppRoutes from './routes'
-import SplashScreen from '../shared/components/SplashScreen'
+// import SplashScreen from '../shared/components/SplashScreen'
 
 function App() {
-  return (
-    <SplashScreen>
-      <AppRoutes />
-    </SplashScreen>
-  )
+  // Splash disabled as requested.
+  return <AppRoutes />
 }
 
 export default App

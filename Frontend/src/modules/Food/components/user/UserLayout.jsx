@@ -3,7 +3,7 @@ import { useEffect, useState, createContext, useContext } from "react"
 import { Loader2 } from "lucide-react"
 import { usePaymentRecovery } from "../../hooks/usePaymentRecovery"
 import { ProfileProvider } from "@food/context/ProfileContext"
-import LocationPrompt from "./LocationPrompt"
+// import LocationPrompt from "./LocationPrompt"
 import { CartProvider } from "@food/context/CartContext"
 import { OrdersProvider } from "@food/context/OrdersContext"
 const debugLog = (...args) => {}
@@ -209,7 +209,7 @@ export default function UserLayout() {
                 <div className="hidden md:block">
                   {showBottomNav && <DesktopNavbar showLogo={!isUnder250} />}
                 </div>
-                <LocationPrompt />
+                {/* <LocationPrompt /> */}
                 <main className={showBottomNav ? "md:pt-40" : ""}>
                   <Outlet />
                 </main>
