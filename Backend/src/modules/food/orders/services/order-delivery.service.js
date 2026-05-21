@@ -367,6 +367,24 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId) {
     at: now,
   };
 
+  const activeTripQuery = {
+    ...HOME_DELIVERY_FILTER,
+    'dispatch.deliveryPartnerId': partnerId,
+    'dispatch.status': 'accepted',
+    orderStatus: { $in: ['created', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'reached_drop'] },
+  };
+  if (identity?._id) {
+    activeTripQuery._id = { $ne: identity._id };
+  }
+
+  const activeTrip = await FoodOrder.findOne(activeTripQuery)
+    .select('_id orderStatus')
+    .lean();
+
+  if (activeTrip) {
+    throw new ValidationError('You already have an active order. Complete it before accepting a new one.');
+  }
+
   const order = await FoodOrder.findOneAndUpdate(
     {
       ...identity,
