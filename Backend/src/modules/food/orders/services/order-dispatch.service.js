@@ -243,6 +243,37 @@ async function filterPartnersByCashLimit(order, partners = []) {
   });
 }
 
+async function filterPartnersWithoutActiveTrip(partners = []) {
+  if (!Array.isArray(partners) || partners.length === 0) return [];
+
+  const partnerObjectIds = partners
+    .map((p) => p?.partnerId)
+    .filter(Boolean)
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  if (partnerObjectIds.length === 0) return [];
+
+  const busyRows = await FoodOrder.aggregate([
+    {
+      $match: {
+        'dispatch.deliveryPartnerId': { $in: partnerObjectIds },
+        'dispatch.status': 'accepted',
+        orderStatus: {
+          $in: ['created', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'reached_drop'],
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$dispatch.deliveryPartnerId',
+      },
+    },
+  ]);
+
+  const busySet = new Set((busyRows || []).map((row) => String(row._id)));
+  return partners.filter((partner) => !busySet.has(String(partner?.partnerId || '')));
+}
+
 export async function getDispatchSettings() {
   return { dispatchMode: "auto" };
 }
@@ -333,7 +364,8 @@ export async function tryAutoAssign(orderId, options = {}) {
 
     const prelimEligible = partners.filter(p => !offeredIds.includes(p.partnerId.toString()));
     const zoneEligible = await filterPartnersByZone(order, prelimEligible);
-    const eligible = await filterPartnersByCashLimit(order, zoneEligible);
+    const cashEligible = await filterPartnersByCashLimit(order, zoneEligible);
+    const eligible = await filterPartnersWithoutActiveTrip(cashEligible);
 
     if (eligible.length === 0) {
       logger.info(`tryAutoAssign: No NEW eligible partners in ${maxKm}km for order ${order._id} after cash-limit filter. Restarting hunt...`);
@@ -342,7 +374,8 @@ export async function tryAutoAssign(orderId, options = {}) {
       const io = getIO();
       if (io && prelimEligible.length > 0) {
         const fallbackZoneEligible = await filterPartnersByZone(order, prelimEligible);
-        const fallbackEligible = await filterPartnersByCashLimit(order, fallbackZoneEligible);
+        const fallbackCashEligible = await filterPartnersByCashLimit(order, fallbackZoneEligible);
+        const fallbackEligible = await filterPartnersWithoutActiveTrip(fallbackCashEligible);
         const payload = buildDeliverySocketPayload(order, order.restaurantId);
         for (const p of fallbackEligible) {
           const roomName = rooms.delivery(p.partnerId);
@@ -500,7 +533,8 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
   try {
     const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, { maxKm: 60, limit: 25 });
     const zoneEligible = await filterPartnersByZone(order, partners);
-    const eligible = await filterPartnersByCashLimit(order, zoneEligible);
+    const cashEligible = await filterPartnersByCashLimit(order, zoneEligible);
+    const eligible = await filterPartnersWithoutActiveTrip(cashEligible);
     const io = getIO();
     const payload = buildDeliverySocketPayload(order, order.restaurantId);
 
