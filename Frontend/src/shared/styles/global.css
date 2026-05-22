@@ -186,7 +186,7 @@
 
 /* Safe-area top spacing for notched devices and status bar clearance */
 .safe-top {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 24px) !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 48px) !important;
 }
 
 /* User app layout padding on page wrapper to maintain page backgrounds */

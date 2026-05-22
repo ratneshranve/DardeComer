@@ -160,7 +160,7 @@ export const HistoryV2 = () => {
        </div>
 
        {/* 2. Selection Tabs (Matched to Image) */}
-       <div className="bg-white px-4 flex items-center gap-8 sticky top-[calc(env(safe-area-inset-top,0px)+76px)] z-[90] border-b border-gray-100">
+       <div className="bg-white px-4 flex items-center gap-8 sticky top-[calc(env(safe-area-inset-top,0px)+100px)] z-[90] border-b border-gray-100">
           {['daily', 'weekly', 'monthly'].map((tab) => (
              <button
                key={tab}
@@ -174,7 +174,7 @@ export const HistoryV2 = () => {
        </div>
 
        {/* 3. Filter Controls (Matched to Image) */}
-       <div className="bg-white px-4 py-4 flex gap-3 sticky top-[calc(env(safe-area-inset-top,0px)+132px)] z-[80]">
+       <div className="bg-white px-4 py-4 flex gap-3 sticky top-[calc(env(safe-area-inset-top,0px)+156px)] z-[80]">
           <button 
              onClick={() => { setShowDatePicker(!showDatePicker); setShowTripTypePicker(false); }}
              className="flex-1 px-4 py-3 bg-[#f8f9fa] border border-gray-100 rounded-xl flex items-center justify-between text-gray-800"
@@ -194,7 +194,7 @@ export const HistoryV2 = () => {
        {/* Dropdowns */}
        <AnimatePresence>
           {showDatePicker && (
-             <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="fixed left-4 right-4 top-[185px] z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-[300px] overflow-y-auto p-2">
+             <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="fixed left-4 right-4 top-[209px] z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-[300px] overflow-y-auto p-2">
                 {recentDates.map((date, idx) => (
                    <button 
                       key={idx} 
@@ -207,7 +207,7 @@ export const HistoryV2 = () => {
              </motion.div>
           )}
           {showTripTypePicker && (
-             <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="fixed right-4 top-[185px] w-48 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2">
+             <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="fixed right-4 top-[209px] w-48 z-[200] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2">
                 {tripTypes.map((type, idx) => (
                    <button 
                       key={idx} 
