@@ -52,7 +52,7 @@ export default function TermsAndConditionsV2() {
         <h1 className="text-lg font-bold text-gray-900">Terms and Conditions</h1>
       </div>
 
-      <div className="w-full px-5 pt-[calc(env(safe-area-inset-top,0px)+96px)] pb-6">
+      <div className="w-full px-5 pt-[calc(env(safe-area-inset-top,0px)+120px)] pb-6">
         <div className="max-w-4xl mx-auto">
           {loading ? null : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>

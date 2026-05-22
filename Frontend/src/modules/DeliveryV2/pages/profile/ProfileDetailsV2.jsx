@@ -436,7 +436,7 @@ export const ProfileDetailsV2 = () => {
   return (
     <div className="min-h-screen bg-[#FDFEFE] font-poppins pb-24">
       {/* ─── HEADER ─── */}
-      <div className="fixed top-0 inset-x-0 h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 px-4 flex items-center justify-between">
+      <div className="fixed top-0 inset-x-0 py-4 bg-white/80 backdrop-blur-xl border-b border-gray-100 z-50 px-4 flex items-center justify-between safe-top">
         <div className="flex items-center gap-4">
           <button onClick={goBack} className="p-2 hover:bg-gray-100 rounded-xl transition-all active:scale-90">
             <ArrowLeft className="w-5 h-5 text-gray-700" />
@@ -448,7 +448,7 @@ export const ProfileDetailsV2 = () => {
         </div>
       </div>
 
-      <div className="pt-20 px-4 space-y-6 max-w-lg mx-auto">
+      <div className="pt-[calc(env(safe-area-inset-top,0px)+120px)] px-4 space-y-6 max-w-lg mx-auto">
         {/* ─── PROFILE AVATAR BLOCK ─── */}
         <div className="relative group">
            <div className="w-32 h-32 rounded-[2.5rem] bg-gray-100 border-2 border-white shadow-2xl mx-auto overflow-hidden relative">
