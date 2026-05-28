@@ -10,6 +10,7 @@ import { useSearchOverlay, useLocationSelector } from "@food/components/user/Use
 import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { diningAPI } from "@food/api"
+import { useZone } from "@food/hooks/useZone"
 import PageNavbar from "@food/components/user/PageNavbar"
 import OptimizedImage from "@food/components/OptimizedImage"
 const debugLog = (...args) => {}
@@ -183,6 +184,17 @@ export default function Dining() {
     return location
   }, [defaultSavedAddress, defaultSavedAddressLocation, location])
 
+  const { zoneId } = useZone(effectiveLocation)
+
+  const effectiveZoneId = useMemo(() => {
+    if (zoneId) return zoneId;
+    try {
+      return localStorage.getItem("userZoneId") || null;
+    } catch {
+      return null;
+    }
+  }, [zoneId]);
+
   const [categories, setCategories] = useState([])
   const [restaurantList, setRestaurantList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -199,10 +211,15 @@ export default function Dining() {
     const fetchDiningData = async () => {
       try {
         setLoading(true)
+        const params = effectiveLocation?.city ? { city: effectiveLocation.city } : {}
+        if (effectiveZoneId) {
+          params.zoneId = effectiveZoneId
+        }
+
         const [bannerResponse, cats, rests] = await Promise.all([
           diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
-          diningAPI.getRestaurants(effectiveLocation?.city ? { city: effectiveLocation.city } : {}),
+          diningAPI.getRestaurants(params),
         ])
 
         const heroBanners = Array.isArray(bannerResponse?.data?.data?.banners)
@@ -234,7 +251,7 @@ export default function Dining() {
       }
     }
     fetchDiningData()
-  }, [effectiveLocation?.city])
+  }, [effectiveLocation?.city, effectiveZoneId])
 
   const safeCategories = useMemo(() => {
     return (Array.isArray(categories) ? categories : [])

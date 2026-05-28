@@ -175,7 +175,6 @@ export default function UserLayout() {
     normalizedPath === "/user/home-kitchens" ||
     isProfileRoot ||
     normalizedPath === "") &&
-    hasAnyActiveZone &&
     !(isHomeRoot && hideHomeBottomNavOutOfZone) // Handle empty string case for root relative to /food
 
   const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250"

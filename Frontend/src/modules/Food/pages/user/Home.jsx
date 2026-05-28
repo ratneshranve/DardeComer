@@ -2251,15 +2251,13 @@ export default function Home() {
     };
   }, [isOutOfService, zoneLoading, isSavedAddressOutOfService, savedAddressZoneLoading, hasSavedAddress, location]);
 
-  const shouldShowOutOfZoneHome =
-    currentServiceStatus.isOutOfService ||
-    (!loadingRestaurants && !isLoadingFilterResults && filteredRestaurants.length === 0);
+  const shouldShowOutOfZoneHome = false;
 
   useEffect(() => {
     try {
       localStorage.setItem(
         "hideUserBottomNavOutOfZone",
-        currentServiceStatus.isOutOfService ? "true" : "false",
+        "false",
       );
     } catch { }
     window.dispatchEvent(new Event("zoneVisibilityChanged"));
@@ -2848,17 +2846,12 @@ export default function Home() {
                 }}
               >
                 <div className="flex gap-4 sm:gap-6 px-4">
-                  {/* Duplicate items twice for seamless JS-based infinite loop */}
-                  {[...Array(2)].map((_, i) => (
-                    <React.Fragment key={`batch-${i}`}>
-                      {displayCategories.map((category, index) => (
-                        <MemoizedCategoryItem
-                          key={`cat-${i}-${category.id || index}`}
-                          category={category}
-                          index={index}
-                        />
-                      ))}
-                    </React.Fragment>
+                  {displayCategories.map((category, index) => (
+                    <MemoizedCategoryItem
+                      key={`cat-${category.id || index}`}
+                      category={category}
+                      index={index}
+                    />
                   ))}
                 </div>
               </div>

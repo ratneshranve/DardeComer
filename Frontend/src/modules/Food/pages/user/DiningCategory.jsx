@@ -10,6 +10,7 @@ import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { FaLocationDot } from "react-icons/fa6"
 import { diningAPI } from "@food/api"
+import { useZone } from "@food/hooks/useZone"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 
 const slugifyRestaurant = (value) =>
@@ -54,7 +55,59 @@ export default function DiningCategory() {
   const goBack = useAppBackNavigation()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { addFavorite, removeFavorite, isFavorite, getDefaultAddress } = useProfile()
+
+  const defaultSavedAddress = useMemo(() => getDefaultAddress?.() || null, [getDefaultAddress]);
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0]);
+      const lat = parseFloat(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+
+    const lat = parseFloat(defaultSavedAddress?.latitude || defaultSavedAddress?.lat);
+    const lng = parseFloat(defaultSavedAddress?.longitude || defaultSavedAddress?.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+
+  const effectiveLocation = useMemo(() => {
+    let mode = "current";
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current";
+    } catch {
+      mode = "current";
+    }
+
+    if (mode === "saved" && defaultSavedAddress) {
+      return {
+        latitude: defaultSavedAddressLocation?.latitude ?? null,
+        longitude: defaultSavedAddressLocation?.longitude ?? null,
+        area: defaultSavedAddress.area || defaultSavedAddress.street || "",
+        city: defaultSavedAddress.city || "",
+        state: defaultSavedAddress.state || "",
+      };
+    }
+
+    return location;
+  }, [defaultSavedAddress, defaultSavedAddressLocation, location]);
+
+  const { zoneId } = useZone(effectiveLocation);
+
+  const effectiveZoneId = useMemo(() => {
+    if (zoneId) return zoneId;
+    try {
+      return localStorage.getItem("userZoneId") || null;
+    } catch {
+      return null;
+    }
+  }, [zoneId]);
 
   const [restaurants, setRestaurants] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -64,11 +117,18 @@ export default function DiningCategory() {
     const fetchRestaurants = async () => {
       try {
         setIsLoading(true)
-        const response = await diningAPI.getRestaurants(
-          category
-            ? (location?.city ? { category, city: location.city } : { category })
-            : (location?.city ? { city: location.city } : {})
-        )
+        if (!effectiveZoneId) {
+          setRestaurants([])
+          setIsLoading(false)
+          return
+        }
+
+        const params = category
+          ? (location?.city ? { category, city: location.city } : { category })
+          : (location?.city ? { city: location.city } : {})
+        params.zoneId = effectiveZoneId;
+
+        const response = await diningAPI.getRestaurants(params)
 
         if (response?.data?.success) {
           const mapped = (Array.isArray(response.data.data) ? response.data.data : []).map((restaurant) => {
@@ -110,7 +170,7 @@ export default function DiningCategory() {
     }
 
     fetchRestaurants()
-  }, [category, location?.city])
+  }, [category, location?.city, effectiveZoneId])
 
   const cityName = location?.city || "Select location"
   const heading = useMemo(() => formatCategoryHeading(category), [category])

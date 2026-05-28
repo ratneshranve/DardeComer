@@ -1402,7 +1402,16 @@ export default function CategoryPage() {
 
   if (!shouldShowContent) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-neutral-500 text-lg">No data for selected address/zone.</div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-[#0a0a0a]">
+        <div className="text-neutral-500 text-lg mb-6">No data for selected address/zone.</div>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-6 py-3 bg-[#001A94] text-white rounded-full font-bold shadow-md hover:bg-blue-900 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Go Back
+        </button>
+      </div>
     );
   }
 

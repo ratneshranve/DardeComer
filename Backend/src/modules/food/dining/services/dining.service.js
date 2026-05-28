@@ -341,6 +341,7 @@ export async function listDiningRestaurantsPublic(query = {}) {
     const filter = { isEnabled: true };
     const categoryValue = String(query.category || '').trim();
     const cityValue = String(query.city || '').trim();
+    const zoneIdValue = String(query.zoneId || '').trim();
 
     if (categoryValue) {
         const category = await FoodDiningCategory.findOne({
@@ -355,18 +356,22 @@ export async function listDiningRestaurantsPublic(query = {}) {
         filter.categoryIds = category._id;
     }
 
+    const matchCriteria = {};
+    if (cityValue) {
+        matchCriteria.$or = [
+            { city: { $regex: cityValue, $options: 'i' } },
+            { 'location.city': { $regex: cityValue, $options: 'i' } }
+        ];
+    }
+    if (zoneIdValue && mongoose.Types.ObjectId.isValid(zoneIdValue)) {
+        matchCriteria.zoneId = new mongoose.Types.ObjectId(zoneIdValue);
+    }
+
     const diningDocs = await FoodDiningRestaurant.find(filter)
         .populate({
             path: 'restaurantId',
-            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo',
-            match: cityValue
-                ? {
-                    $or: [
-                        { city: { $regex: cityValue, $options: 'i' } },
-                        { 'location.city': { $regex: cityValue, $options: 'i' } }
-                    ]
-                }
-                : {}
+            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo zoneId',
+            match: Object.keys(matchCriteria).length > 0 ? matchCriteria : {}
         })
         .populate('categoryIds', 'name slug imageUrl')
         .lean();
@@ -385,34 +390,43 @@ export async function listDiningRestaurantsPublic(query = {}) {
             }
         }));
 
-    const listedIds = new Set(normalizedDining.map((item) => String(item?._id || '')));
-    const fallbackFilter = {
-        'diningSettings.isEnabled': true,
-        _id: { $nin: Array.from(listedIds).filter(Boolean) }
-    };
+    let fallbackItems = [];
+    
+    // Only fetch fallback restaurants if no specific category was requested
+    if (!categoryValue) {
+        const listedIds = new Set(normalizedDining.map((item) => String(item?._id || '')));
+        const fallbackFilter = {
+            'diningSettings.isEnabled': true,
+            _id: { $nin: Array.from(listedIds).filter(Boolean) }
+        };
 
-    if (cityValue) {
-        fallbackFilter.$or = [
-            { city: { $regex: cityValue, $options: 'i' } },
-            { 'location.city': { $regex: cityValue, $options: 'i' } }
-        ];
-    }
-
-    const fallbackRestaurants = await FoodRestaurant.find(fallbackFilter)
-        .select('restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo')
-        .lean();
-
-    const fallbackItems = fallbackRestaurants.map((restaurant) => ({
-        ...restaurant,
-        restaurant,
-        categories: [],
-        diningSettings: {
-            isEnabled: true,
-            maxGuests: Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6),
-            pureVegRestaurant: restaurant?.pureVegRestaurant === true,
-            diningType: restaurant?.diningSettings?.diningType || ''
+        if (cityValue) {
+            fallbackFilter.$or = [
+                { city: { $regex: cityValue, $options: 'i' } },
+                { 'location.city': { $regex: cityValue, $options: 'i' } }
+            ];
         }
-    }));
+        
+        if (zoneIdValue && mongoose.Types.ObjectId.isValid(zoneIdValue)) {
+            fallbackFilter.zoneId = new mongoose.Types.ObjectId(zoneIdValue);
+        }
+
+        const fallbackRestaurants = await FoodRestaurant.find(fallbackFilter)
+            .select('restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo zoneId')
+            .lean();
+
+        fallbackItems = fallbackRestaurants.map((restaurant) => ({
+            ...restaurant,
+            restaurant,
+            categories: [],
+            diningSettings: {
+                isEnabled: true,
+                maxGuests: Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6),
+                pureVegRestaurant: restaurant?.pureVegRestaurant === true,
+                diningType: restaurant?.diningSettings?.diningType || ''
+            }
+        }));
+    }
 
     return [...normalizedDining, ...fallbackItems];
 }

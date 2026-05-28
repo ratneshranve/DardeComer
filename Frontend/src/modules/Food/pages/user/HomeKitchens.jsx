@@ -43,9 +43,60 @@ const pickRestaurantImage = (restaurant) => {
 }
 
 export default function HomeKitchens() {
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { addFavorite, removeFavorite, isFavorite, getDefaultAddress } = useProfile()
   const { location: userLocation } = useLocation()
-  const { zoneId } = useZone(userLocation)
+
+  const defaultSavedAddress = useMemo(() => getDefaultAddress?.() || null, [getDefaultAddress]);
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0]);
+      const lat = parseFloat(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+
+    const lat = parseFloat(defaultSavedAddress?.latitude || defaultSavedAddress?.lat);
+    const lng = parseFloat(defaultSavedAddress?.longitude || defaultSavedAddress?.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+
+  const effectiveLocation = useMemo(() => {
+    let mode = "current";
+    try {
+      mode = localStorage.getItem("deliveryAddressMode") || "current";
+    } catch {
+      mode = "current";
+    }
+
+    if (mode === "saved" && defaultSavedAddress) {
+      return {
+        latitude: defaultSavedAddressLocation?.latitude ?? null,
+        longitude: defaultSavedAddressLocation?.longitude ?? null,
+        area: defaultSavedAddress.area || defaultSavedAddress.street || "",
+        city: defaultSavedAddress.city || "",
+        state: defaultSavedAddress.state || "",
+      };
+    }
+
+    return userLocation;
+  }, [defaultSavedAddress, defaultSavedAddressLocation, userLocation]);
+
+  const { zoneId } = useZone(effectiveLocation)
+
+  const effectiveZoneId = useMemo(() => {
+    if (zoneId) return zoneId;
+    try {
+      return localStorage.getItem("userZoneId") || null;
+    } catch {
+      return null;
+    }
+  }, [zoneId]);
   const [homeKitchens, setHomeKitchens] = useState([])
   const [loading, setLoading] = useState(true)
   const showRestaurantsSkeleton = useDelayedLoading(loading)
@@ -56,10 +107,13 @@ export default function HomeKitchens() {
     const fetchHomeKitchens = async () => {
       try {
         setLoading(true)
-        const params = { limit: 300, _ts: Date.now() }
-        if (zoneId) {
-          params.zoneId = zoneId
+        if (!effectiveZoneId) {
+          setHomeKitchens([])
+          setLoading(false)
+          return
         }
+
+        const params = { limit: 300, _ts: Date.now(), zoneId: effectiveZoneId }
 
         const response = await restaurantAPI.getRestaurants(params, { noCache: true })
         const list =
@@ -114,7 +168,7 @@ export default function HomeKitchens() {
     return () => {
       cancelled = true
     }
-  }, [zoneId])
+  }, [effectiveZoneId])
 
   const hasHomeKitchens = useMemo(() => homeKitchens.length > 0, [homeKitchens.length])
 
