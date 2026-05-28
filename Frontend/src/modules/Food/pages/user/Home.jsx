@@ -3906,7 +3906,7 @@ export default function Home() {
             >
               <h3 className="text-base font-bold text-gray-900">Choose Veg Filter</h3>
               <p className="text-xs text-gray-600 mt-1 mb-4">
-                Veg mode ON hai. Select how you want to filter restaurants and dishes.
+                Veg mode is ON. Select how you want to filter restaurants and dishes.
               </p>
 
               <button
@@ -3919,7 +3919,7 @@ export default function Home() {
               >
                 <div className="text-sm font-semibold text-gray-900">Pure Veg</div>
                 <div className="text-xs text-gray-600 mt-1">
-                  Sirf pure veg restaurants dikhenge, aur unhi ki dishes.
+                  Only pure veg restaurants and their dishes will be shown.
                 </div>
               </button>
 
@@ -3933,7 +3933,7 @@ export default function Home() {
               >
                 <div className="text-sm font-semibold text-gray-900">Only Veg</div>
                 <div className="text-xs text-gray-600 mt-1">
-                  Pure veg aur mixed restaurants me se sirf veg dishes dikhenge.
+                  Only veg dishes from both pure veg and mixed restaurants will be shown.
                 </div>
               </button>
             </motion.div>
