@@ -541,6 +541,65 @@ const MemoizedFilterButton = React.memo(({ filter, isActive, onToggle }) => {
   );
 });
 
+// Helper for Explore More styling
+const getExploreItemDetails = (id, label) => {
+  const normalized = String(label || id || "").toLowerCase();
+  
+  if (normalized.includes("offer")) {
+    return {
+      gradient: "from-[#FFF4F2] to-[#FFF0EC] dark:from-[#2a1714] dark:to-[#221310]",
+      border: "border-orange-100/70 dark:border-orange-900/30",
+      hoverBorder: "group-hover:border-orange-300 dark:group-hover:border-orange-850/50",
+      textColor: "text-[#D93F21] dark:text-[#FF8A75]",
+      subColor: "text-orange-700/60 dark:text-orange-300/40",
+      subtitle: "Flat Discounts",
+      hoverShadow: "shadow-orange-500/10 dark:shadow-orange-950/20",
+      glowBg: "bg-orange-400/20",
+    };
+  }
+  if (normalized.includes("gourmet")) {
+    return {
+      gradient: "from-[#F3F5FF] to-[#ECF0FF] dark:from-[#15192e] dark:to-[#111424]",
+      border: "border-indigo-100/70 dark:border-indigo-900/30",
+      hoverBorder: "group-hover:border-indigo-300 dark:group-hover:border-indigo-850/50",
+      textColor: "text-[#001A94] dark:text-[#809BFF]",
+      subColor: "text-[#001A94]/60 dark:text-[#809BFF]/40",
+      subtitle: "Premium Dining",
+      hoverShadow: "shadow-blue-500/10 dark:shadow-blue-950/20",
+      glowBg: "bg-blue-400/20",
+    };
+  }
+  // Default is collections / favorites / any other custom
+  return {
+    gradient: "from-[#F2FCF5] to-[#ECF9F0] dark:from-[#132819] dark:to-[#0f2014]",
+    border: "border-emerald-100/70 dark:border-emerald-900/30",
+    hoverBorder: "group-hover:border-emerald-300 dark:group-hover:border-emerald-850/50",
+    textColor: "text-[#107C41] dark:text-[#63E297]",
+    subColor: "text-[#107C41]/60 dark:text-[#63E297]/40",
+    subtitle: "Your Favorites",
+    hoverShadow: "shadow-emerald-500/10 dark:shadow-emerald-950/20",
+    glowBg: "bg-emerald-400/20",
+  };
+};
+
+// Local premium skeleton for Explore More to prevent Cumulative Layout Shift (CLS)
+const LocalExploreSkeleton = () => (
+  <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5 px-4 w-full">
+    {Array.from({ length: 3 }).map((_, index) => (
+      <div
+        key={`explore-skeleton-${index}`}
+        className="h-20 sm:h-24 md:h-28 rounded-[20px] border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40 p-3 sm:p-4 flex items-center justify-between animate-pulse"
+      >
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <div className="h-4 sm:h-5 bg-gray-200 dark:bg-gray-800 rounded-md w-3/4" />
+          <div className="h-3 bg-gray-100 dark:bg-gray-800/60 rounded-md w-1/2" />
+        </div>
+        <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-gray-200/80 dark:bg-gray-800/60 rounded-xl flex-shrink-0" />
+      </div>
+    ))}
+  </div>
+);
+
 export default function Home() {
   const HERO_BANNER_AUTO_SLIDE_MS = 3500;
   const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -2979,61 +3038,70 @@ export default function Home() {
             <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-2 sm:mb-3 lg:mb-4 px-4">
               {exploreMoreHeading}
             </h2>
-            <div
-              className="flex justify-center gap-4 sm:gap-6 lg:gap-8 overflow-x-auto scrollbar-hide pb-2 lg:pb-3 min-h-[132px] w-full px-4"
-              style={{
-                scrollbarWidth: "none",
-                msOverflowStyle: "none",
-              }}>
+            <div className="w-full pb-2 lg:pb-3">
               {showExploreSkeleton ? (
-                <div className="w-full min-w-full shrink-0">
-                  <ExploreGridSkeleton />
-                </div>
+                <LocalExploreSkeleton />
               ) : (
-                finalExploreItems.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 30, scale: 0.8 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 260,
-                      damping: 20,
-                      delay: index * 0.1,
-                    }}
-                    whileHover={{ y: -8 }}
-                    whileTap={{ scale: 0.92 }}>
-                    <Link to={item.href} className="flex-shrink-0">
-                      <div className="flex flex-col items-center gap-3 w-24 sm:w-28 group">
-                      <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-[0_8px_20px_-3px_rgba(0,0,0,0.12)] group-hover:shadow-[0_15px_30px_-5px_rgba(0,0,0,0.2)] transition-all duration-500 overflow-hidden p-3 border border-gray-100/80 dark:border-gray-800 group-hover:border-[#001A94]/40">
-                        {/* Colorful Glow Background */}
-                        <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${index % 3 === 0 ? 'from-blue-600 to-[#001A94]' : index % 3 === 1 ? 'from-indigo-500 to-blue-700' : 'from-blue-400 to-indigo-600'}`} />
+                <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5 px-4 w-full">
+                  {finalExploreItems.map((item, index) => {
+                    const details = getExploreItemDetails(item.id, item.label);
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 260,
+                          damping: 20,
+                          delay: index * 0.08,
+                        }}
+                        whileHover={{ y: -6, scale: 1.02 }}
+                        whileTap={{ scale: 0.96 }}
+                        className="w-full"
+                      >
+                        <Link to={item.href} className="block w-full group">
+                          <div className={`relative h-20 sm:h-24 md:h-28 rounded-[20px] bg-gradient-to-br ${details.gradient} border ${details.border} ${details.hoverBorder} transition-all duration-300 overflow-hidden flex items-center justify-between p-3 sm:p-4 shadow-sm hover:shadow-lg ${details.hoverShadow}`}>
+                            
+                            {/* Ambient Glow behind the icon on hover */}
+                            <div className={`absolute -right-4 -bottom-4 w-20 h-20 sm:w-28 sm:h-28 rounded-full ${details.glowBg} opacity-0 group-hover:opacity-100 blur-2xl transition-opacity duration-500 pointer-events-none`} />
 
-                        {/* Shine Effect */}
-                        <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-                          <motion.div
-                            animate={{ x: ['-200%', '200%'] }}
-                            transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 4 + index * 0.5 }}
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg] w-[150%]"
-                          />
-                        </div>
+                            {/* Shine Effect */}
+                            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[20px]">
+                              <motion.div
+                                animate={{ x: ['-200%', '200%'] }}
+                                transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 + index }}
+                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-[-25deg] w-[150%] h-full"
+                              />
+                            </div>
 
-                        <OptimizedImage
-                          src={item.image}
-                          alt={item.label}
-                          className="w-full h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-110"
-                          width={112}
-                          height={112}
-                        />
-                      </div>
-                      <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors text-center tracking-wide">
-                        {item.label}
-                      </span>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))
+                            {/* Left side: Text Details */}
+                            <div className="flex flex-col min-w-0 z-10 text-left">
+                              <span className={`font-black text-xs sm:text-sm md:text-base tracking-tight leading-none ${details.textColor}`}>
+                                {item.label}
+                              </span>
+                              <span className="text-[9px] sm:text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-1 sm:mt-1.5 leading-none">
+                                {details.subtitle}
+                              </span>
+                            </div>
+
+                            {/* Right side: Icon Image */}
+                            <div className="relative w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 flex-shrink-0 z-10 flex items-center justify-center">
+                              <OptimizedImage
+                                src={item.image}
+                                alt={item.label}
+                                className="w-full h-full object-contain transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 ease-out"
+                                width={96}
+                                height={96}
+                              />
+                            </div>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </motion.section>

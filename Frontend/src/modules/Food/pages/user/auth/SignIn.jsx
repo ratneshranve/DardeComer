@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link, useSearchParams } from "react-router-dom"
-import { AlertCircle, Loader2 } from "lucide-react"
+import { AlertCircle, Loader2, ArrowRight, ShieldCheck } from "lucide-react"
+import { motion } from "framer-motion"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { authAPI } from "@food/api"
 import loginBanner from "@food/assets/loginbanner.png"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-
 
 export default function SignIn() {
   const navigate = useNavigate()
@@ -114,34 +115,74 @@ export default function SignIn() {
   }
 
   return (
-    <AnimatedPage className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] flex items-center justify-center p-4">
-      {/* Background decoration (desktop only) */}
-      <div className="fixed inset-0 z-0 hidden md:block opacity-40">
-        <img src={loginBanner} alt="" className="w-full h-full object-cover blur-sm" />
-        <div className="absolute inset-0 bg-white/60 dark:bg-black/80" />
-      </div>
-
-      <div className="w-full max-w-[450px] bg-white dark:bg-[#1a1a1a] rounded-xl shadow-2xl relative z-10 overflow-hidden border border-gray-100 dark:border-gray-800">
-        {/* Banner (Mobile Only) */}
-        <div className="md:hidden w-full h-[180px] relative">
-          <img src={loginBanner} alt="Food Banner" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-[#1a1a1a] to-transparent" />
+    <AnimatedPage className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col md:flex-row overflow-hidden">
+      
+      {/* Left side: Branding / Banner (Desktop) & Top half (Mobile) */}
+      <div className="relative w-full md:w-5/12 lg:w-1/2 h-[35vh] md:h-screen flex-shrink-0 bg-[#001A94] overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img src={loginBanner} alt="Food Banner" className="w-full h-full object-cover opacity-30 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#00157A] via-[#001A94]/80 to-transparent md:bg-gradient-to-r" />
+        </div>
+        
+        {/* Animated decorative shapes */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+           <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-500/20 blur-[80px]" />
+           <div className="absolute bottom-[10%] -right-[20%] w-[60%] h-[60%] rounded-full bg-indigo-400/20 blur-[100px]" />
         </div>
 
-        <div className="p-6 sm:p-8 md:p-10 space-y-6 md:space-y-8">
-          <div className="text-center space-y-2 md:space-y-3">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+        {/* Branding content */}
+        <div className="relative z-10 flex flex-col justify-end md:justify-center h-full p-6 sm:p-8 md:p-12 lg:p-16 text-white">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="hidden md:block"
+          >
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-black mb-6 leading-tight tracking-tight">
+              Delicious food,<br/>
+              <span className="text-blue-300">delivered to you.</span>
+            </h1>
+            <p className="text-blue-100 text-lg lg:text-xl max-w-md font-medium leading-relaxed">
+              Join us to explore the best restaurants around you and enjoy exclusive offers.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:hidden text-center pb-6"
+          >
+            <h1 className="text-3xl font-black text-white tracking-tight">Welcome Back</h1>
+            <p className="text-blue-100/90 text-sm mt-1.5 font-medium">Sign in to continue</p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Right side: Form Container */}
+      <div className="flex-1 flex items-start md:items-center justify-center p-4 sm:p-6 md:p-12 lg:p-16 relative -mt-8 md:mt-0 z-10 bg-white dark:bg-[#0a0a0a] rounded-t-[32px] md:rounded-none shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-none min-h-[65vh]">
+        
+        {/* Mobile drag handle indicator */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full md:hidden" />
+
+        <div className="w-full max-w-[420px] space-y-8 md:space-y-10 mt-6 md:mt-0">
+          
+          <div className="hidden md:block text-center md:text-left space-y-2.5">
+            <h2 className="text-3xl lg:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
               Login or Signup
             </h2>
-            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
-              Enter your phone number to continue
+            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">
+              Enter your phone number to proceed
             </p>
           </div>
 
-          <form id="user-signin-form" onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <div className="relative flex items-center">
-                <div className="flex items-center px-4 h-12 md:h-14 border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white rounded-lg border-r-0 rounded-r-none font-medium">
+          <form id="user-signin-form" onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2.5 relative group">
+              <label htmlFor="phone" className="text-sm font-bold text-gray-700 dark:text-gray-300 ml-1 block">
+                Phone Number
+              </label>
+              <div className={`relative flex items-center shadow-sm rounded-2xl bg-gray-50 dark:bg-[#151515] border-2 transition-all duration-300 overflow-hidden ${error ? 'border-red-500/50 focus-within:border-red-500 focus-within:ring-4 focus-within:ring-red-500/10' : 'border-gray-200 dark:border-gray-800 focus-within:border-[#001A94] focus-within:ring-4 focus-within:ring-[#001A94]/10'}`}>
+                <div className="flex items-center justify-center px-4 md:px-5 h-14 bg-gray-100/80 dark:bg-black/40 text-gray-700 dark:text-gray-300 font-bold border-r border-gray-200 dark:border-gray-800">
                   <span>+91</span>
                 </div>
                 <Input
@@ -151,26 +192,30 @@ export default function SignIn() {
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={10}
-                  placeholder="Phone number"
+                  placeholder="Enter 10-digit number"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={`flex-1 h-12 md:h-14 text-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-700 rounded-lg rounded-l-none focus-visible:ring-1 focus-visible:ring-[#EB590E] focus-visible:border-[#EB590E] ${error ? "border-red-500" : ""} transition-all`}
+                  className="flex-1 h-14 text-lg bg-transparent border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-900 dark:text-white font-semibold placeholder:text-gray-400 placeholder:font-medium"
                   aria-invalid={error ? "true" : "false"}
                 />
               </div>
 
               {error && (
-                <div className="flex items-center gap-1.5 text-xs text-red-500 pl-1">
-                  <AlertCircle className="h-3.5 w-3.5" />
+                <motion.div 
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-1.5 text-sm text-red-500 font-semibold pl-2 mt-2"
+                >
+                  <AlertCircle className="h-4 w-4" />
                   <span>{error}</span>
-                </div>
+                </motion.div>
               )}
             </div>
 
             <Button
               type="submit"
               form="user-signin-form"
-              className="w-full h-12 md:h-14 bg-[#EB590E] hover:bg-[#D94F0C] text-white font-bold text-base md:text-lg rounded-lg transition-all hover:shadow-lg active:scale-[0.98]"
+              className="w-full h-14 bg-gradient-to-r from-[#001A94] to-[#0026D1] hover:from-[#00157A] hover:to-blue-700 text-white font-bold text-lg rounded-2xl transition-all shadow-[0_8px_25px_-5px_rgba(0,26,148,0.4)] hover:shadow-[0_12px_30px_-5px_rgba(0,26,148,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] group flex items-center justify-center"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -179,28 +224,31 @@ export default function SignIn() {
                   Sending OTP...
                 </>
               ) : (
-                "Continue"
+                <>
+                  Continue
+                  <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1.5 transition-transform duration-300" />
+                </>
               )}
             </Button>
           </form>
 
           {/* Social login separator */}
-          <div className="relative">
+          <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-200 dark:border-gray-800" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-[#1a1a1a] px-3 text-gray-500 dark:text-gray-400 font-medium">
+              <span className="bg-white dark:bg-[#0a0a0a] px-4 text-gray-400 dark:text-gray-500 font-bold tracking-widest">
                 or
               </span>
             </div>
           </div>
 
           {/* Social login buttons */}
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-4">
             <button
               type="button"
-              className="flex items-center justify-center gap-3 w-full h-12 md:h-14 bg-white dark:bg-[#2a2a2a] border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-[#333] transition-colors"
+              className="flex items-center justify-center gap-3 w-full h-14 bg-white dark:bg-[#151515] border-2 border-gray-200 dark:border-gray-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-[#1a1a1a] hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm transition-all duration-300 active:scale-[0.98] font-bold text-gray-700 dark:text-gray-200 text-base"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -220,29 +268,36 @@ export default function SignIn() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.14-4.53z"
                 />
               </svg>
-              <span className="text-gray-700 dark:text-gray-200 font-medium">Continue with Google</span>
+              <span>Continue with Google</span>
             </button>
           </div>
 
-          <div className="text-center text-xs md:text-sm text-gray-500 dark:text-gray-400 pt-2">
-            <p className="mb-2">By continuing, you agree to our</p>
-            <div className="flex justify-center gap-2 flex-wrap">
-              <Link to="/profile/terms" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-                Terms of Service
-              </Link>
-              <span className="text-gray-300 dark:text-gray-700">•</span>
-              <Link to="/profile/privacy" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-                Privacy Policy
-              </Link>
-              <span className="text-gray-300 dark:text-gray-700">•</span>
-              <Link to="/profile/refund" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-                Content Policy
-              </Link>
+          <div className="flex flex-col items-center justify-center pt-8 pb-4">
+            <div className="flex items-center gap-1.5 text-xs text-[#107C41] dark:text-[#63E297] mb-6 font-bold bg-[#F2FCF5] dark:bg-[#132819] border border-emerald-100 dark:border-emerald-900/50 px-3.5 py-1.5 rounded-full shadow-sm">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Secure Login</span>
+            </div>
+            
+            <div className="text-center text-[11px] md:text-xs text-gray-500 dark:text-gray-400">
+              <p className="mb-2">By continuing, you agree to our</p>
+              <div className="flex justify-center gap-3 flex-wrap font-bold">
+                <Link to="/profile/terms" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Terms of Service
+                </Link>
+                <span className="text-gray-300 dark:text-gray-700">•</span>
+                <Link to="/profile/privacy" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Privacy Policy
+                </Link>
+                <span className="text-gray-300 dark:text-gray-700">•</span>
+                <Link to="/profile/refund" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Content Policy
+                </Link>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
     </AnimatedPage>
   )
 }
-

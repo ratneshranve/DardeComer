@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
-import { Phone, Lock, ArrowRight, ShieldCheck, Loader2 } from "lucide-react"
+import { Phone, Lock, ArrowRight, ShieldCheck, Loader2, User as UserIcon } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI, userAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
+import loginBanner from "@food/assets/loginbanner.png"
 
 export default function UnifiedOTPFastLogin() {
   const companyName = useCompanyName()
@@ -277,220 +278,240 @@ export default function UnifiedOTPFastLogin() {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
   }
 
-  // Service images (served from public folder)
-  const foodIcon = "/super-app/food.png"
-  const taxiIcon = "/super-app/taxi.png"
-  const groceryIcon = "/super-app/grocery.png"
-  const hotelIcon = "/super-app/hotel.png"
-
-  const services = [
-    { id: 'food', name: 'Food Delivery', icon: foodIcon, label: 'Dar De Comer', color: 'bg-red-500', shadow: 'shadow-red-200' },
-    { id: 'taxi', name: 'Taxi', icon: taxiIcon, label: 'Taxi', color: 'bg-yellow-400', shadow: 'shadow-yellow-200' },
-    { id: 'grocery', name: 'Quick Commerce', icon: groceryIcon, label: 'Blinkit', color: 'bg-green-500', shadow: 'shadow-green-200' },
-    { id: 'hotels', name: 'Hotels', icon: hotelIcon, label: 'Hotels', color: 'bg-blue-500', shadow: 'shadow-blue-200' },
-  ]
-
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0">
-      {/* Top Banner section - Zomato Red */}
-      <div className="w-full bg-[#001A94] dark:bg-[#001166] rounded-b-[2.5rem] p-6 text-center text-white relative overflow-hidden shadow-2xl">
-        <div className="absolute inset-0 bg-white/5 opacity-50 blur-3xl rounded-full -top-1/2 -left-1/4 animate-pulse" />
-        <div className="absolute right-0 bottom-0 w-32 h-32 md:w-48 md:h-48 opacity-10 pointer-events-none">
-           <svg viewBox="0 0 200 200" fill="currentColor">
-              <path d="M100 0C44.8 0 0 44.8 0 100s44.8 100 100 100 100-44.8 100-100S155.2 0 100 0zm0 180c-44.1 0-80-35.9-80-80s35.9-80 80-80 80 35.9 80 80-35.9 80-80 80z"/>
-           </svg>
+    <div className="h-[100dvh] bg-white dark:bg-[#0a0a0a] flex flex-col md:flex-row overflow-hidden font-sans">
+      
+      {/* Left side: Branding / Banner (Desktop) & Top half (Mobile) */}
+      <div className="relative w-full md:w-5/12 lg:w-1/2 h-[30vh] md:h-screen flex-shrink-0 bg-[#001A94] overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img src={loginBanner} alt="Food Banner" className="w-full h-full object-cover opacity-30 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#00157A] via-[#001A94]/80 to-transparent md:bg-gradient-to-r" />
         </div>
         
-        <div className="relative z-10 flex flex-col items-center">
+        {/* Animated decorative shapes */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+           <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-500/20 blur-[80px]" />
+           <div className="absolute bottom-[10%] -right-[20%] w-[60%] h-[60%] rounded-full bg-indigo-400/20 blur-[100px]" />
+        </div>
+
+        {/* Branding content */}
+        <div className="relative z-10 flex flex-col justify-end md:justify-center h-full p-6 sm:p-8 md:p-12 lg:p-16 text-white">
           <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-xl overflow-hidden p-1"
-          >
-             {logoUrl ? <img src={logoUrl} alt="Logo" className="w-[90%] h-[90%] object-contain" /> : <span className="text-[#001A94] text-3xl font-medium">{companyName?.[0] || "D"}</span>}
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-2xl md:text-5xl font-medium tracking-tight mb-1"
+            transition={{ delay: 0.2 }}
+            className="hidden md:block"
           >
-            {companyName || "Dar De Comer"}
-          </motion.h1>
-          <p className="text-xs md:text-base font-medium text-white/90 tracking-[0.2em] uppercase">
-            Taste the best, forget the rest
-          </p>
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-xl overflow-hidden p-1.5">
+               {logoUrl ? <img src={logoUrl} alt="Logo" className="w-[90%] h-[90%] object-contain" /> : <span className="text-[#001A94] text-4xl font-black">{companyName?.[0] || "D"}</span>}
+            </div>
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-black mb-6 leading-tight tracking-tight">
+              Delicious food,<br/>
+              <span className="text-blue-300">delivered to you.</span>
+            </h1>
+            <p className="text-blue-100 text-lg lg:text-xl max-w-md font-medium leading-relaxed">
+              Join us to explore the best restaurants around you and enjoy exclusive offers.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:hidden text-center pb-6 flex flex-col items-center"
+          >
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg overflow-hidden p-1">
+               {logoUrl ? <img src={logoUrl} alt="Logo" className="w-[90%] h-[90%] object-contain" /> : <span className="text-[#001A94] text-3xl font-black">{companyName?.[0] || "D"}</span>}
+            </div>
+            <h1 className="text-3xl font-black text-white tracking-tight" style={{ fontFamily: "'Google Sans', sans-serif" }}>{companyName || "Dar De Comer"}</h1>
+            <p className="text-blue-100/90 text-sm mt-1.5 font-medium tracking-wide">Taste the best, forget the rest</p>
+          </motion.div>
         </div>
       </div>
 
-      <div className="flex-1 max-w-[480px] mx-auto w-full px-6 py-4 flex flex-col justify-center -mt-8 relative z-20">
-        {/* Main Card */}
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-none border border-gray-50 dark:border-gray-800">
-           <div className="text-center mb-6 space-y-2">
-                  <h2 className="text-2xl font-normal text-gray-900 dark:text-white" style={{ fontFamily: "'Saira Stencil', sans-serif" }}>Login or Signup</h2>
-              <div className="h-1 w-12 bg-[#001A94] mx-auto rounded-full" />
-           </div>
+      {/* Right side: Form Container */}
+      <div className="flex-1 relative -mt-6 md:mt-0 z-10 bg-white dark:bg-[#0a0a0a] rounded-t-[32px] md:rounded-none shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-none min-h-0 overflow-y-auto block">
+        
+        {/* Mobile drag handle indicator */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full md:hidden" />
 
-          <form onSubmit={step === 1 ? handleSendOTP : step === 2 ? handleVerifyOTP : handleSubmitName} className="space-y-5">
-            {step === 1 ? (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
-                      <Phone className="w-5 h-5 text-gray-400 group-focus-within:text-[#001A94] transition-colors" />
+        <div className="w-full max-w-[420px] mx-auto min-h-full flex flex-col justify-center py-12 px-4 sm:px-6 md:px-0 space-y-8 md:space-y-10 mt-6 md:mt-0">
+          
+          <div className="hidden md:block text-center md:text-left space-y-2.5">
+            <h2 className="text-3xl lg:text-4xl font-black text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: "'Google Sans', sans-serif" }}>
+              {step === 1 ? "Welcome Back" : step === 2 ? "Verify OTP" : "Complete Profile"}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">
+              {step === 1 ? "Login or signup to continue" : step === 2 ? "Enter the code sent to your phone" : "Please provide your full name"}
+            </p>
+          </div>
+
+          {/* Mobile Heading */}
+          <div className="md:hidden text-center space-y-1.5 mb-2">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: "'Google Sans', sans-serif" }}>
+              {step === 1 ? "Login / Signup" : step === 2 ? "Verify OTP" : "Almost Done!"}
+            </h2>
+          </div>
+
+          <form onSubmit={step === 1 ? handleSendOTP : step === 2 ? handleVerifyOTP : handleSubmitName} className="space-y-6">
+            <AnimatePresence mode="wait">
+              {step === 1 && (
+                <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                  <div className="space-y-2.5 relative group">
+                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 ml-1 block">Phone Number</label>
+                    <div className="relative flex items-center shadow-sm rounded-2xl bg-gray-50 dark:bg-[#151515] border-2 border-gray-200 dark:border-gray-800 focus-within:border-[#001A94] focus-within:ring-4 focus-within:ring-[#001A94]/10 transition-all duration-300 overflow-hidden">
+                      <div className="flex items-center justify-center px-4 md:px-5 h-14 bg-gray-100/80 dark:bg-black/40 text-gray-700 dark:text-gray-300 font-bold border-r border-gray-200 dark:border-gray-800">
+                        <span>+91</span>
+                      </div>
+                      <input
+                        type="tel" required autoFocus
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        maxLength={10}
+                        className="flex-1 h-14 text-lg bg-transparent border-none shadow-none focus-visible:ring-0 focus:ring-0 focus:outline-none text-gray-900 dark:text-white font-semibold placeholder:text-gray-400 placeholder:font-medium pl-4"
+                        placeholder="Enter 10-digit number"
+                      />
                     </div>
-                    <div className="absolute left-8 inset-y-0 flex items-center pointer-events-none">
-                       <span className="text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-800 pr-3">+91</span>
-                    </div>
-                    <input
-                      type="tel"
-                      required
-                      autoFocus
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                      maxLength={10}
-                      className="block w-full pl-20 pr-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-medium text-lg"
-                      placeholder="Phone number"
-                    />
                   </div>
-                </div>
-                <p className="text-[11px] text-gray-400 text-center leading-relaxed">
-                  We will send success notifications and order updates via SMS
-                </p>
-              </div>
-            ) : step === 2 ? (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                   <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                </motion.div>
+              )}
+
+              {step === 2 && (
+                <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                   <div className="flex items-center gap-3 bg-gray-50 dark:bg-[#151515] p-4 rounded-2xl border-2 border-gray-100 dark:border-gray-800">
                       <div className="w-10 h-10 bg-[#001A94]/10 rounded-full flex items-center justify-center">
                          <ShieldCheck className="w-5 h-5 text-[#001A94]" />
                       </div>
                       <div className="flex-1">
-                         <p className="text-[10px] uppercase font-medium text-gray-400 tracking-widest leading-none mb-1">Sent to</p>
-                         <p className="text-sm font-medium text-gray-900 dark:text-white">+91 {phoneNumber}</p>
+                         <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest leading-none mb-1">Sent to</p>
+                         <p className="text-sm font-bold text-gray-900 dark:text-white">+91 {phoneNumber}</p>
                       </div>
-                      <button type="button" onClick={handleEditNumber} className="text-xs text-[#001A94] font-medium underline cursor-pointer">Edit</button>
+                      <button type="button" onClick={handleEditNumber} className="text-xs text-[#001A94] font-bold underline cursor-pointer hover:text-blue-700">Edit</button>
                    </div>
-
-                  <div className="flex justify-center gap-3 mt-4">
+                   
+                   <div className="flex justify-center gap-3 md:gap-4 mt-4">
                     {[0, 1, 2, 3].map((index) => (
+                       <input
+                         key={index}
+                         id={`otp-${index}`}
+                         type="tel"
+                         inputMode="numeric"
+                         required
+                         autoFocus={index === 0}
+                         value={otp[index] || ""}
+                         onChange={(e) => {
+                           const val = e.target.value.replace(/\D/g, "").slice(-1);
+                           if (!val) return;
+                           const newOtp = otp.split("");
+                           newOtp[index] = val;
+                           const combined = newOtp.join("").slice(0, 4);
+                           setOtp(combined);
+                           
+                           if (index < 3 && val) {
+                             document.getElementById(`otp-${index + 1}`)?.focus();
+                           }
+                         }}
+                         onKeyDown={(e) => {
+                           if (e.key === "Backspace") {
+                             if (!otp[index] && index > 0) {
+                               document.getElementById(`otp-${index - 1}`)?.focus();
+                             } else {
+                               const newOtp = otp.split("");
+                               newOtp[index] = "";
+                               setOtp(newOtp.join(""));
+                             }
+                           }
+                         }}
+                         onPaste={(e) => {
+                           e.preventDefault();
+                           const pasteData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+                           if (pasteData) {
+                             setOtp(pasteData);
+                             document.getElementById(`otp-${Math.min(pasteData.length, 3)}`)?.focus();
+                           }
+                         }}
+                         className="w-14 h-14 sm:w-16 sm:h-16 text-center text-2xl sm:text-3xl font-black bg-gray-50 dark:bg-[#151515] border-2 border-gray-200 dark:border-gray-800 focus:border-[#001A94] focus:ring-4 focus:ring-[#001A94]/10 rounded-xl sm:rounded-2xl outline-none transition-all text-gray-900 dark:text-white"
+                         placeholder="-"
+                       />
+                     ))}
+                   </div>
+                   
+                   <div className="text-center mt-6">
+                     {resendTimer > 0 ? (
+                       <p className="text-sm font-bold text-gray-500 dark:text-gray-400">
+                         Resend OTP in <span className="text-[#001A94]">{formatResendTimer(resendTimer)}</span>
+                       </p>
+                     ) : (
+                       <button type="button" onClick={handleResendOTP} disabled={loading} className="text-sm font-bold text-[#001A94] underline hover:text-blue-700 disabled:opacity-50 transition-colors">
+                         Resend OTP
+                       </button>
+                     )}
+                   </div>
+                </motion.div>
+              )}
+
+              {step === 3 && (
+                <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                  <div className="space-y-2.5 relative group">
+                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300 ml-1 block">Full Name</label>
+                    <div className="relative flex items-center shadow-sm rounded-2xl bg-gray-50 dark:bg-[#151515] border-2 border-gray-200 dark:border-gray-800 focus-within:border-[#001A94] focus-within:ring-4 focus-within:ring-[#001A94]/10 transition-all duration-300 overflow-hidden px-4 h-14">
+                      <UserIcon className="w-5 h-5 text-gray-400 group-focus-within:text-[#001A94] transition-colors mr-3" />
                       <input
-                        key={index}
-                        id={`otp-${index}`}
-                        type="tel"
-                        inputMode="numeric"
-                        required
-                        autoFocus={index === 0}
-                        value={otp[index] || ""}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "").slice(-1);
-                          if (!val) return;
-                          const newOtp = otp.split("");
-                          newOtp[index] = val;
-                          const combined = newOtp.join("").slice(0, 4);
-                          setOtp(combined);
-                          
-                          // Focus next
-                          if (index < 3 && val) {
-                            document.getElementById(`otp-${index + 1}`)?.focus();
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Backspace") {
-                            if (!otp[index] && index > 0) {
-                              document.getElementById(`otp-${index - 1}`)?.focus();
-                            } else {
-                              const newOtp = otp.split("");
-                              newOtp[index] = "";
-                              setOtp(newOtp.join(""));
-                            }
-                          }
-                        }}
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          const pasteData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
-                          if (pasteData) {
-                            setOtp(pasteData);
-                            document.getElementById(`otp-${Math.min(pasteData.length, 3)}`)?.focus();
-                          }
-                        }}
-                        className="w-14 h-14 sm:w-16 sm:h-16 text-center text-xl sm:text-3xl font-medium bg-gray-50 dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] rounded-xl sm:rounded-2xl outline-none transition-all text-gray-900 dark:text-white"
-                        placeholder="-"
+                        type="text" required autoFocus
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="flex-1 bg-transparent border-none shadow-none focus-visible:ring-0 focus:ring-0 focus:outline-none text-gray-900 dark:text-white font-semibold placeholder:text-gray-400 placeholder:font-medium text-lg w-full"
+                        placeholder="Enter your name"
                       />
-                    ))}
-                  </div>
-                  <div className="text-center mt-4">
-                    {resendTimer > 0 ? (
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                        Resend OTP in {formatResendTimer(resendTimer)}
-                      </p>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleResendOTP}
-                        disabled={loading}
-                        className="text-xs font-medium text-[#001A94] underline disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        Resend OTP
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
-                    <div className="w-10 h-10 bg-[#001A94]/10 rounded-full flex items-center justify-center">
-                      <ShieldCheck className="w-5 h-5 text-[#001A94]" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] uppercase font-medium text-gray-400 tracking-widest leading-none mb-1">Complete your profile</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Name is required for new users</p>
-                    </div>
-                    <button type="button" onClick={() => setStep(2)} className="text-xs text-[#001A94] font-medium underline cursor-pointer">Back</button>
                   </div>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="block w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#001A94] outline-none transition-all placeholder:text-gray-300 font-medium text-lg"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-4 rounded-2xl font-medium text-lg transition-all relative overflow-hidden shadow-xl ${
-                loading
-                  ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
-                  : "bg-[#001A94] hover:bg-[#001166] text-white hover:shadow-2xl hover:shadow-[#001A94]/30 active:scale-[0.98] hover:-translate-y-0.5"
-              }`}
+              className="w-full h-14 bg-gradient-to-r from-[#001A94] to-[#0026D1] hover:from-[#00157A] hover:to-blue-700 text-white font-bold text-lg rounded-2xl transition-all shadow-[0_8px_25px_-5px_rgba(0,26,148,0.4)] hover:shadow-[0_12px_30px_-5px_rgba(0,26,148,0.5)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] group flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 mt-8"
             >
               {loading ? (
-                <Loader2 className="w-7 h-7 animate-spin mx-auto text-white" />
+                <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
-                step === 1 ? "Get Verification Code" : step === 2 ? "Continue" : "Complete Signup"
+                <>
+                  {step === 1 ? "Continue" : step === 2 ? "Verify & Proceed" : "Complete Signup"}
+                  <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1.5 transition-transform duration-300" />
+                </>
               )}
             </button>
           </form>
-        </div>
 
-        <div className="mt-6 text-center space-y-2">
-           <p className="text-[10px] text-gray-400 font-medium uppercase tracking-[0.2em] leading-relaxed">
-             By continuing, you agree to our <br />
-             <Link to="/food/user/profile/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#001A94] transition-colors">Terms of Service</Link> & <Link to="/food/user/profile/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#001A94] transition-colors">Privacy Policy</Link>
-           </p>
-           <Link
-             to="/user/support"
-             className="inline-flex items-center justify-center gap-2 rounded-full border border-[#001A94]/20 bg-white/80 px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#001A94] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-           >
-             Need help? Support
-           </Link>
+          <div className="flex flex-col items-center justify-center pt-8 pb-4">
+            <div className="flex items-center gap-1.5 text-xs text-[#107C41] dark:text-[#63E297] mb-8 font-bold bg-[#F2FCF5] dark:bg-[#132819] border border-emerald-100 dark:border-emerald-900/50 px-3.5 py-1.5 rounded-full shadow-sm">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Secure Login</span>
+            </div>
+            
+            <div className="text-center text-[11px] md:text-xs text-gray-500 dark:text-gray-400 mb-8">
+              <p className="mb-2">By continuing, you agree to our</p>
+              <div className="flex justify-center gap-3 flex-wrap font-bold">
+                <Link to="/food/user/profile/terms" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Terms of Service
+                </Link>
+                <span className="text-gray-300 dark:text-gray-700">•</span>
+                <Link to="/food/user/profile/privacy" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Privacy Policy
+                </Link>
+              </div>
+            </div>
+
+            <Link
+              to="/user/support"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-[#001A94]/20 bg-white/80 dark:bg-transparent dark:border-gray-800 px-6 py-2.5 text-[11px] font-black uppercase tracking-[0.2em] text-[#001A94] dark:text-blue-400 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+            >
+              Need help? Support
+            </Link>
+          </div>
+
         </div>
       </div>
     </div>

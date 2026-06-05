@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-import { ArrowLeft, ShieldCheck, Timer, RefreshCw } from "lucide-react"
-import { Button } from "@food/components/ui/button"
+import { useNavigate, Link } from "react-router-dom"
+import { ArrowLeft, ShieldCheck, Timer, RefreshCw, Loader2, ArrowRight } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { restaurantAPI } from "@food/api"
 import {
   setAuthData as setRestaurantAuthData,
@@ -9,6 +9,7 @@ import {
 } from "@food/utils/auth"
 import { checkOnboardingStatus, isRestaurantOnboardingComplete } from "@food/utils/onboardingUtils"
 import { useCompanyName } from "@food/hooks/useCompanyName"
+import loginBanner from "@food/assets/loginbanner.png"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -338,121 +339,166 @@ export default function RestaurantOTP() {
   }
 
   return (
-    <div
-      className={`h-[100dvh] bg-white flex flex-col font-sans ${keyboardOffset > 0 ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden"}`}
-      style={keyboardOffset > 0 ? { paddingBottom: `${Math.min(keyboardOffset, 360)}px` } : undefined}
-    >
-      {/* Curved Header Background */}
-      <div className="relative h-[240px] sm:h-[300px] w-full bg-primary overflow-hidden">
-        {/* Abstract Circles like in the image */}
-        <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-white/10" />
-        <div className="absolute top-20 -right-10 w-64 h-64 rounded-full bg-white/10" />
-        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-white/5" />
+    <div className="h-[100dvh] bg-white dark:bg-[#0a0a0a] flex flex-col md:flex-row overflow-hidden font-sans">
+      
+      {/* Left side: Branding / Banner (Desktop) & Top half (Mobile) */}
+      <div className="relative w-full md:w-5/12 lg:w-1/2 h-[30vh] md:h-screen flex-shrink-0 bg-[#001A94] overflow-hidden">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img src={loginBanner} alt="Food Banner" className="w-full h-full object-cover opacity-30 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#00157A] via-[#001A94]/80 to-transparent md:bg-gradient-to-r" />
+        </div>
         
-        {/* The dominant curve */}
-        <div className="absolute bottom-0 w-full h-[100px] bg-white rounded-t-[100px] shadow-[0_-20px_40px_rgba(0,0,0,0.05)]" />
-        
-        {/* Back Button */}
-        <button
-          onClick={() => navigate("/food/restaurant/login")}
-          className="absolute top-10 sm:top-12 left-6 sm:left-8 p-2.5 sm:p-3 bg-white shadow-xl rounded-full text-primary hover:scale-110 active:scale-95 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
+        {/* Animated decorative shapes */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+           <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-500/20 blur-[80px]" />
+           <div className="absolute bottom-[10%] -right-[20%] w-[60%] h-[60%] rounded-full bg-indigo-400/20 blur-[100px]" />
+        </div>
+
+        {/* Branding content */}
+        <div className="relative z-10 flex flex-col justify-end md:justify-center h-full p-6 sm:p-8 md:p-12 lg:p-16 text-white">
+          <button
+            onClick={() => navigate("/food/restaurant/login", { replace: true })}
+            className="absolute top-6 left-6 md:top-8 md:left-8 w-10 h-10 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center transition-colors text-white shadow-sm"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="hidden md:block"
+          >
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-xl overflow-hidden p-1.5">
+               <span className="text-[#001A94] text-4xl font-black">R</span>
+            </div>
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-black mb-6 leading-tight tracking-tight" style={{ fontFamily: "'Google Sans', sans-serif" }}>
+              Grow with <br/>
+              <span className="text-blue-300">Dar De Comer.</span>
+            </h1>
+            <p className="text-blue-100 text-lg lg:text-xl max-w-md font-medium leading-relaxed">
+              Manage your restaurant, track orders, and boost your business.
+            </p>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:hidden text-center pb-6 flex flex-col items-center"
+          >
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg overflow-hidden p-1">
+               <span className="text-[#001A94] text-3xl font-black">R</span>
+            </div>
+            <h1 className="text-3xl font-black text-white tracking-tight" style={{ fontFamily: "'Google Sans', sans-serif" }}>Dar De Comer <span className="font-medium text-blue-200">Restaurant</span></h1>
+          </motion.div>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-12 sm:-mt-16 z-10 overflow-hidden">
-        {/* Central Logo / Branding */}
-        <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-4 sm:mb-6 overflow-hidden">
-          <div className="text-center">
-             <div className="w-16 h-16 bg-primary rounded-2xl mx-auto flex items-center justify-center transform rotate-12 shadow-lg mb-1">
-                <ShieldCheck className="w-8 h-8 text-white -rotate-12" />
-             </div>
+      {/* Right side: Form Container */}
+      <div className="flex-1 relative -mt-6 md:mt-0 z-10 bg-white dark:bg-[#0a0a0a] rounded-t-[32px] md:rounded-none shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-none min-h-0 overflow-y-auto block">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full md:hidden" />
+
+        <div className="w-full max-w-[420px] mx-auto min-h-full flex flex-col justify-center pt-6 pb-10 md:py-12 px-4 sm:px-6 md:px-0 space-y-6 md:space-y-10">
+          
+          <div className="text-center md:text-left space-y-2">
+            <h2 className="text-3xl lg:text-4xl font-black text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: "'Google Sans', sans-serif" }}>
+               Verify OTP
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 font-medium text-base md:text-lg">
+               Enter the code sent to your phone
+            </p>
           </div>
-        </div>
 
-        <div className="text-center space-y-1.5 sm:space-y-2 mb-6 sm:mb-10">
-          <h2 className="text-2xl sm:text-3xl font-black text-primary tracking-tight lowercase">
-            verify otp
-          </h2>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-relaxed">
-            Sent to <span className="text-primary font-black">{contactInfo}</span>
-          </p>
-        </div>
-
-        <div className="w-full max-w-[400px] flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="space-y-6">
-            <div ref={otpSectionRef} className="flex justify-center gap-4">
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={(e) => handlePaste(index, e)}
-                  onFocus={() => setFocusedIndex(index)}
-                  onBlur={() => setFocusedIndex(null)}
-                  disabled={isLoading}
-                  className={`w-12 h-14 sm:w-14 sm:h-16 bg-slate-50 border-2 rounded-2xl text-center text-2xl font-black text-primary focus:outline-none transition-all duration-300 ${
-                    error 
-                      ? "border-red-500 bg-red-50" 
-                      : focusedIndex === index 
-                        ? "border-primary ring-4 ring-primary/10 shadow-lg bg-white" 
-                        : "border-slate-100"
-                  }`}
-                />
-              ))}
-            </div>
-
-            {error && (
-              <p className="text-[#ef4f5f] text-xs font-bold text-center italic animate-pulse">
-                {error}
-              </p>
-            )}
-
-            <div className="space-y-3">
-              <Button
-                onClick={() => handleVerify()}
-                disabled={isLoading || !isOtpComplete}
-                className={`w-full h-14 sm:h-16 rounded-[32px] font-black text-base sm:text-lg tracking-widest uppercase shadow-lg transition-all duration-300 ${
-                  isOtpComplete && !isLoading
-                    ? "bg-primary hover:bg-primary/90 text-white shadow-primary/25 transform active:scale-[0.98]"
-                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
-                }`}
-              >
-                {isLoading ? "Verifying..." : "Verify Code"}
-              </Button>
-
-              <div className="flex flex-col items-center gap-4">
-                {resendTimer > 0 ? (
-                  <div className="flex items-center gap-2 text-slate-400 text-xs font-black tracking-widest uppercase">
-                    <Timer className="w-4 h-4 text-primary" />
-                    RESEND IN <span className="text-primary">{resendTimer}S</span>
+            <AnimatePresence mode="wait">
+               <motion.div key="otp" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                  <div className="flex items-center gap-3 bg-gray-50 dark:bg-[#151515] p-4 rounded-2xl border-2 border-gray-100 dark:border-gray-800">
+                     <div className="w-10 h-10 bg-[#001A94]/10 rounded-full flex items-center justify-center">
+                        <ShieldCheck className="w-5 h-5 text-[#001A94]" />
+                     </div>
+                     <div className="flex-1">
+                        <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest leading-none mb-1">Sent to</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{contactInfo}</p>
+                     </div>
                   </div>
-                ) : (
-                  <button
-                    onClick={handleResend}
-                    disabled={isLoading}
-                    className="flex items-center gap-2 text-primary font-black text-xs tracking-widest uppercase hover:underline"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    RESEND CODE
-                  </button>
-                )}
+
+                  <div className="flex justify-center gap-3 md:gap-4 mt-6" ref={otpSectionRef}>
+                     {otp.map((digit, index) => (
+                        <input
+                           key={index}
+                           ref={(el) => (inputRefs.current[index] = el)}
+                           type="tel"
+                           inputMode="numeric"
+                           maxLength={1}
+                           value={digit}
+                           onChange={(e) => handleChange(index, e.target.value)}
+                           onKeyDown={(e) => handleKeyDown(index, e)}
+                           onPaste={(e) => handlePaste(index, e)}
+                           onFocus={() => setFocusedIndex(index)}
+                           onBlur={() => setFocusedIndex(null)}
+                           disabled={isLoading}
+                           autoComplete="off"
+                           autoFocus={false}
+                           className={`w-14 h-14 sm:w-16 sm:h-16 text-center text-2xl sm:text-3xl font-black bg-gray-50 dark:bg-[#151515] border-2 focus:border-[#001A94] focus:ring-4 focus:ring-[#001A94]/10 rounded-xl sm:rounded-2xl outline-none transition-all text-gray-900 dark:text-white ${
+                              error ? "border-red-500/50 ring-red-500/10 bg-red-50 dark:bg-red-900/10" : "border-gray-200 dark:border-gray-800"
+                           }`}
+                           placeholder="-"
+                        />
+                     ))}
+                  </div>
+
+                  {error && (
+                     <div className="text-sm text-red-500 font-semibold text-center mt-2 animate-pulse">
+                        {error}
+                     </div>
+                  )}
+
+                  <div className="text-center mt-6 flex flex-col items-center gap-4">
+                     {resendTimer > 0 ? (
+                        <p className="text-sm font-bold text-gray-500 dark:text-gray-400">
+                           Resend OTP in <span className="text-[#001A94]">{resendTimer}s</span>
+                        </p>
+                     ) : (
+                        <button type="button" onClick={handleResend} disabled={isLoading} className="flex items-center gap-2 text-sm font-bold text-[#001A94] underline hover:text-blue-700 disabled:opacity-50 transition-colors">
+                           <RefreshCw className="w-4 h-4" />
+                           RESEND SMS
+                        </button>
+                     )}
+                  </div>
+               </motion.div>
+            </AnimatePresence>
+            
+          </div>
+
+          <div className="flex flex-col items-center justify-center pt-6 pb-2">
+            <div className="flex items-center gap-1.5 text-xs text-[#107C41] dark:text-[#63E297] mb-8 font-bold bg-[#F2FCF5] dark:bg-[#132819] border border-emerald-100 dark:border-emerald-900/50 px-3.5 py-1.5 rounded-full shadow-sm">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Secure Login</span>
+            </div>
+            
+            <div className="text-center text-[11px] md:text-xs text-gray-500 dark:text-gray-400 mb-8">
+              <p className="mb-2">By continuing, you agree to our</p>
+              <div className="flex justify-center gap-3 flex-wrap font-bold">
+                <Link to="/food/restaurant/terms" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Terms of Service
+                </Link>
+                <span className="text-gray-300 dark:text-gray-700">•</span>
+                <Link to="/food/restaurant/privacy" className="hover:text-[#001A94] dark:hover:text-blue-400 transition-colors">
+                  Privacy Policy
+                </Link>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="py-3 text-center">
-          <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
-            SECURE VERIFICATION SYSTEM &bull; {companyName.toUpperCase()}
-          </p>
+            <Link
+              to="/food/restaurant/support"
+              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-gray-100 dark:border-gray-800 bg-white dark:bg-[#151515] px-6 py-2.5 text-[11px] font-black uppercase tracking-[0.2em] text-gray-700 dark:text-gray-300 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700"
+            >
+              Need help? Support
+            </Link>
+          </div>
+
+        </div>
       </div>
     </div>
   )
