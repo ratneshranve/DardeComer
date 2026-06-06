@@ -1692,11 +1692,22 @@ export default function OrdersMain() {
     // Ensure this order can't re-trigger fallback popup by using a different id key.
     markOrderAsShown(orderToAccept);
 
+    // Optimistically close the popup to make the UI feel instantaneous
+    setShowNewOrderPopup(false);
+    setPopupOrder(null);
+    clearNewOrder();
+    setCountdown(240);
+    
+    // Store prepTime for API call before resetting it
+    const currentPrepTime = prepTime;
+    setPrepTime(11);
+    setAcceptSwipeProgress(0);
+
     // Accept order via API if we have a real order
     if (orderToAccept?.orderMongoId || orderToAccept?.orderId) {
       const orderId = orderToAccept.orderMongoId || orderToAccept.orderId;
       try {
-        const response = await restaurantAPI.acceptOrder(orderId, prepTime);
+        await restaurantAPI.acceptOrder(orderId, currentPrepTime);
         debugLog("? Order accepted:", orderId);
         toast.success("Order accepted successfully");
         requestOrdersRefresh();
@@ -1717,18 +1728,9 @@ export default function OrdersMain() {
         } else {
           toast.error(errorMessage);
         }
-        setIsAcceptingOrder(false);
-        setAcceptSwipeProgress(0);
-        return;
       }
     }
 
-    setShowNewOrderPopup(false);
-    setPopupOrder(null);
-    clearNewOrder();
-    setCountdown(240);
-    setPrepTime(11);
-    setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
 
     // Note: PreparingOrders component will automatically refresh orders via its own useEffect
