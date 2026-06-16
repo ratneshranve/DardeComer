@@ -240,7 +240,7 @@ export default function RestaurantSupport() {
           </button>
         </form>
 
-        <form onSubmit={handleDeleteRequest} className="bg-white rounded-2xl border border-red-200 p-4 space-y-3">
+        {/* <form onSubmit={handleDeleteRequest} className="bg-white rounded-2xl border border-red-200 p-4 space-y-3">
           <h2 className="text-sm font-bold text-red-600">Delete account request</h2>
           {deleteRequestStatus ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -266,7 +266,7 @@ export default function RestaurantSupport() {
           >
             {deleteSubmitting ? "Submitting..." : "Submit Delete Request"}
           </button>
-        </form>
+        </form> */}
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
