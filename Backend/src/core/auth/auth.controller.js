@@ -5,6 +5,7 @@ import {
   refreshAccessToken,
   requestRestaurantOtp,
   verifyRestaurantOtpAndLogin,
+  selectRestaurantOutletSession,
   requestDeliveryOtp,
   verifyDeliveryOtpAndLogin,
   logout,
@@ -21,7 +22,7 @@ import { validateUserOtpRequestDto } from "../../dtos/auth/userOtpRequest.dto.js
 import { validateUserOtpVerifyDto } from "../../dtos/auth/userOtpVerify.dto.js";
 import { validateAdminLoginDto } from "../../dtos/auth/adminLogin.dto.js";
 import { validateRestaurantOtpRequestDto } from "../../dtos/auth/restaurantOtpRequest.dto.js";
-import { validateRestaurantOtpVerifyDto } from "../../dtos/auth/restaurantOtpVerify.dto.js";
+import { validateRestaurantOtpVerifyDto, validateRestaurantOutletSelectDto } from "../../dtos/auth/restaurantOtpVerify.dto.js";
 import { validateDeliveryOtpRequestDto } from "../../dtos/auth/deliveryOtpRequest.dto.js";
 import { validateDeliveryOtpVerifyDto } from "../../dtos/auth/deliveryOtpVerify.dto.js";
 import { validateLogoutDto } from "../../dtos/auth/logout.dto.js";
@@ -124,6 +125,16 @@ export const verifyRestaurantOtpController = async (req, res, next) => {
   }
 };
 
+
+export const selectRestaurantOutletController = async (req, res, next) => {
+  try {
+    const { selectionToken, restaurantId, fcmToken, platform } = validateRestaurantOutletSelectDto(req.body);
+    const result = await selectRestaurantOutletSession(selectionToken, restaurantId, fcmToken, platform);
+    return sendResponse(res, 200, "Outlet selected successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
 export const requestDeliveryOtpController = async (req, res, next) => {
   try {
     const { phone } = validateDeliveryOtpRequestDto(req.body);
@@ -272,3 +283,4 @@ export const resetAdminPasswordWithOtpController = async (req, res, next) => {
     next(error);
   }
 };
+

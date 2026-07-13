@@ -975,6 +975,8 @@ export const restaurantAPI = {
       return Promise.reject(new Error("Phone and OTP are required"));
     return authService.verifyRestaurantOtp(phone, otp, fcmToken, platform);
   },
+  selectOutlet: (selectionToken, restaurantId, fcmToken = null, platform = "web") =>
+    authService.selectRestaurantOutlet(selectionToken, restaurantId, fcmToken, platform),
   getMe: () => authService.getMe("restaurant"),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
@@ -2514,3 +2516,4 @@ export const publicAPI = {
   getPrivacy: () => apiClient.get(API_ENDPOINTS.ADMIN.PRIVACY_PUBLIC),
   getTerms: (params) => apiClient.get(API_ENDPOINTS.ADMIN.TERMS_PUBLIC, { params }),
 };
+

@@ -9,7 +9,7 @@ import { FoodDeliveryPartner } from "../../modules/food/delivery/models/delivery
 import { FoodReferralSettings } from "../../modules/food/admin/models/referralSettings.model.js";
 import { FoodReferralLog } from "../../modules/food/admin/models/referralLog.model.js";
 import { createOrUpdateOtp, verifyOtp } from "../otp/otp.service.js";
-import { signAccessToken, signRefreshToken } from "./token.util.js";
+import { signAccessToken, signRefreshToken, signTemporaryToken, verifyTemporaryToken } from "./token.util.js";
 import { FoodRefreshToken } from "../refreshTokens/refreshToken.model.js";
 import { ValidationError, AuthError } from "./errors.js";
 import { config } from "../../config/env.js";
@@ -40,6 +40,54 @@ const ROLES = {
   DELIVERY_PARTNER: "DELIVERY_PARTNER",
   ADMIN: "ADMIN",
 };
+const normalizeRestaurantPhone = (phone) => {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const last10 = digits.slice(-10);
+  return { digits, last10 };
+};
+
+const buildRestaurantPhoneQuery = (phone) => {
+  const rawPhone = String(phone || "").trim();
+  const { digits, last10 } = normalizeRestaurantPhone(phone);
+  const phoneCandidates = [rawPhone, digits, last10].filter(Boolean);
+  const phoneOrFields = (field) => [
+    { [field]: { $in: phoneCandidates } },
+    ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
+    ...(last10 ? [{ ownerPhoneLast10: last10 }] : []),
+  ];
+
+  return {
+    digits,
+    last10,
+    query: {
+      $or: [
+        ...phoneOrFields("ownerPhone"),
+        ...phoneOrFields("primaryContactNumber"),
+      ],
+      isDeleted: { $ne: true },
+    },
+  };
+};
+
+const toRestaurantOutletSummary = (restaurant) => ({
+  _id: restaurant._id,
+  restaurantName: restaurant.restaurantName || "",
+  ownerName: restaurant.ownerName || "",
+  ownerEmail: restaurant.ownerEmail || "",
+  ownerPhone: restaurant.ownerPhone || "",
+  primaryContactNumber: restaurant.primaryContactNumber || "",
+  status: restaurant.status || "pending",
+  rejectionReason: restaurant.rejectionReason || null,
+  city: restaurant.location?.city || restaurant.city || "",
+  area: restaurant.location?.area || restaurant.area || "",
+  addressLine1: restaurant.location?.addressLine1 || restaurant.addressLine1 || "",
+  addressLine2: restaurant.location?.addressLine2 || restaurant.addressLine2 || "",
+  landmark: restaurant.location?.landmark || restaurant.landmark || "",
+  profileImage: restaurant.profileImage || null,
+  isAcceptingOrders: restaurant.isAcceptingOrders !== false,
+  createdAt: restaurant.createdAt || null,
+  updatedAt: restaurant.updatedAt || null,
+});
 
 export const requestUserOtp = async (phone) => {
   if (!phone) {
@@ -309,64 +357,98 @@ export const requestRestaurantOtp = async (phone) => {
   return shouldExposeOtp ? { otp } : {};
 };
 
-export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform) => {
+export const verifyRestaurantOtpAndLogin = async (phone, otp) => {
   const result = await verifyOtp(phone, otp);
   if (!result.valid) {
     throw new AuthError(result.reason || "OTP verification failed");
   }
 
-  // Restaurants may store ownerPhone with country code or formatting.
-  // Match by exact phone, last-10 digits, or suffix match to avoid false "needsRegistration".
-  const digits = String(phone || "").replace(/\D/g, "");
-  const last10 = digits.slice(-10);
-  const phoneCandidates = [phone, digits, last10].filter(Boolean);
-  const phoneOrFields = (field) => [
-    { [field]: { $in: phoneCandidates } },
-    ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
-  ];
+  const { query, digits, last10 } = buildRestaurantPhoneQuery(phone);
+  const outlets = await FoodRestaurant.find(query)
+    .sort({ createdAt: 1, restaurantName: 1 })
+    .lean();
 
-  const restaurant = await FoodRestaurant.findOne({
-    $or: [
-      ...phoneOrFields("ownerPhone"),
-      ...phoneOrFields("primaryContactNumber"),
-    ],
-    isDeleted: { $ne: true },
-  });
-  if (!restaurant) {
-    // Phone has been successfully verified, but no restaurant exists yet.
-    // Frontend will use this to redirect into registration/onboarding.
+  if (!outlets.length) {
     return {
       needsRegistration: true,
-      phone,
+      phone: last10 || digits || phone,
+      outlets: [],
     };
   }
 
-  // Update FCM token if provided
-  if (fcmToken) {
-    let isModified = false;
-    if (platform === "mobile") {
-      if (!restaurant.fcmTokenMobile) restaurant.fcmTokenMobile = [];
-      if (!restaurant.fcmTokenMobile.includes(fcmToken)) {
-        restaurant.fcmTokenMobile.push(fcmToken);
-        isModified = true;
-      }
-    } else {
-      if (!restaurant.fcmTokens) restaurant.fcmTokens = [];
-      if (!restaurant.fcmTokens.includes(fcmToken)) {
-        restaurant.fcmTokens.push(fcmToken);
-        isModified = true;
-      }
+  const selectionToken = signTemporaryToken({
+    role: ROLES.RESTAURANT,
+    phone: last10 || digits || String(phone || '').trim(),
+    purpose: 'restaurant-outlet-selection',
+  });
+
+  return {
+    needsRegistration: false,
+    phone: last10 || digits || phone,
+    selectionToken,
+    outlets: outlets.map(toRestaurantOutletSummary),
+  };
+};
+
+export const selectRestaurantOutletSession = async (selectionToken, restaurantId, fcmToken, platform = "web") => {
+  if (!selectionToken || !restaurantId) {
+    throw new ValidationError("Selection token and restaurantId are required");
+  }
+
+  let decoded;
+  try {
+    decoded = verifyTemporaryToken(selectionToken);
+  } catch (error) {
+    throw new AuthError("Outlet selection session expired. Please login again.");
+  }
+
+  if (decoded?.role !== ROLES.RESTAURANT || decoded?.purpose !== 'restaurant-outlet-selection') {
+    throw new AuthError("Invalid outlet selection session");
+  }
+
+  const phone = decoded?.phone;
+  const { query, last10 } = buildRestaurantPhoneQuery(phone);
+  const restaurant = await FoodRestaurant.findOne({
+    _id: restaurantId,
+    ...query,
+  });
+
+  if (!restaurant) {
+    throw new AuthError("Selected outlet is not linked to this phone number");
+  }
+
+  const status = String(restaurant.status || '').toLowerCase();
+  if (status !== 'approved') {
+    if (status === 'pending') {
+      throw new AuthError("This outlet is pending approval.");
     }
-    if (isModified) {
+    if (status === 'rejected') {
+      throw new AuthError(restaurant.rejectionReason || "This outlet was rejected. Please edit and resubmit.");
+    }
+    throw new AuthError("This outlet is not available for login.");
+  }
+
+  if (fcmToken) {
+    const field = platform === "mobile" ? "fcmTokenMobile" : "fcmTokens";
+    await FoodRestaurant.updateMany(
+      { ownerPhoneLast10: last10, [field]: fcmToken },
+      { $pull: { [field]: fcmToken } },
+    );
+
+    if (!Array.isArray(restaurant[field])) {
+      restaurant[field] = [];
+    }
+    if (!restaurant[field].includes(fcmToken)) {
+      restaurant[field].push(fcmToken);
       await restaurant.save();
     }
   }
 
-  // Allow login regardless of status so they can see their dashboard/onboarding status.
-  // The frontend handles UI overlays for 'pending' and 'rejected' states.
-
-
-  const payload = { userId: restaurant._id.toString(), role: ROLES.RESTAURANT };
+  const payload = {
+    userId: restaurant._id.toString(),
+    role: ROLES.RESTAURANT,
+    phone: last10 || phone,
+  };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
   const ttlMs = ms(config.jwtRefreshExpiresIn || "7d");
@@ -1015,3 +1097,4 @@ export const refreshAccessToken = async (token) => {
 
   return { accessToken: newAccessToken, refreshToken: token };
 };
+

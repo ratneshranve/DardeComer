@@ -68,6 +68,7 @@ const DiningReservations = lazy(() => import("@food/pages/restaurant/DiningReser
 const Welcome = lazy(() => import("@food/pages/restaurant/auth/Welcome"))
 const Login = lazy(() => import("@food/pages/restaurant/auth/Login"))
 const OTP = lazy(() => import("@food/pages/restaurant/auth/OTP"))
+const SelectOutlet = lazy(() => import("@food/pages/restaurant/auth/SelectOutlet"))
 const Signup = lazy(() => import("@food/pages/restaurant/auth/Signup"))
 const ForgotPassword = lazy(() => import("@food/pages/restaurant/auth/ForgotPassword"))
 const VerificationPending = lazy(() => import("@food/pages/restaurant/auth/VerificationPending"))
@@ -80,6 +81,7 @@ export default function RestaurantRouter() {
         <Route path="welcome" element={<Welcome />} />
         <Route path="login" element={<Login />} />
         <Route path="otp" element={<OTP />} />
+        <Route path="select-outlet" element={<SelectOutlet />} />
         <Route path="signup" element={<Signup />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="pending-verification" element={<VerificationPending />} />
@@ -151,3 +153,4 @@ export default function RestaurantRouter() {
     </Suspense>
   )
 }
+

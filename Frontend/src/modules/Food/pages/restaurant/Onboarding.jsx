@@ -47,6 +47,8 @@ const GALLERY_IMAGE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
 const DOCUMENT_FILE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+const OUTLET_PREFILL_KEY = "restaurantOutletPrefill"
+
 let onboardingFileCache = {
   step2: {
     menuImages: [],
@@ -485,6 +487,7 @@ export default function RestaurantOnboarding() {
   const companyName = useCompanyName()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const isNewOutletMode = searchParams.get("mode") === "new"
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -929,6 +932,26 @@ export default function RestaurantOnboarding() {
 
     const loadData = async () => {
       try {
+        if (isNewOutletMode) {
+          clearOnboardingFromLocalStorage()
+          await clearAllFilesFromDB()
+          clearOnboardingFileCache()
+          try {
+            const rawPrefill = sessionStorage.getItem(OUTLET_PREFILL_KEY)
+            const prefill = rawPrefill ? JSON.parse(rawPrefill) : null
+            if (prefill) {
+              setStep1((prev) => ({
+                ...prev,
+                ownerName: prefill.ownerName || "",
+                ownerEmail: prefill.ownerEmail || "",
+                ownerPhone: prefill.ownerPhone || prev.ownerPhone || "",
+              }))
+            }
+          } catch {
+            // Ignore invalid prefill payload
+          }
+          return
+        }
         const currentPhone = getVerifiedPhoneFromStoredRestaurant()
         const localData = loadOnboardingFromLocalStorage()
 
@@ -1044,7 +1067,7 @@ export default function RestaurantOnboarding() {
     }
 
     loadData()
-  }, [searchParams])
+  }, [isNewOutletMode, searchParams])
 
   useEffect(() => {
     if (!verifiedPhoneNumber) return
@@ -1118,6 +1141,13 @@ export default function RestaurantOnboarding() {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (isNewOutletMode) {
+        setLoading(false)
+        setIsEditing(true)
+        setHasExistingRestaurantProfile(false)
+        return
+      }
+
       try {
         setLoading(true)
         // Use restaurantAPI.getCurrentRestaurant() to fetch real data
@@ -1282,7 +1312,7 @@ export default function RestaurantOnboarding() {
     }
 
     fetchData()
-  }, [searchParams])
+  }, [isNewOutletMode, searchParams])
 
   const handleUpload = async (file, folder) => {
     try {
@@ -1730,6 +1760,7 @@ export default function RestaurantOnboarding() {
         } catch { }
 
         toast.success("Registration submitted. Awaiting admin approval.", { duration: 4000 })
+        sessionStorage.removeItem(OUTLET_PREFILL_KEY)
         navigate("/food/restaurant/pending-verification", {
           replace: true,
           state: {
@@ -3167,3 +3198,4 @@ export default function RestaurantOnboarding() {
     </LocalizationProvider>
   )
 }
+

@@ -231,35 +231,22 @@ export default function RestaurantOTP() {
         return
       }
 
-      const accessToken = data?.accessToken
-      const refreshToken = data?.refreshToken ?? null
-      const restaurant = data?.user ?? data?.restaurant
+      const selectionToken = data?.selectionToken
+      const outlets = Array.isArray(data?.outlets) ? data.outlets : []
 
-      if (accessToken && restaurant) {
-        setRestaurantAuthData("restaurant", accessToken, restaurant, refreshToken)
-        window.dispatchEvent(new Event("restaurantAuthChanged"))
+      if (!needsRegistration && selectionToken) {
+        sessionStorage.setItem(
+          "restaurantOutletSelectionData",
+          JSON.stringify({
+            phone: normalizedPhone,
+            selectionToken,
+            outlets,
+          }),
+        )
         sessionStorage.removeItem("restaurantAuthData")
         sessionStorage.removeItem("restaurantLoginPhone")
-
-        setTimeout(async () => {
-          if (authData?.isSignUp) {
-            navigate("/food/restaurant/onboarding", { replace: true })
-          } else {
-            try {
-              const onboardingComplete = isRestaurantOnboardingComplete(restaurant)
-              if (!onboardingComplete) {
-                const incompleteStep = await checkOnboardingStatus()
-                if (incompleteStep) {
-                  navigate(`/food/restaurant/onboarding?step=${incompleteStep}`, { replace: true })
-                  return
-                }
-              }
-              navigate("/food/restaurant", { replace: true })
-            } catch (err) {
-              navigate("/food/restaurant", { replace: true })
-            }
-          }
-        }, 500)
+        navigate("/food/restaurant/select-outlet", { replace: true })
+        return
       }
     } catch (err) {
       const message =
@@ -503,3 +490,4 @@ export default function RestaurantOTP() {
     </div>
   )
 }
+

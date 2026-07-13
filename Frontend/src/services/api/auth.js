@@ -11,6 +11,7 @@ const AUTH = {
   ADMIN_LOGIN: "/food/auth/admin/login",
   RESTAURANT_REQUEST_OTP: "/food/auth/restaurant/request-otp",
   RESTAURANT_VERIFY_OTP: "/food/auth/restaurant/verify-otp",
+  RESTAURANT_SELECT_OUTLET: "/food/auth/restaurant/select-outlet",
   DELIVERY_REQUEST_OTP: "/food/auth/delivery/request-otp",
   DELIVERY_VERIFY_OTP: "/food/auth/delivery/verify-otp",
   REFRESH_TOKEN: "/food/auth/refresh-token",
@@ -299,6 +300,17 @@ export function verifyRestaurantOtp(phone, otp, fcmToken = null, platform = "web
   });
 }
 
+export function selectRestaurantOutlet(selectionToken, restaurantId, fcmToken = null, platform = "web") {
+  if (!selectionToken || !restaurantId) {
+    return Promise.reject(new Error("Selection token and restaurantId are required"));
+  }
+  return apiClient.post(AUTH.RESTAURANT_SELECT_OUTLET, {
+    selectionToken,
+    restaurantId,
+    ...(fcmToken ? { fcmToken, platform } : {}),
+  });
+}
+
 /**
  * Delivery partner OTP auth (backend: same phone + 4-digit OTP).
  */
@@ -322,3 +334,4 @@ export function verifyDeliveryOtp(phone, otp, fcmToken = null, platform = "web")
     ...(fcmToken ? { fcmToken, platform } : {}),
   });
 }
+

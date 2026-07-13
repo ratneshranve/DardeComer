@@ -21,3 +21,18 @@ export const validateRestaurantOtpVerifyDto = (body) => {
     }
     return result.data;
 };
+
+const outletSelectSchema = z.object({
+    selectionToken: z.string().min(1, "Selection token is required"),
+    restaurantId: z.string().min(1, "Restaurant id is required"),
+    fcmToken: z.string().optional().nullable(),
+    platform: z.enum(["web", "mobile"]).optional().default("web")
+});
+
+export const validateRestaurantOutletSelectDto = (body) => {
+    const result = outletSelectSchema.safeParse(body);
+    if (!result.success) {
+        throw new ValidationError(result.error.errors[0].message);
+    }
+    return result.data;
+};

@@ -13,7 +13,17 @@ export const signRefreshToken = (payload) => {
     });
 };
 
+export const signTemporaryToken = (payload, expiresIn = '30m') => {
+    return jwt.sign(payload, config.jwtAccessSecret, {
+        expiresIn
+    });
+};
+
 export const verifyAccessToken = (token) => {
+    return jwt.verify(token, config.jwtAccessSecret);
+};
+
+export const verifyTemporaryToken = (token) => {
     return jwt.verify(token, config.jwtAccessSecret);
 };
 
