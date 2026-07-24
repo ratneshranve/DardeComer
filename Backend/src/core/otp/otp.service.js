@@ -22,15 +22,15 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         const msisdn = digits.startsWith('91') ? digits : `91${digits}`;
 
         // EXACT DLT TEMPLATE provided by user:
-        // "Welcome to the ##var## powered by SMSINDIAHUB. Your OTP for registration is ##var##"
-        const message = `Welcome to the DarDeComer powered by SMSINDIAHUB. Your OTP for registration is ${otp}`;
+        // "Welcome to the ##var## powered by Appzeto.Your OTP for registration is ##var##.BGADEC"
+        const message = `Welcome to the Dar De Comer powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
 
         // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
         const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
         url.searchParams.append('APIKey', config.smsApiKey);
         url.searchParams.append('sid', config.smsSenderId);
         url.searchParams.append('msisdn', msisdn);
-        url.searchParams.append('msg', message);
+        // DO NOT append msg here, we will append it manually to ensure %20 encoding instead of +
         url.searchParams.append('gwid', '2');
         url.searchParams.append('fl', '0');
         if (config.smsIndiaHubUsername) {
@@ -39,11 +39,18 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         if (config.smsDltTemplateId) {
             url.searchParams.append('DLT_TE_ID', config.smsDltTemplateId);
         }
+        if (config.smsPeId) {
+            url.searchParams.append('PE_ID', config.smsPeId);
+        }
+
+        const finalUrl = url.toString() + '&msg=' + encodeURIComponent(message);
 
         logger.info(`[SMS] Sending OTP to ${msisdn} via SMS India Hub...`);
-        const response = await fetch(url.toString());
+        console.log(`[SMS DEBUG] Request URL: ${finalUrl}`);
+        const response = await fetch(finalUrl);
         const resultText = await response.text();
         logger.info(`[SMS] Raw response for ${msisdn}: ${resultText}`);
+        console.log(`[SMS DEBUG] Response: ${resultText}`);
 
         // SMS India Hub often returns HTTP 200 OK even for errors — check response body
         let parsed = null;
@@ -154,6 +161,7 @@ export const verifyOtp = async (phone, otp) => {
         return { valid: false, reason: 'Invalid OTP' };
     }
 
+// nodemon trigger
     await record.deleteOne();
     return { valid: true };
 };
