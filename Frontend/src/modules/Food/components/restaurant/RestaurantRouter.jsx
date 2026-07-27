@@ -60,6 +60,7 @@ const WithdrawalHistoryPage = lazy(() => import("@food/pages/restaurant/Withdraw
 const PhoneNumbersPage = lazy(() => import("@food/pages/restaurant/PhoneNumbersPage"))
 const DownloadReport = lazy(() => import("@food/pages/restaurant/DownloadReport"))
 const EditGst = lazy(() => import("@food/pages/restaurant/EditGst"))
+const RestaurantDocumentViewer = lazy(() => import("@food/pages/restaurant/RestaurantDocumentViewer"))
 
 const ManageOutlets = lazy(() => import("@food/pages/restaurant/ManageOutlets"))
 const UpdateBankDetails = lazy(() => import("@food/pages/restaurant/UpdateBankDetails"))
@@ -85,6 +86,7 @@ export default function RestaurantRouter() {
         <Route path="signup" element={<Signup />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="pending-verification" element={<VerificationPending />} />
+        <Route path="document-viewer" element={<RestaurantDocumentViewer />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OrdersMain /></ProtectedRoute>} path="" />

@@ -708,6 +708,21 @@ export default function RestaurantOnboarding() {
     setStep3((prev) => ({ ...prev, fssaiImage: compressed }))
   }
 
+  const openPdfInAppView = (value, fallbackTitle = "Document") => {
+    const pdfUrl = getPreviewImageUrl(value)
+    if (!pdfUrl) {
+      toast.error("PDF preview is unavailable right now.")
+      return
+    }
+
+    navigate("/food/restaurant/document-viewer", {
+      state: {
+        url: pdfUrl,
+        title: fallbackTitle,
+      },
+    })
+  }
+
   const isPersistedImageValue = (value) =>
     !isUploadableFile(value) &&
     ((typeof value === "string" && value.trim()) ||
@@ -2738,14 +2753,13 @@ export default function RestaurantOnboarding() {
                   <FileText className="w-8 h-8 text-red-600" />
                   <span>PDF selected</span>
                   {getPreviewImageUrl(step3.panImage) && (
-                    <a
-                      href={getPreviewImageUrl(step3.panImage)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => openPdfInAppView(step3.panImage, "PAN document")}
                       className="text-blue-600 underline"
                     >
                       View PDF
-                    </a>
+                    </button>
                   )}
                 </div>
               ) : getPreviewImageUrl(step3.panImage) ? (
@@ -2860,14 +2874,13 @@ export default function RestaurantOnboarding() {
                     <FileText className="w-8 h-8 text-red-600" />
                     <span>PDF selected</span>
                     {getPreviewImageUrl(step3.gstImage) && (
-                      <a
-                        href={getPreviewImageUrl(step3.gstImage)}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => openPdfInAppView(step3.gstImage, "GST document")}
                         className="text-blue-600 underline"
                       >
                         View PDF
-                      </a>
+                      </button>
                     )}
                   </div>
                 ) : getPreviewImageUrl(step3.gstImage) ? (
@@ -2987,14 +3000,13 @@ export default function RestaurantOnboarding() {
                 <FileText className="w-8 h-8 text-red-600" />
                 <span>PDF selected</span>
                 {getPreviewImageUrl(step3.fssaiImage) && (
-                  <a
-                    href={getPreviewImageUrl(step3.fssaiImage)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openPdfInAppView(step3.fssaiImage, "FSSAI document")}
                     className="text-blue-600 underline"
                   >
                     View PDF
-                  </a>
+                  </button>
                 )}
               </div>
             ) : getPreviewImageUrl(step3.fssaiImage) ? (
