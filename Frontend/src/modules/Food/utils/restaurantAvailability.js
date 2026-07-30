@@ -68,6 +68,32 @@ const getTodayTiming = (restaurant, dayName) => {
   return null
 }
 
+const normalizeSlots = (dayTiming, restaurant) => {
+  const slots = Array.isArray(dayTiming?.slots)
+    ? dayTiming.slots
+        .map((slot) => ({
+          openingTime: slot?.openingTime || "",
+          closingTime: slot?.closingTime || "",
+        }))
+        .filter((slot) => slot.openingTime && slot.closingTime)
+    : []
+
+  if (slots.length > 0) return slots
+
+  const openingTime =
+    dayTiming?.openingTime ||
+    restaurant?.deliveryTimings?.openingTime ||
+    restaurant?.openingTime ||
+    null
+  const closingTime =
+    dayTiming?.closingTime ||
+    restaurant?.deliveryTimings?.closingTime ||
+    restaurant?.closingTime ||
+    null
+
+  return openingTime && closingTime ? [{ openingTime, closingTime }] : []
+}
+
 const isWithinTimeWindow = (nowMinutes, openingMinutes, closingMinutes) => {
   if (openingMinutes === null || closingMinutes === null) return true
   if (openingMinutes === closingMinutes) return true
@@ -166,7 +192,6 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
   const dayName = DAY_NAMES[now.getDay()]
   const todayTiming = getTodayTiming(restaurant, dayName)
 
-  // Legacy openDays can get stale; enforce only when no explicit outlet timing exists for today.
   const openDays = Array.isArray(restaurant.openDays) ? restaurant.openDays : []
   if (!todayTiming && openDays.length > 0) {
     const normalizedOpenDays = new Set(openDays.map((day) => normalizeDay(day)).filter(Boolean))
@@ -191,41 +216,36 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     }
   }
 
-  const openingTime =
-    todayTiming?.openingTime ||
-    restaurant?.deliveryTimings?.openingTime ||
-    restaurant?.openingTime ||
-    null
-  const closingTime =
-    todayTiming?.closingTime ||
-    restaurant?.deliveryTimings?.closingTime ||
-    restaurant?.closingTime ||
-    null
-
-  const openingMinutes = parseTimeToMinutes(openingTime)
-  const closingMinutes = parseTimeToMinutes(closingTime)
+  const slots = normalizeSlots(todayTiming, restaurant)
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const hasExplicitWindow = Boolean(openingTime || closingTime)
-  // If a restaurant provides only one side of the window, treat timings as not enforced
-  // (prevents accidental "offline" due to partial data).
-  const isWithinTimings = hasExplicitWindow
-    ? (openingMinutes !== null && closingMinutes !== null
+  const matchedSlot = slots.find((slot) => {
+    const openingMinutes = parseTimeToMinutes(slot.openingTime)
+    const closingMinutes = parseTimeToMinutes(slot.closingTime)
+    return openingMinutes !== null && closingMinutes !== null
       ? isWithinTimeWindow(nowMinutes, openingMinutes, closingMinutes)
-      : true)
-    : true
-  const minutesUntilClose = isWithinTimings
+      : false
+  }) || null
+
+  const openingTime = matchedSlot?.openingTime || slots[0]?.openingTime || null
+  const closingTime = matchedSlot?.closingTime || slots[0]?.closingTime || null
+  const hasExplicitWindow = slots.length > 0
+  const isWithinTimings = matchedSlot !== null || !hasExplicitWindow
+
+  const openingMinutes = matchedSlot ? parseTimeToMinutes(matchedSlot.openingTime) : null
+  const closingMinutes = matchedSlot ? parseTimeToMinutes(matchedSlot.closingTime) : null
+  const minutesUntilClose = matchedSlot
     ? getMinutesUntilClosing(nowMinutes, openingMinutes, closingMinutes)
     : null
 
-  const getMessage = (reason, isWithinTimings) => {
+  const getMessage = (reason, withinTimings) => {
     switch (reason) {
-      case "not-accepting-orders": return "Currently Offline";
-      case "inactive": return "Temporarily Closed";
-      case "day-closed": return "Closed for Today";
-      case "outside-hours": return "Closed Now";
-      case "no-timings": return "Opening Soon";
-      case "closed-day": return "Closed Today";
-      default: return isWithinTimings ? "Open Now" : "Opening Soon";
+      case "not-accepting-orders": return "Currently Offline"
+      case "inactive": return "Temporarily Closed"
+      case "day-closed": return "Closed for Today"
+      case "outside-hours": return "Closed Now"
+      case "no-timings": return "Opening Soon"
+      case "closed-day": return "Closed Today"
+      default: return withinTimings ? "Open Now" : "Opening Soon"
     }
   }
 
@@ -236,9 +256,10 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     isWithinTimings,
     openingTime,
     closingTime,
+    slots,
     minutesUntilClose,
-    closingCountdownLabel: isWithinTimings
-      ? formatClosingCountdown(minutesUntilClose, closingTime)
+    closingCountdownLabel: matchedSlot
+      ? formatClosingCountdown(minutesUntilClose, matchedSlot.closingTime)
       : null,
     reason: isWithinTimings
       ? (isAcceptingOrders ? "open" : "not-accepting-orders")

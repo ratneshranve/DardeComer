@@ -3,13 +3,42 @@ import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
 import { logger } from '../../../../utils/logger.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 
+const timeToMinutes = (value) => {
+    const raw = String(value || '').trim();
+    const m = raw.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const hours = Number(m[1]);
+    const minutes = Number(m[2]);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        return null;
+    }
+    return hours * 60 + minutes;
+};
+
+const isWithinWindow = (nowMinutes, openMin, closeMin) => {
+    if (openMin === null || closeMin === null) return false;
+    if (openMin === closeMin) return true;
+    if (closeMin > openMin) return nowMinutes >= openMin && nowMinutes < closeMin;
+    return nowMinutes >= openMin || nowMinutes < closeMin;
+};
+
+const normalizeSlots = (dayTiming) => {
+    const explicitSlots = Array.isArray(dayTiming?.slots)
+        ? dayTiming.slots.filter((slot) => slot?.openingTime && slot?.closingTime)
+        : [];
+    if (explicitSlots.length > 0) return explicitSlots;
+    if (dayTiming?.openingTime && dayTiming?.closingTime) {
+        return [{ openingTime: dayTiming.openingTime, closingTime: dayTiming.closingTime }];
+    }
+    return [];
+};
+
 /**
  * Periodically checks all online restaurants and sets them to offline 
  * if they are outside their scheduled operational hours.
  */
 export const autoOfflineRestaurants = async () => {
     try {
-        // IST = UTC+5:30. Timings are set by owners in IST, so always compare in IST.
         const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
         const istNow = new Date(Date.now() + IST_OFFSET_MS);
         const currentDay = istNow.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
@@ -17,7 +46,6 @@ export const autoOfflineRestaurants = async () => {
         const currentMinute = istNow.getUTCMinutes();
         const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
-        // Fetch restaurants controlled by timing automation.
         const automationRestaurants = await FoodRestaurant.find({
             status: 'approved',
             isDeleted: false,
@@ -45,27 +73,16 @@ export const autoOfflineRestaurants = async () => {
                 if (dayTiming) {
                     if (dayTiming.isOpen === false) {
                         isWithinTimings = false;
-                    } else if (dayTiming.openingTime && dayTiming.closingTime) {
-                        const [openH, openM] = dayTiming.openingTime.split(':').map(Number);
-                        const [closeH, closeM] = dayTiming.closingTime.split(':').map(Number);
-                        const openMin = openH * 60 + openM;
-                        const closeMin = closeH * 60 + closeM;
-
-                        if (closeMin > openMin) {
-                            // Standard same-day timings (e.g., 09:00 to 22:00)
-                            isWithinTimings = currentTimeInMinutes >= openMin && currentTimeInMinutes < closeMin;
-                        } else if (closeMin < openMin) {
-                            // Overnight timings (e.g., 18:00 to 02:00)
-                            isWithinTimings = currentTimeInMinutes >= openMin || currentTimeInMinutes < closeMin;
-                        } else {
-                            // 24-hour case (e.g., 00:00 to 00:00 or same)
-                            isWithinTimings = true;
+                    } else {
+                        const slots = normalizeSlots(dayTiming);
+                        if (slots.length > 0) {
+                            isWithinTimings = slots.some((slot) => {
+                                const openMin = timeToMinutes(slot.openingTime);
+                                const closeMin = timeToMinutes(slot.closingTime);
+                                return isWithinWindow(currentTimeInMinutes, openMin, closeMin);
+                            });
                         }
                     }
-                } else {
-                    // No timing configured for today - default to closed for safety if automation is active?
-                    // Or keep current state. User requested dynamic offline, so if no timing, we might stay online.
-                    // But usually all days are pre-filled.
                 }
             }
 
@@ -79,7 +96,6 @@ export const autoOfflineRestaurants = async () => {
                 
                 logger.info(`[StatusAutomation] Auto status sync: Restaurant "${restaurant.restaurantName}" (${restaurant._id}) set to ${shouldAcceptOrders ? 'online' : 'offline'} by timings.`);
                 
-                // Emit socket event to the restaurant room
                 if (io) {
                     io.to(rooms.restaurant(restaurant._id)).emit('restaurant_status_update', { 
                         isAcceptingOrders: shouldAcceptOrders,

@@ -9,7 +9,6 @@ import { restaurantAPI } from "@food/api"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -30,6 +29,36 @@ const persistRestaurantOnlineStatus = (isOnline) => {
   }
 }
 
+const timeToMinutes = (value) => {
+  const raw = String(value || "").trim()
+  const m = raw.match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return null
+  const hours = Number(m[1])
+  const minutes = Number(m[2])
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null
+  }
+  return hours * 60 + minutes
+}
+
+const isWithinWindow = (nowMinutes, openMin, closeMin) => {
+  if (openMin === null || closeMin === null) return false
+  if (openMin === closeMin) return true
+  if (closeMin > openMin) return nowMinutes >= openMin && nowMinutes < closeMin
+  return nowMinutes >= openMin || nowMinutes < closeMin
+}
+
+const normalizeSlots = (dayData) => {
+  const slots = Array.isArray(dayData?.slots)
+    ? dayData.slots.filter((slot) => slot?.openingTime && slot?.closingTime)
+    : []
+  if (slots.length > 0) return slots
+  if (dayData?.openingTime && dayData?.closingTime) {
+    return [{ openingTime: dayData.openingTime, closingTime: dayData.closingTime }]
+  }
+  return []
+}
+
 export default function RestaurantStatus() {
   const navigate = useNavigate()
   const goBack = useRestaurantBackNavigation()
@@ -43,7 +72,6 @@ export default function RestaurantStatus() {
   const [isDayClosed, setIsDayClosed] = useState(false)
   const [outletTimings, setOutletTimings] = useState(null)
 
-  // Update current date/time every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDateTime(new Date())
@@ -51,7 +79,6 @@ export default function RestaurantStatus() {
     return () => clearInterval(interval)
   }, [])
 
-  // Fetch restaurant data
   useEffect(() => {
     const fetchRestaurantData = async () => {
       try {
@@ -70,7 +97,6 @@ export default function RestaurantStatus() {
     fetchRestaurantData()
   }, [])
 
-  // Load outlet timings
   useEffect(() => {
     const loadOutletTimings = () => {
       restaurantAPI.getOutletTimings()
@@ -85,14 +111,11 @@ export default function RestaurantStatus() {
     return () => window.removeEventListener("outletTimingsUpdated", loadOutletTimings)
   }, [])
 
-  // Check if restaurant is open based on timings
   useEffect(() => {
     const checkIfOpen = () => {
       const now = new Date()
       const currentDayFull = now.toLocaleDateString('en-US', { weekday: 'long' })
-      const currentHour = now.getHours()
-      const currentMinute = now.getMinutes()
-      const currentTimeInMinutes = currentHour * 60 + currentMinute
+      const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes()
 
       if (!outletTimings || !outletTimings[currentDayFull]) {
         setIsDayClosed(false)
@@ -107,23 +130,18 @@ export default function RestaurantStatus() {
         return
       }
 
-      if (!dayData.openingTime || !dayData.closingTime) {
+      const slots = normalizeSlots(dayData)
+      if (slots.length === 0) {
         setIsDayClosed(false)
         setIsWithinTimings(true)
         return
       }
 
-      const [openHour, openMinute] = dayData.openingTime.split(':').map(Number)
-      const [closeHour, closeMinute] = dayData.closingTime.split(':').map(Number)
-      const openingTimeInMinutes = openHour * 60 + openMinute
-      const closingTimeInMinutes = closeHour * 60 + closeMinute
-
-      let isWithin = false
-      if (closingTimeInMinutes > openingTimeInMinutes) {
-        isWithin = currentTimeInMinutes >= openingTimeInMinutes && currentTimeInMinutes < closingTimeInMinutes
-      } else {
-        isWithin = currentTimeInMinutes >= openingTimeInMinutes || currentTimeInMinutes < closingTimeInMinutes
-      }
+      const isWithin = slots.some((slot) => {
+        const openingTimeInMinutes = timeToMinutes(slot.openingTime)
+        const closingTimeInMinutes = timeToMinutes(slot.closingTime)
+        return isWithinWindow(currentTimeInMinutes, openingTimeInMinutes, closingTimeInMinutes)
+      })
 
       setIsDayClosed(false)
       setIsWithinTimings(isWithin)
@@ -134,7 +152,6 @@ export default function RestaurantStatus() {
     return () => clearInterval(interval)
   }, [currentDateTime, outletTimings])
 
-  // Sync delivery status with backend and global events
   useEffect(() => {
     const loadDeliveryStatus = async () => {
       try {
@@ -160,7 +177,6 @@ export default function RestaurantStatus() {
   }, [])
 
   const handleDeliveryStatusChange = async (checked) => {
-    // Allow manual override always — owner can go online/offline regardless of timings
     setDeliveryStatus(checked)
     try {
       const response = await restaurantAPI.updateAcceptingOrders(checked)
@@ -170,8 +186,8 @@ export default function RestaurantStatus() {
         checked
       setDeliveryStatus(Boolean(actualStatus))
       persistRestaurantOnlineStatus(Boolean(actualStatus))
-      window.dispatchEvent(new CustomEvent('restaurantStatusChanged', { 
-        detail: { isOnline: Boolean(actualStatus) } 
+      window.dispatchEvent(new CustomEvent('restaurantStatusChanged', {
+        detail: { isOnline: Boolean(actualStatus) }
       }))
     } catch (error) {
       debugError("Error saving delivery status:", error)
@@ -198,11 +214,12 @@ export default function RestaurantStatus() {
     const currentDayFull = now.toLocaleDateString('en-US', { weekday: 'long' })
     if (outletTimings && outletTimings[currentDayFull]) {
       const dayData = outletTimings[currentDayFull]
-      if (dayData.isOpen && dayData.openingTime && dayData.closingTime) {
-        return {
-          openingTime: formatTime12Hour(dayData.openingTime),
-          closingTime: formatTime12Hour(dayData.closingTime)
-        }
+      const slots = normalizeSlots(dayData)
+      if (dayData.isOpen && slots.length > 0) {
+        return slots.map((slot) => ({
+          openingTime: formatTime12Hour(slot.openingTime),
+          closingTime: formatTime12Hour(slot.closingTime),
+        }))
       }
     }
     return null
@@ -286,22 +303,31 @@ export default function RestaurantStatus() {
             </div>
 
             <p className="text-sm text-gray-700 mb-2">Current delivery slot</p>
-            <div className="flex items-center justify-between">
-              <p className="text-base font-bold text-gray-900">
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-base font-bold text-gray-900">
                 {loading ? "Loading..." : (
                   (() => {
                     if (isDayClosed) return "Today is Off"
                     const timings = getCurrentDayTimings()
-                    if (timings) {
+                    if (timings && timings.length > 0) {
                       const dateStr = currentDateTime.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-                      return `${dateStr}, ${timings.openingTime} - ${timings.closingTime}`
+                      return (
+                        <div className="space-y-1">
+                          <div>{dateStr}</div>
+                          {timings.map((slot, index) => (
+                            <div key={`${slot.openingTime}-${slot.closingTime}-${index}`} className="text-sm font-semibold text-gray-700">
+                              {slot.openingTime} - {slot.closingTime}
+                            </div>
+                          ))}
+                        </div>
+                      )
                     }
                     return "Not configured"
                   })()
                 )}
-              </p>
+              </div>
               {!isDayClosed && (
-                <button onClick={() => navigate("/restaurant/outlet-timings")} className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium">
+                <button onClick={() => navigate("/restaurant/outlet-timings")} className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium shrink-0">
                   Details <ChevronRight className="w-4 h-4" />
                 </button>
               )}
@@ -332,8 +358,6 @@ export default function RestaurantStatus() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Outside timings dialog removed — owner can manually override status anytime */}
       </div>
     </div>
   )

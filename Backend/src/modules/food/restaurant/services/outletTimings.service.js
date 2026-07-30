@@ -14,10 +14,9 @@ const normalizeDay = (value) => {
     return match || null;
 };
 
-const normalizeTime = (value, fallback) => {
+const normalizeTime = (value, fallback = '') => {
     const raw = String(value || '').trim();
     if (!raw) return fallback;
-    // Accept "HH:mm" or "H:mm"
     const m = raw.match(/^(\d{1,2}):(\d{2})$/);
     if (!m) return fallback;
     const h = Number(m[1]);
@@ -26,25 +25,59 @@ const normalizeTime = (value, fallback) => {
     return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 };
 
+const normalizeSlots = (slots, fallbackSlot = null) => {
+    const rawSlots = Array.isArray(slots) ? slots : [];
+    const normalized = rawSlots
+        .map((slot) => ({
+            openingTime: normalizeTime(slot?.openingTime, ''),
+            closingTime: normalizeTime(slot?.closingTime, '')
+        }))
+        .filter((slot) => slot.openingTime && slot.closingTime);
+
+    if (normalized.length > 0) return normalized;
+    if (fallbackSlot?.openingTime && fallbackSlot?.closingTime) {
+        return [{
+            openingTime: normalizeTime(fallbackSlot.openingTime, '09:00'),
+            closingTime: normalizeTime(fallbackSlot.closingTime, '22:00')
+        }];
+    }
+    return [];
+};
+
 const defaultTimings = () =>
     DAY_NAMES.map((day) => ({
         day,
         isOpen: true,
         openingTime: '09:00',
-        closingTime: '22:00'
+        closingTime: '22:00',
+        slots: [{ openingTime: '09:00', closingTime: '22:00' }]
     }));
+
+const toClientDayShape = (found, day) => {
+    const isOpen = found ? found.isOpen !== false : true;
+    const slots = isOpen
+        ? normalizeSlots(found?.slots, {
+            openingTime: found?.openingTime,
+            closingTime: found?.closingTime
+        })
+        : [];
+    const primarySlot = slots[0] || null;
+
+    return {
+        day,
+        isOpen,
+        openingTime: isOpen ? (primarySlot?.openingTime || '') : '',
+        closingTime: isOpen ? (primarySlot?.closingTime || '') : '',
+        slots,
+    };
+};
 
 const toClientShape = (doc) => {
     const timings = Array.isArray(doc?.timings) ? doc.timings : [];
     const map = {};
     for (const day of DAY_NAMES) {
         const found = timings.find((t) => normalizeDay(t?.day) === day);
-        const isOpen = found ? found.isOpen !== false : true;
-        map[day] = {
-            isOpen,
-            openingTime: isOpen ? normalizeTime(found?.openingTime, '09:00') : '',
-            closingTime: isOpen ? normalizeTime(found?.closingTime, '22:00') : ''
-        };
+        map[day] = toClientDayShape(found, day);
     }
     return map;
 };
@@ -69,11 +102,23 @@ export async function upsertOutletTimingsForRestaurant(restaurantId, outletTimin
     const timings = DAY_NAMES.map((day) => {
         const src = outletTimings[day] && typeof outletTimings[day] === 'object' ? outletTimings[day] : {};
         const isOpen = src.isOpen !== false;
+        const slots = isOpen
+            ? normalizeSlots(src.slots, {
+                openingTime: src.openingTime,
+                closingTime: src.closingTime
+            })
+            : [];
+        const fallbackSlots = isOpen && slots.length === 0
+            ? [{ openingTime: '09:00', closingTime: '22:00' }]
+            : slots;
+        const primarySlot = fallbackSlots[0] || null;
+
         return {
             day,
             isOpen,
-            openingTime: isOpen ? normalizeTime(src.openingTime, '09:00') : '',
-            closingTime: isOpen ? normalizeTime(src.closingTime, '22:00') : ''
+            openingTime: isOpen ? (primarySlot?.openingTime || '') : '',
+            closingTime: isOpen ? (primarySlot?.closingTime || '') : '',
+            slots: fallbackSlots,
         };
     });
 
@@ -85,4 +130,3 @@ export async function upsertOutletTimingsForRestaurant(restaurantId, outletTimin
 
     return { outletTimings: toClientShape(doc) };
 }
-

@@ -1,11 +1,23 @@
 import mongoose from "mongoose";
 
+const timingSlotSchema = new mongoose.Schema(
+  {
+    openingTime: { type: String, trim: true }, // "HH:mm"
+    closingTime: { type: String, trim: true }, // "HH:mm"
+  },
+  { _id: false },
+);
+
 const dayTimingSchema = new mongoose.Schema(
   {
     day: { type: String, required: true, trim: true },
     isOpen: { type: Boolean, default: true },
-    openingTime: { type: String, trim: true }, // "HH:mm"
-    closingTime: { type: String, trim: true }, // "HH:mm"
+    openingTime: { type: String, trim: true }, // legacy first-slot mirror
+    closingTime: { type: String, trim: true }, // legacy first-slot mirror
+    slots: {
+      type: [timingSlotSchema],
+      default: [],
+    },
   },
   { _id: false },
 );

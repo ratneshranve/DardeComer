@@ -620,6 +620,11 @@ export default function RestaurantOnboarding() {
   const locationSearchInputRef = useRef(null)
   const placesAutocompleteRef = useRef(null)
   const mapsScriptLoadedRef = useRef(false)
+  const locationMapContainerRef = useRef(null)
+  const locationMapRef = useRef(null)
+  const locationMarkerRef = useRef(null)
+  const locationZonePolygonsRef = useRef([])
+  const locationMapGeocoderRef = useRef(null)
   const menuImagesInputRef = useRef(null)
   const profileImageInputRef = useRef(null)
   const panImageInputRef = useRef(null)
@@ -639,6 +644,7 @@ export default function RestaurantOnboarding() {
   const [locationSuggestions, setLocationSuggestions] = useState([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
   const [isDetectingCurrentLocation, setIsDetectingCurrentLocation] = useState(false)
+  const [isLocationMapReady, setIsLocationMapReady] = useState(false)
 
   const getPreviewImageUrl = (value) => {
     if (!value) return null
@@ -872,6 +878,128 @@ export default function RestaurantOnboarding() {
     return resolved.filter((image) => image?.url)
   }
 
+  const parseAddressFromComponents = (components = [], fallbackFormattedAddress = "") => {
+    const comps = Array.isArray(components) ? components : []
+    const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+
+    return {
+      formattedAddress: fallbackFormattedAddress || "",
+      area: get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"]),
+      city: get(["locality"]) || get(["administrative_area_level_2"]),
+      state: get(["administrative_area_level_1"]) || get(["administrative_area_level_2"]),
+      pincode: get(["postal_code"]),
+    }
+  }
+
+  const setLocationMarkerPosition = (lat, lng) => {
+    if (!window.google?.maps || !locationMapRef.current || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return
+    }
+
+    const position = { lat, lng }
+
+    if (!locationMarkerRef.current) {
+      locationMarkerRef.current = new window.google.maps.Marker({
+        map: locationMapRef.current,
+        position,
+        draggable: isEditing,
+        animation: window.google.maps.Animation.DROP,
+        title: "Restaurant location pin",
+      })
+
+      locationMarkerRef.current.addListener("dragend", (event) => {
+        const nextLat = Number(event?.latLng?.lat?.())
+        const nextLng = Number(event?.latLng?.lng?.())
+        if (Number.isFinite(nextLat) && Number.isFinite(nextLng)) {
+          void applyLocationFromCoordinates(nextLat, nextLng, { successMessage: "Pinned location updated" })
+        }
+      })
+    } else {
+      locationMarkerRef.current.setPosition(position)
+      locationMarkerRef.current.setDraggable(isEditing)
+    }
+
+    locationMapRef.current.setCenter(position)
+    if ((locationMapRef.current.getZoom?.() || 0) < 16) {
+      locationMapRef.current.setZoom(16)
+    }
+  }
+
+  const reverseGeocodeCoordinates = async (lat, lng) => {
+    const latRounded = Number(lat.toFixed(6))
+    const lngRounded = Number(lng.toFixed(6))
+
+    if (window.google?.maps?.Geocoder) {
+      try {
+        if (!locationMapGeocoderRef.current) {
+          locationMapGeocoderRef.current = new window.google.maps.Geocoder()
+        }
+        const geocodeResult = await new Promise((resolve) => {
+          locationMapGeocoderRef.current.geocode({ location: { lat: latRounded, lng: lngRounded } }, (results, status) => {
+            if (status === "OK" && Array.isArray(results) && results[0]) {
+              resolve(results[0])
+              return
+            }
+            resolve(null)
+          })
+        })
+
+        if (geocodeResult) {
+          return parseAddressFromComponents(
+            geocodeResult.address_components,
+            geocodeResult.formatted_address || `${latRounded}, ${lngRounded}`,
+          )
+        }
+      } catch { }
+    }
+
+    const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${encodeURIComponent(String(latRounded))}&lon=${encodeURIComponent(String(lngRounded))}`
+    const reverseRes = await fetch(reverseUrl, { headers: { Accept: "application/json" } })
+    const reverseJson = await reverseRes.json()
+    const addr = reverseJson?.address || {}
+    return {
+      formattedAddress: reverseJson?.display_name || `${latRounded}, ${lngRounded}`,
+      area: addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || "",
+      city: addr.city || addr.town || addr.village || "",
+      state: addr.state || "",
+      pincode: addr.postcode || "",
+    }
+  }
+
+  const applyLocationFromCoordinates = async (latitude, longitude, options = {}) => {
+    const latRounded = Number(Number(latitude).toFixed(6))
+    const lngRounded = Number(Number(longitude).toFixed(6))
+    if (!Number.isFinite(latRounded) || !Number.isFinite(lngRounded)) {
+      throw new Error("Invalid coordinates")
+    }
+
+    const parsed = await reverseGeocodeCoordinates(latRounded, lngRounded)
+
+    setStep1((prev) => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        formattedAddress: parsed?.formattedAddress || prev.location.formattedAddress,
+        addressLine1: parsed?.formattedAddress || prev.location.addressLine1 || "",
+        area: parsed?.area || prev.location.area,
+        city: parsed?.city || prev.location.city,
+        state: parsed?.state || prev.location.state,
+        pincode: parsed?.pincode || prev.location.pincode,
+        latitude: latRounded,
+        longitude: lngRounded,
+      },
+    }))
+
+    setLocationSearchValue(parsed?.formattedAddress || `${latRounded}, ${lngRounded}`)
+    setLocationSuggestions([])
+    setLocationMarkerPosition(latRounded, lngRounded)
+
+    if (options.successMessage) {
+      toast.success(options.successMessage)
+    }
+
+    return parsed
+  }
   const handleUseCurrentLocation = async () => {
     if (isDetectingCurrentLocation) return
     if (!navigator?.geolocation) {
@@ -891,73 +1019,9 @@ export default function RestaurantOnboarding() {
 
       const latitude = Number(position?.coords?.latitude)
       const longitude = Number(position?.coords?.longitude)
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        throw new Error("Invalid coordinates")
-      }
-
-      let parsed = null
-      const latRounded = Number(latitude.toFixed(6))
-      const lngRounded = Number(longitude.toFixed(6))
-
-      if (window.google?.maps?.Geocoder) {
-        try {
-          const geocodeResult = await new Promise((resolve) => {
-            const geocoder = new window.google.maps.Geocoder()
-            geocoder.geocode({ location: { lat: latRounded, lng: lngRounded } }, (results, status) => {
-              if (status === "OK" && Array.isArray(results) && results[0]) {
-                resolve(results[0])
-                return
-              }
-              resolve(null)
-            })
-          })
-
-          if (geocodeResult) {
-            const comps = Array.isArray(geocodeResult.address_components) ? geocodeResult.address_components : []
-            const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
-            parsed = {
-              formattedAddress: geocodeResult.formatted_address || "",
-              area: get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"]),
-              city: get(["locality"]) || get(["administrative_area_level_2"]),
-              state: get(["administrative_area_level_1"]) || get(["administrative_area_level_2"]),
-              pincode: get(["postal_code"]),
-            }
-          }
-        } catch { }
-      }
-
-      if (!parsed) {
-        const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${encodeURIComponent(String(latRounded))}&lon=${encodeURIComponent(String(lngRounded))}`
-        const reverseRes = await fetch(reverseUrl, { headers: { Accept: "application/json" } })
-        const reverseJson = await reverseRes.json()
-        const addr = reverseJson?.address || {}
-        parsed = {
-          formattedAddress: reverseJson?.display_name || `${latRounded}, ${lngRounded}`,
-          area: addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || "",
-          city: addr.city || addr.town || addr.village || "",
-          state: addr.state || "",
-          pincode: addr.postcode || "",
-        }
-      }
-
-      setStep1((prev) => ({
-        ...prev,
-        location: {
-          ...prev.location,
-          formattedAddress: parsed?.formattedAddress || prev.location.formattedAddress,
-          addressLine1: parsed?.formattedAddress || prev.location.addressLine1 || "",
-          area: parsed?.area || prev.location.area,
-          city: parsed?.city || prev.location.city,
-          state: parsed?.state || prev.location.state,
-          pincode: parsed?.pincode || prev.location.pincode,
-          latitude: latRounded,
-          longitude: lngRounded,
-        },
-      }))
-
-      setLocationSearchValue(parsed?.formattedAddress || `${latRounded}, ${lngRounded}`)
-      setLocationSuggestions([])
-      toast.success("Current location selected")
+      await applyLocationFromCoordinates(latitude, longitude, {
+        successMessage: "Current location selected",
+      })
     } catch (error) {
       debugError("Current location detect failed:", error)
       toast.error("Unable to fetch current location. Please allow location permission.")
@@ -965,8 +1029,6 @@ export default function RestaurantOnboarding() {
       setIsDetectingCurrentLocation(false)
     }
   }
-
-
   // Load from localStorage on mount and check URL parameter
   useEffect(() => {
     // Hard reset of in-memory file cache on mount to prevent cross-account leakage on APK/SPA
@@ -2066,28 +2128,20 @@ export default function RestaurantOnboarding() {
                     key={s.id}
                     type="button"
                     onClick={() => {
-                      const { lat, lng, display, addr } = s
-                      const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || ""
-                      const city = addr.city || addr.town || addr.village || ""
-                      const state = addr.state || ""
-                      const pincode = addr.postcode || ""
-
-                      setStep1((prev) => ({
-                        ...prev,
-                        location: {
-                          ...prev.location,
-                          formattedAddress: display,
-                          addressLine1: display,
-                          area: area || prev.location.area,
-                          city: city || prev.location.city,
-                          state: state || prev.location.state,
-                          pincode: pincode || prev.location.pincode,
-                          latitude: lat,
-                          longitude: lng,
-                        },
-                      }))
-                      setLocationSearchValue(display)
-                      setLocationSuggestions([])
+                      void applyLocationFromCoordinates(s.lat, s.lng).then(() => {
+                        setStep1((prev) => ({
+                          ...prev,
+                          location: {
+                            ...prev.location,
+                            area: s.addr?.suburb || s.addr?.neighbourhood || s.addr?.city_district || s.addr?.locality || prev.location.area,
+                            city: s.addr?.city || s.addr?.town || s.addr?.village || prev.location.city,
+                            state: s.addr?.state || prev.location.state,
+                            pincode: s.addr?.postcode || prev.location.pincode,
+                          },
+                        }))
+                      }).catch(() => {
+                        toast.error("Failed to use selected location")
+                      })
                     }}
                     className="w-full px-4 py-2 text-left text-[13px] hover:bg-orange-50 border-b border-gray-100 last:border-none font-medium text-gray-700"
                   >
@@ -2100,6 +2154,35 @@ export default function RestaurantOnboarding() {
             <p className="text-[11px] text-gray-500 mt-1">
               Select a suggestion to auto-fill area/city/state/pincode and coordinates.
             </p>
+
+            <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/40 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-900">Pin restaurant on map</p>
+                  <p className="mt-1 text-[11px] text-gray-600">
+                    Tap anywhere on the map or drag the pin. The address and service zone will update automatically.
+                  </p>
+                </div>
+                <div className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-orange-700 border border-orange-200">
+                  {step1.zoneId ? "Zone detected" : "Select on map"}
+                </div>
+              </div>
+              <div
+                ref={locationMapContainerRef}
+                className="mt-3 h-64 w-full overflow-hidden rounded-lg border border-orange-200 bg-white"
+              />
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-600">
+                <span className="rounded-full bg-white px-2 py-1 border border-gray-200">
+                  {isLocationMapReady ? "Map ready" : "Loading map..."}
+                </span>
+                {step1.location?.latitude && step1.location?.longitude && (
+                  <span className="rounded-full bg-white px-2 py-1 border border-gray-200">
+                    {Number(step1.location.latitude).toFixed(6)}, {Number(step1.location.longitude).toFixed(6)}
+                  </span>
+                )}
+              </div>
+            </div>
+
           </div>
           <Input
             value={step1.location?.addressLine1 || ""}
@@ -2350,20 +2433,24 @@ export default function RestaurantOnboarding() {
           if (!place?.geometry) return
 
           const parsed = parsePlace(place)
-          setStep1((prev) => ({
-            ...prev,
-            location: {
-              ...prev.location,
-              formattedAddress: parsed.formattedAddress || prev.location.formattedAddress,
-              addressLine1: parsed.formattedAddress || prev.location.addressLine1 || "",
-              area: parsed.area || prev.location.area,
-              city: parsed.city || prev.location.city,
-              state: parsed.state || prev.location.state,
-              pincode: parsed.pincode || prev.location.pincode,
-              latitude: parsed.latitude !== "" ? parsed.latitude : prev.location.latitude,
-              longitude: parsed.longitude !== "" ? parsed.longitude : prev.location.longitude,
-            },
-          }))
+          const nextLat = parsed.latitude !== "" ? parsed.latitude : null
+          const nextLng = parsed.longitude !== "" ? parsed.longitude : null
+          if (nextLat !== null && nextLng !== null) {
+            void applyLocationFromCoordinates(nextLat, nextLng).then(() => {
+              setStep1((prev) => ({
+                ...prev,
+                location: {
+                  ...prev.location,
+                  area: parsed.area || prev.location.area,
+                  city: parsed.city || prev.location.city,
+                  state: parsed.state || prev.location.state,
+                  pincode: parsed.pincode || prev.location.pincode,
+                },
+              }))
+            }).catch(() => {
+              toast.error("Failed to use selected location")
+            })
+          }
 
           setLocationSearchValue(parsed.formattedAddress)
           inputElement.blur()
@@ -2461,6 +2548,136 @@ export default function RestaurantOnboarding() {
   }, [step])
 
 
+  useEffect(() => {
+    if (step !== 1) return
+
+    let cancelled = false
+
+    const clearZonePolygons = () => {
+      locationZonePolygonsRef.current.forEach((polygon) => {
+        try { polygon.setMap(null) } catch { }
+      })
+      locationZonePolygonsRef.current = []
+    }
+
+    const ensureMapsSdk = async () => {
+      if (window.google?.maps?.Map) return true
+
+      const apiKey = await getGoogleMapsApiKey()
+      if (!apiKey) return false
+
+      const scripts = Array.from(document.getElementsByTagName("script"))
+      const mapsScript = scripts.find((s) => s.src?.includes("maps.googleapis.com/maps/api/js"))
+
+      if (mapsScript && mapsScript.src.includes("libraries=places")) {
+        for (let i = 0; i < 60; i++) {
+          if (window.google?.maps?.Map) return true
+          if (cancelled) return false
+          await new Promise((r) => setTimeout(r, 100))
+        }
+      }
+
+      return new Promise((resolve) => {
+        const script = document.createElement("script")
+        script.id = "google-maps-sdk"
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly`
+        script.async = true
+        script.defer = true
+        script.onload = () => resolve(!!window.google?.maps?.Map)
+        script.onerror = () => resolve(false)
+        document.head.appendChild(script)
+      })
+    }
+
+    const renderZonePolygons = () => {
+      if (!window.google?.maps || !locationMapRef.current) return
+      clearZonePolygons()
+
+      const bounds = new window.google.maps.LatLngBounds()
+      let hasPolygonBounds = false
+
+      zones.forEach((zone) => {
+        const path = (Array.isArray(zone?.coordinates) ? zone.coordinates : [])
+          .map((coord) => ({
+            lat: Number(coord?.latitude),
+            lng: Number(coord?.longitude),
+          }))
+          .filter((coord) => Number.isFinite(coord.lat) && Number.isFinite(coord.lng))
+
+        if (path.length < 3) return
+
+        const polygon = new window.google.maps.Polygon({
+          paths: path,
+          strokeColor: "#f97316",
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: "#fb923c",
+          fillOpacity: 0.12,
+          clickable: false,
+          map: locationMapRef.current,
+        })
+        locationZonePolygonsRef.current.push(polygon)
+        path.forEach((point) => {
+          bounds.extend(point)
+          hasPolygonBounds = true
+        })
+      })
+
+      const lat = Number(step1.location?.latitude)
+      const lng = Number(step1.location?.longitude)
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setLocationMarkerPosition(lat, lng)
+        return
+      }
+
+      if (hasPolygonBounds) {
+        locationMapRef.current.fitBounds(bounds)
+      }
+    }
+
+    const initMap = async () => {
+      const ok = await ensureMapsSdk()
+      if (!ok || cancelled || !locationMapContainerRef.current) {
+        if (!cancelled) setIsLocationMapReady(false)
+        return
+      }
+
+      if (!locationMapRef.current) {
+        locationMapRef.current = new window.google.maps.Map(locationMapContainerRef.current, {
+          center: { lat: 20.5937, lng: 78.9629 },
+          zoom: 5,
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+          gestureHandling: "greedy",
+        })
+
+        locationMapRef.current.addListener("click", (event) => {
+          if (!isEditing) return
+          const lat = Number(event?.latLng?.lat?.())
+          const lng = Number(event?.latLng?.lng?.())
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            void applyLocationFromCoordinates(lat, lng, { successMessage: "Pinned location selected" })
+          }
+        })
+      }
+
+      setIsLocationMapReady(true)
+      renderZonePolygons()
+    }
+
+    void initMap()
+
+    return () => {
+      cancelled = true
+    }
+  }, [step, zones, step1.location?.latitude, step1.location?.longitude, isEditing])
+
+  useEffect(() => {
+    if (locationMarkerRef.current) {
+      locationMarkerRef.current.setDraggable(isEditing)
+    }
+  }, [isEditing])
   const renderStep2 = () => (
     <div className="space-y-6">
       {/* Images section */}
@@ -3258,5 +3475,4 @@ export default function RestaurantOnboarding() {
     </LocalizationProvider>
   )
 }
-
 
