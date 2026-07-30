@@ -271,7 +271,27 @@ export default function JoiningRequest() {
     return image?.url || ""
   }
 
+  const getDocumentUrl = (...candidates) => {
+    for (const candidate of candidates) {
+      const url = getNormalizedImageUrl(candidate)
+      if (url) return url
+    }
+    return ""
+  }
+
   const isPdfUrl = (url) => String(url || "").toLowerCase().includes(".pdf")
+
+  const getPdfViewerUrl = (url) => {
+    const raw = String(url || "").trim()
+    if (!raw) return ""
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(raw)}`
+  }
+
+  const openDocument = (url) => {
+    if (!url) return
+    const targetUrl = isPdfUrl(url) ? getPdfViewerUrl(url) : url
+    window.open(targetUrl, "_blank", "noopener,noreferrer")
+  }
   const getDownloadFileName = (url, fallbackBase = "document") => {
     const raw = String(url || "").split("?")[0]
     const lastSegment = raw.split("/").pop() || ""
@@ -750,7 +770,10 @@ export default function JoiningRequest() {
                 const openingTime = r?.openingTime || r?.deliveryTimings?.openingTime || r?.onboarding?.step2?.deliveryTimings?.openingTime
                 const closingTime = r?.closingTime || r?.deliveryTimings?.closingTime || r?.onboarding?.step2?.deliveryTimings?.closingTime
                 const approvalStatus = r?.status || (r?.isActive !== false ? "approved" : "pending")
-                const hasFlatDocs = r?.panNumber || r?.panImage || r?.fssaiNumber || r?.accountNumber
+                const panDocUrl = getDocumentUrl(r?.panImage, r?.onboarding?.step3?.pan?.image, r?.onboarding?.step3?.pan?.panDocument, r?.onboarding?.step3?.pan?.document)
+                const gstDocUrl = getDocumentUrl(r?.gstImage, r?.onboarding?.step3?.gst?.image, r?.onboarding?.step3?.gst?.gstDocument, r?.onboarding?.step3?.gst?.document)
+                const fssaiDocUrl = getDocumentUrl(r?.fssaiImage, r?.onboarding?.step3?.fssai?.image, r?.onboarding?.step3?.fssai?.document)
+                const hasFlatDocs = r?.panNumber || panDocUrl || r?.gstNumber || gstDocUrl || r?.fssaiNumber || fssaiDocUrl || r?.accountNumber
                 const menuImgList = Array.isArray(r?.menuImages) ? r.menuImages : (r?.onboarding?.step2?.menuImageUrls || [])
                 return (
                 <div className="space-y-6">
@@ -1142,20 +1165,20 @@ export default function JoiningRequest() {
                                   <p className="font-medium text-slate-900">{r.nameOnPan || r.onboarding?.step3?.pan?.nameOnPan}</p>
                                 </div>
                               )}
-                              {(typeof r.panImage === "string" ? r.panImage : r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url) && (
+                              {panDocUrl && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">PAN Document</p>
                                   {(() => {
-                                    const panDocUrl = typeof r.panImage === "string" ? r.panImage : (r.panImage?.url || r.onboarding?.step3?.pan?.image?.url)
-                                    const panIsPdf = isPdfUrl(panDocUrl)
+                                    const panDocUrlValue = panDocUrl
+                                    const panIsPdf = isPdfUrl(panDocUrlValue)
                                     return (
                                   <button
                                     type="button"
-                                    onClick={() => downloadDocument(panDocUrl, "pan-document")}
+                                    onClick={() => openDocument(panDocUrlValue)}
                                     className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
                                   >
                                     {panIsPdf ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
-                                    <span>{panIsPdf ? "Download PAN PDF" : "Download PAN Document"}</span>
+                                    <span>{panIsPdf ? "View PAN PDF" : "View PAN Document"}</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </button>
                                     )
@@ -1198,20 +1221,20 @@ export default function JoiningRequest() {
                                   <p className="font-medium text-slate-900">{r.gstAddress || r.onboarding?.step3?.gst?.address}</p>
                                 </div>
                               )}
-                              {(typeof r.gstImage === "string" ? r.gstImage : r?.gstImage?.url || r?.onboarding?.step3?.gst?.image?.url) && (
+                              {gstDocUrl && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">GST Document</p>
                                   {(() => {
-                                    const gstDocUrl = typeof r.gstImage === "string" ? r.gstImage : (r.gstImage?.url || r.onboarding?.step3?.gst?.image?.url)
-                                    const gstIsPdf = isPdfUrl(gstDocUrl)
+                                    const gstDocUrlValue = gstDocUrl
+                                    const gstIsPdf = isPdfUrl(gstDocUrlValue)
                                     return (
                                   <button
                                     type="button"
-                                    onClick={() => downloadDocument(gstDocUrl, "gst-document")}
+                                    onClick={() => openDocument(gstDocUrlValue)}
                                     className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
                                   >
                                     {gstIsPdf ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
-                                    <span>{gstIsPdf ? "Download GST PDF" : "Download GST Document"}</span>
+                                    <span>{gstIsPdf ? "View GST PDF" : "View GST Document"}</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </button>
                                     )
@@ -1248,20 +1271,20 @@ export default function JoiningRequest() {
                                   </p>
                                 </div>
                               )}
-                              {(typeof r.fssaiImage === "string" ? r.fssaiImage : r?.fssaiImage?.url || r?.onboarding?.step3?.fssai?.image?.url) && (
+                              {fssaiDocUrl && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-2">FSSAI Document</p>
                                   {(() => {
-                                    const fssaiDocUrl = typeof r.fssaiImage === "string" ? r.fssaiImage : (r.fssaiImage?.url || r.onboarding?.step3?.fssai?.image?.url)
-                                    const fssaiIsPdf = isPdfUrl(fssaiDocUrl)
+                                    const fssaiDocUrlValue = fssaiDocUrl
+                                    const fssaiIsPdf = isPdfUrl(fssaiDocUrlValue)
                                     return (
                                   <button
                                     type="button"
-                                    onClick={() => downloadDocument(fssaiDocUrl, "fssai-document")}
+                                    onClick={() => openDocument(fssaiDocUrlValue)}
                                     className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700"
                                   >
                                     {fssaiIsPdf ? <FileText className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
-                                    <span>{fssaiIsPdf ? "Download FSSAI PDF" : "Download FSSAI Document"}</span>
+                                    <span>{fssaiIsPdf ? "View FSSAI PDF" : "View FSSAI Document"}</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </button>
                                     )
@@ -1433,5 +1456,8 @@ export default function JoiningRequest() {
     </div>
   )
 }
+
+
+
 
 

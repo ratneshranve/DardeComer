@@ -6,14 +6,21 @@ export default function RestaurantDocumentViewer() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const { title, url } = useMemo(() => {
+  const { title, url, viewerUrl, isPdf } = useMemo(() => {
     const state = location.state || {}
+    const rawUrl = String(state.url || "")
+    const pdf = rawUrl.toLowerCase().includes(".pdf")
+    const resolvedViewerUrl = pdf
+      ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(rawUrl)}`
+      : rawUrl
+
     return {
       title: String(state.title || "Document"),
-      url: String(state.url || ""),
+      url: rawUrl,
+      viewerUrl: resolvedViewerUrl,
+      isPdf: pdf,
     }
   }, [location.state])
-
   const handleBack = () => {
     if (window.history.length > 1) {
       navigate(-1)
@@ -25,7 +32,7 @@ export default function RestaurantDocumentViewer() {
 
   const handleOpenExternally = () => {
     if (!url) return
-    window.open(url, "_blank", "noopener,noreferrer")
+    window.open(isPdf ? viewerUrl : url, "_blank", "noopener,noreferrer")
   }
 
   if (!url) {
@@ -83,7 +90,7 @@ export default function RestaurantDocumentViewer() {
       <div className="flex-1 p-3 sm:p-4">
         <div className="h-full min-h-[calc(100vh-88px)] bg-white rounded-xl border border-slate-200 overflow-hidden">
           <iframe
-            src={url}
+            src={viewerUrl}
             title={title}
             className="w-full h-full border-0"
           />
@@ -92,3 +99,4 @@ export default function RestaurantDocumentViewer() {
     </div>
   )
 }
+
