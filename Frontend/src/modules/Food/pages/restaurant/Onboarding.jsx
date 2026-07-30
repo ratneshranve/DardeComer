@@ -28,6 +28,44 @@ const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
 
+const buildOnboardingDeveloperLog = (error) => {
+  const status = error?.response?.status
+  const code = error?.code || error?.response?.data?.code
+  const backendMessage =
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message
+  const requestUrl = error?.config?.url || "/food/restaurant/register"
+  const method = String(error?.config?.method || "post").toUpperCase()
+
+  if (!error?.response) {
+    if (error?.code === "ECONNABORTED") {
+      return `DEV LOG: timeout | ${method} ${requestUrl} | ${backendMessage || "request timed out"}`
+    }
+    return `DEV LOG: no-response | ${method} ${requestUrl} | ${backendMessage || "server unreachable or request blocked"}`
+  }
+
+  return `DEV LOG: status ${status || "unknown"}${code ? ` | code ${code}` : ""} | ${method} ${requestUrl} | ${backendMessage || "unknown backend error"}`
+}
+
+const formatOnboardingErrorMessage = (error) => {
+  const baseMessage =
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    "Failed to save onboarding data"
+
+  const shouldAttachDeveloperLog =
+    /network error/i.test(baseMessage) ||
+    error?.code === "ECONNABORTED" ||
+    !error?.response
+
+  if (!shouldAttachDeveloperLog) {
+    return baseMessage
+  }
+
+  return `${baseMessage} (${buildOnboardingDeveloperLog(error)})`
+}
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -1784,12 +1822,22 @@ export default function RestaurantOnboarding() {
         })
       }
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to save onboarding data"
+      const msg = formatOnboardingErrorMessage(err)
+      console.error("[Restaurant Onboarding Finish Error]", {
+        message: err?.message,
+        code: err?.code,
+        status: err?.response?.status,
+        responseData: err?.response?.data,
+        request: {
+          method: err?.config?.method,
+          url: err?.config?.url,
+          timeout: err?.config?.timeout,
+        },
+      })
       setError(msg)
+      if (step === 3) {
+        toast.error(msg, { duration: 8000 })
+      }
     } finally {
       setSaving(false)
     }
@@ -3210,4 +3258,5 @@ export default function RestaurantOnboarding() {
     </LocalizationProvider>
   )
 }
+
 
