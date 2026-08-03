@@ -72,6 +72,11 @@ router.patch('/restaurants/:id', async (req, res, next) => {
     await invalidateCache('restaurant_detail:*');
     next();
 }, adminController.updateRestaurantById);
+router.delete('/restaurants/:id', async (req, res, next) => {
+    await invalidateCache('restaurants:*');
+    await invalidateCache('restaurant_detail:*');
+    next();
+}, adminController.deleteRestaurantById);
 router.patch('/restaurants/:id/status', async (req, res, next) => {
     await invalidateCache('restaurants:*');
     await invalidateCache('restaurant_detail:*');

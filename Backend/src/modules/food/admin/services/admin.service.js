@@ -389,6 +389,47 @@ export async function getRestaurants(query) {
     return { restaurants, total, page, limit };
 }
 
+export async function deleteRestaurantById(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw new ValidationError('Invalid restaurant id');
+    }
+
+    const restaurant = await FoodRestaurant.findOne({
+        _id: id,
+        isDeleted: { $ne: true }
+    }).select('_id restaurantName status isDeleted deletedAt').lean();
+
+    if (!restaurant) return null;
+
+    const deletedAt = new Date();
+    const updateResult = await FoodRestaurant.updateOne(
+        { _id: id, isDeleted: { $ne: true } },
+        {
+            $set: {
+                isDeleted: true,
+                deletedAt,
+                status: 'rejected'
+            }
+        }
+    );
+
+    if (!updateResult.modifiedCount) return null;
+
+    await Promise.all([
+        FoodItem.deleteMany({ restaurantId: id }),
+        FoodCategory.deleteMany({ restaurantId: id }),
+        FoodAddon.deleteMany({ restaurantId: id }),
+        FoodRefreshToken.deleteMany({ userId: id })
+    ]);
+
+    return {
+        ...restaurant,
+        isDeleted: true,
+        deletedAt,
+        status: 'rejected'
+    };
+}
+
 const CANCELLED_ORDER_STATUSES = ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
 const PENDING_ORDER_STATUSES = ['created', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up'];
 

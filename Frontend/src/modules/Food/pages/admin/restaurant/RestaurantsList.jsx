@@ -1576,10 +1576,10 @@ export default function RestaurantsList() {
                 const menuImages = (Array.isArray(r?.menuImages) ? r.menuImages : (r?.onboarding?.step4?.menuImages || [])).map(normalizeImageUrl).filter(Boolean)
                 const hasFlatAddress = !!flatAddress
                 
-                const panDocumentUrl = normalizeImageUrl(r?.panDocument || r?.onboarding?.step3?.pan?.panDocument)
-                const gstDocumentUrl = normalizeImageUrl(r?.gstDocument || r?.onboarding?.step3?.gst?.gstDocument)
-                const fssaiDocumentUrl = normalizeImageUrl(r?.fssaiDocument || r?.onboarding?.step3?.fssai?.document)
-                const bankDocumentUrl = normalizeImageUrl(r?.bankDocument || r?.onboarding?.step3?.bank?.passbookImage)
+                const panDocumentUrl = normalizeImageUrl(r?.panDocument || r?.panImage || r?.onboarding?.step3?.pan?.panDocument)
+                const gstDocumentUrl = normalizeImageUrl(r?.gstDocument || r?.gstImage || r?.onboarding?.step3?.gst?.gstDocument)
+                const fssaiDocumentUrl = normalizeImageUrl(r?.fssaiDocument || r?.fssaiImage || r?.onboarding?.step3?.fssai?.document)
+                const bankDocumentUrl = normalizeImageUrl(r?.bankDocument || r?.passbookImage || r?.onboarding?.step3?.bank?.passbookImage)
 
                 const hasPanSection = !!(r?.panNumber || r?.onboarding?.step3?.pan?.panNumber || panDocumentUrl)
                 const hasGstSection = !!(r?.gstNumber || r?.onboarding?.step3?.gst?.gstNumber || gstDocumentUrl)

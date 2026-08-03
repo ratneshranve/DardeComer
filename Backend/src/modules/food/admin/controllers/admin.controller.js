@@ -139,6 +139,28 @@ export async function getRestaurants(req, res, next) {
     }
 }
 
+export async function deleteRestaurantById(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+        }
+
+        const deleted = await adminService.deleteRestaurantById(id);
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: 'Restaurant not found or already deleted' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Restaurant deleted successfully',
+            data: { restaurant: deleted }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getRestaurantReport(req, res, next) {
     try {
         const data = await adminService.getRestaurantReport(req.query || {});

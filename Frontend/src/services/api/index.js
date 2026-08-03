@@ -825,6 +825,10 @@ export const adminAPI = {
       params: { status: "approved", limit: 1000, ...params },
       contextModule: "admin",
     }),
+  deleteRestaurant: (id) =>
+    apiClient.delete(`/food/admin/restaurants/${String(id)}`, {
+      contextModule: "admin",
+    }),
 
   /** Delivery Boy Commission Rules (admin) */
   getCommissionRules: () =>
