@@ -429,14 +429,7 @@ export default function EditFoodPage() {
       return
     }
 
-    if (
-      matchedCategory?.foodTypeScope &&
-      matchedCategory.foodTypeScope !== "Both" &&
-      matchedCategory.foodTypeScope !== foodDataToSave.foodType
-    ) {
-      toast.error(`This ${matchedCategory.foodTypeScope} category cannot accept ${foodDataToSave.foodType} food`)
-      return
-    }
+
 
     if (isNewFood) {
       try {
@@ -588,7 +581,7 @@ export default function EditFoodPage() {
                   >
                     {categoryOptions.map((category) => (
                       <option key={category.id} value={category.id}>
-                        {category.name}{category.foodTypeScope ? ` (${category.foodTypeScope})` : ""}
+                        {category.name}
                       </option>
                     ))}
                   </select>

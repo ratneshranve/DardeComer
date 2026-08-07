@@ -222,11 +222,11 @@ export async function createRestaurantCategory(restaurantId, body = {}) {
     if (!name) throw new ValidationError('Category name is required');
     if (name.length > 200) throw new ValidationError('Category name is too long');
 
-    const foodTypeScopeRaw = typeof body.foodTypeScope === 'string' ? body.foodTypeScope.trim() : '';
+    let foodTypeScopeRaw = typeof body.foodTypeScope === 'string' ? body.foodTypeScope.trim() : '';
     if (!foodTypeScopeRaw) {
-        throw new ValidationError('Category diet type is required');
+        foodTypeScopeRaw = context.pureVegRestaurant ? 'Veg' : 'Both';
     }
-    const foodTypeScope = normalizeCategoryFoodTypeScope(foodTypeScopeRaw, '');
+    const foodTypeScope = normalizeCategoryFoodTypeScope(foodTypeScopeRaw, context.pureVegRestaurant ? 'Veg' : 'Both');
     if (!foodTypeScope) {
         throw new ValidationError('Invalid category diet type');
     }
