@@ -27,7 +27,7 @@ const defaultFormData = {
   image: "",
   isActive: true,
   sortOrder: 0,
-  foodTypeScope: "Veg",
+  foodTypeScope: "Both",
 }
 
 const approvalBadgeClass = (status) => {
@@ -138,7 +138,7 @@ export default function MenuCategoriesPage() {
       image: category?.image || "",
       isActive: category?.isActive !== false,
       sortOrder: Number.isFinite(Number(category?.sortOrder)) ? Number(category.sortOrder) : 0,
-      foodTypeScope: category?.foodTypeScope || "Veg",
+      foodTypeScope: category?.foodTypeScope || "Both",
     })
     setSelectedImageFile(null)
     setImagePreview(category?.image || null)
@@ -189,7 +189,7 @@ export default function MenuCategoriesPage() {
         image: imageUrl,
         isActive: formData.isActive !== false,
         sortOrder: Number.isFinite(Number(formData.sortOrder)) ? Number(formData.sortOrder) : 0,
-        foodTypeScope: formData.foodTypeScope,
+        foodTypeScope: restaurantProfile?.pureVegRestaurant ? "Veg" : (formData.foodTypeScope || "Both"),
       }
 
       if (editingCategory) {
@@ -280,7 +280,7 @@ export default function MenuCategoriesPage() {
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
             <p className="text-lg font-semibold text-primary">No restaurant categories yet</p>
             <p className="mt-2 text-sm text-slate-500">
-              Start with a category and choose whether it should accept veg, non-veg, or both kinds of dishes.
+              Start by creating a category to organize your menu items.
             </p>
           </div>
         ) : (
@@ -313,9 +313,6 @@ export default function MenuCategoriesPage() {
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${approvalBadgeClass(status)}`}>
                           {status === "approved" ? <BadgeCheck className="mr-1 h-3.5 w-3.5" /> : <Clock3 className="mr-1 h-3.5 w-3.5" />}
                           {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${scopePillClass(category?.foodTypeScope)}`}>
-                          {category?.foodTypeScope || "Both"}
                         </span>
                         {isGlobal && (
                           <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
@@ -396,7 +393,7 @@ export default function MenuCategoriesPage() {
                   <p className="text-xs text-slate-500">
                     {editingCategory
                       ? "Any edit sends this category back for admin approval."
-                      : "Choose the diet scope carefully before sending it for approval."}
+                      : "Fill in the category details before sending it for approval."}
                   </p>
                 </div>
                 <button onClick={resetModal}>
@@ -414,23 +411,6 @@ export default function MenuCategoriesPage() {
                     placeholder="Enter category name"
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-primary"
                   />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Diet Scope</label>
-                  <select
-                    value={formData.foodTypeScope}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, foodTypeScope: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-primary"
-                  >
-                    <option value="Veg">Veg</option>
-                    {!restaurantProfile?.pureVegRestaurant && (
-                      <>
-                        <option value="Non-Veg">Non-Veg</option>
-                        <option value="Both">Both</option>
-                      </>
-                    )}
-                  </select>
                 </div>
 
                 <div>
