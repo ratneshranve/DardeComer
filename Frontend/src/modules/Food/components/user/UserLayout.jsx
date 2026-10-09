@@ -209,7 +209,9 @@ export default function UserLayout() {
                   {showBottomNav && <DesktopNavbar showLogo={!isUnder250} />}
                 </div>
                 <LocationPrompt />
-                <main className={showBottomNav ? "md:pt-40" : ""}>
+                <main
+                  className={showBottomNav ? "md:pt-40 pb-[calc(4.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:pb-0" : ""}
+                >
                   <Outlet />
                 </main>
                 {showBottomNav && <BottomNavigation />}

@@ -74,6 +74,30 @@ function bootstrapNativeHashRoute() {
 
 bootstrapNativeHashRoute()
 
+// ─── Native Safe Area Synchronization ─────────────────────────────────────────
+if (typeof window !== 'undefined') {
+  const syncSafeArea = async () => {
+    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === 'function') {
+      try {
+        const insets = await window.flutter_inappwebview.callHandler('getSafeArea')
+        if (insets && typeof insets.bottom === 'number') {
+          document.documentElement.style.setProperty('--safe-area-bottom', `${insets.bottom}px`)
+        }
+      } catch {
+        // Silently ignore if native handler is not registered
+      }
+    }
+  }
+
+  syncSafeArea()
+  window.addEventListener('flutterInAppWebViewPlatformReady', syncSafeArea)
+  window.setSafeAreaBottom = (val) => {
+    if (typeof val === 'number') {
+      document.documentElement.style.setProperty('--safe-area-bottom', `${val}px`)
+    }
+  }
+}
+
 // ─── Suppress known non-critical errors ──────────────────────────────────────
 
 const originalError = console.error
